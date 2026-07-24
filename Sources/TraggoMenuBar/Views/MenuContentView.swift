@@ -78,10 +78,34 @@ struct MenuContentView: View {
 
         Divider()
 
-        // Settings and Quit as separate full-width rows, like Rectangle's menu.
+        // Full-width rows, like Rectangle's menu: quick access to the history
+        // tabs of the settings window, then Settings and Quit.
         VStack(spacing: 2) {
             Button {
-                openSettings()
+                openSettings(tab: .log)
+            } label: {
+                Label("Log", systemImage: "list.bullet.rectangle")
+            }
+            .buttonStyle(MenuRowButtonStyle())
+
+            Button {
+                openSettings(tab: .calendar)
+            } label: {
+                Label("Calendar", systemImage: "calendar")
+            }
+            .buttonStyle(MenuRowButtonStyle())
+
+            Button {
+                openSettings(tab: .history)
+            } label: {
+                Label("History", systemImage: "chart.pie")
+            }
+            .buttonStyle(MenuRowButtonStyle())
+
+            Divider()
+
+            Button {
+                openSettings(tab: .connection)
             } label: {
                 Label("Settings…", systemImage: "gear")
             }
@@ -97,8 +121,8 @@ struct MenuContentView: View {
         .font(.callout)
     }
 
-    private func openSettings() {
-        SettingsWindowManager.shared.show(model: model)
+    private func openSettings(tab: SettingsTab) {
+        SettingsWindowManager.shared.show(model: model, tab: tab)
     }
 
     @ViewBuilder

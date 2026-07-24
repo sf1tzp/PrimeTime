@@ -83,3 +83,18 @@ struct TimeSpan: Decodable, Identifiable, Equatable {
 
     var isRunning: Bool { end == nil }
 }
+
+/// Pagination cursor for `timeSpans`. `startId` pins the page walk to the
+/// newest id at the time of the first request so pages stay stable while new
+/// spans are created; `offset` advances through the result set.
+struct Cursor: Codable, Equatable {
+    let hasMore: Bool
+    let offset: Int
+    let startId: Int
+    let pageSize: Int
+}
+
+struct PagedTimeSpans: Decodable {
+    let timeSpans: [TimeSpan]
+    let cursor: Cursor
+}

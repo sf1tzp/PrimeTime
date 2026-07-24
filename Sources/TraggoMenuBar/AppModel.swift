@@ -37,10 +37,18 @@ final class AppModel {
 
     var isAuthenticated: Bool { user != nil }
 
+    /// History (log / calendar / charts) state, split out so this class stays
+    /// focused on live-timer concerns.
+    @ObservationIgnored private(set) lazy var history = HistoryModel(app: self)
+
     // MARK: Private, non-observed
 
     @ObservationIgnored private var token: String?
     @ObservationIgnored private var client: TraggoClient?
+
+    /// The current client, for sibling models (see `HistoryModel`). Rebuilt when
+    /// the server URL or token changes, hence exposed as a computed property.
+    var api: TraggoClient? { client }
     @ObservationIgnored private var pollTask: Task<Void, Never>?
     @ObservationIgnored private var tickTimer: Timer?
     /// Debounce timers for per-key colour writes, so dragging in the colour
@@ -154,12 +162,7 @@ final class AppModel {
         defer { isBusy = false }
         do {
             let wireTags = tagSet.wireTags
-            // Ensure every tag key exists as a definition, or the server rejects
-            // the timespan. Create missing ones with a default colour.
-            let existing = Set(tagDefinitions.map(\.key))
-            for tag in wireTags where !existing.contains(tag.key) {
-                try await client.createTag(key: tag.key, color: "#2196f3")
-            }
+            try await ensureTagDefinitions(for: wireTags)
             // Tag sets carry no note; the note is added on the running timer.
             let created = try await client.startTimeSpan(start: Date(),
                                                          tags: wireTags,
@@ -167,8 +170,19 @@ final class AppModel {
             activeTimer = created
             errorMessage = nil
             await refresh()
+            await history.reloadIfLoaded()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Ensure every tag key exists as a definition, or the server rejects the
+    /// timespan. Creates missing ones with a default colour.
+    func ensureTagDefinitions(for tags: [TimeSpanTag]) async throws {
+        guard let client else { return }
+        let existing = Set(tagDefinitions.map(\.key))
+        for tag in tags where !existing.contains(tag.key) {
+            try await client.createTag(key: tag.key, color: "#2196f3")
         }
     }
 
@@ -197,6 +211,7 @@ final class AppModel {
             activeTimer = nil
             errorMessage = nil
             await refresh()
+            await history.reloadIfLoaded()
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -20,11 +20,7 @@ struct TagSet: Identifiable, Codable, Hashable {
 
     /// The wire form for `createTimeSpan`. Traggo lower-cases tag keys and
     /// forbids spaces, so we normalise here to match how definitions are stored.
-    var wireTags: [TimeSpanTag] {
-        tags
-            .filter { !$0.key.trimmingCharacters(in: .whitespaces).isEmpty }
-            .map { TimeSpanTag(key: normalizeKey($0.key), value: $0.value) }
-    }
+    var wireTags: [TimeSpanTag] { tags.wireTags }
 
     static let samples: [TagSet] = [
         TagSet(name: "Deep Work", tags: [TagRow(key: "type", value: "programming")]),
@@ -36,4 +32,12 @@ struct TagSet: Identifiable, Codable, Hashable {
 /// Traggo tag keys must be lower-case with no spaces.
 func normalizeKey(_ key: String) -> String {
     key.lowercased().replacingOccurrences(of: " ", with: "-")
+}
+
+extension [TagRow] {
+    /// Drop empty rows and normalise keys — the wire form for any mutation.
+    var wireTags: [TimeSpanTag] {
+        filter { !$0.key.trimmingCharacters(in: .whitespaces).isEmpty }
+            .map { TimeSpanTag(key: normalizeKey($0.key), value: $0.value) }
+    }
 }

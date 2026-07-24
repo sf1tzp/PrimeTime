@@ -121,9 +121,11 @@ struct TraggoClient {
     func createTag(key: String, color: String) async throws {
         struct Variables: Encodable { let key: String; let color: String }
         struct Payload: Decodable { let createTag: TagDefinition? }
+        // Select key AND color: the payload decodes as TagDefinition, which
+        // requires both (selecting only `key` makes every createTag "fail").
         let query = """
         mutation CreateTag($key: String!, $color: String!) {
-          createTag(key: $key, color: $color) { key }
+          createTag(key: $key, color: $color) { key color }
         }
         """
         _ = try await run(query, variables: Variables(key: key, color: color), as: Payload.self)
@@ -183,6 +185,49 @@ struct TraggoClient {
         let vars = Variables(id: id, start: TraggoTime(start),
                              end: end.map(TraggoTime.init), tags: tags, note: note)
         return try await run(query, variables: vars, as: Payload.self).updateTimeSpan
+    }
+
+    /// One page of finished timespans overlapping [from, to], newest first.
+    /// Running timespans (end == null) are excluded server-side; merge in
+    /// `timers()` for a complete picture.
+    func timeSpans(from: Date, to: Date, cursor: Cursor?) async throws -> PagedTimeSpans {
+        // On the first page startId must be *absent* so the server pins the walk
+        // to the current newest id (an explicit 0 would filter to nothing).
+        // The server caps pageSize at 100.
+        struct InputCursor: Encodable { let offset: Int; let startId: Int?; let pageSize: Int }
+        struct Variables: Encodable {
+            let fromInclusive: TraggoTime
+            let toInclusive: TraggoTime
+            let cursor: InputCursor
+        }
+        struct Payload: Decodable { let timeSpans: PagedTimeSpans }
+        let query = """
+        query TimeSpans($fromInclusive: Time!, $toInclusive: Time!, $cursor: InputCursor) {
+          timeSpans(fromInclusive: $fromInclusive, toInclusive: $toInclusive, cursor: $cursor) {
+            timeSpans { id start end note tags { key value } }
+            cursor { hasMore offset startId pageSize }
+          }
+        }
+        """
+        let input = cursor.map { InputCursor(offset: $0.offset, startId: $0.startId, pageSize: $0.pageSize) }
+            ?? InputCursor(offset: 0, startId: nil, pageSize: 100)
+        let vars = Variables(fromInclusive: TraggoTime(from), toInclusive: TraggoTime(to), cursor: input)
+        return try await run(query, variables: vars, as: Payload.self).timeSpans
+    }
+
+    /// Delete a timespan by id.
+    func removeTimeSpan(id: Int) async throws {
+        struct Variables: Encodable { let id: Int }
+        // Decode only what the mutation selects — decoding a full TimeSpan here
+        // throws keyNotFound and masks a successful delete as an error.
+        struct Deleted: Decodable { let id: Int }
+        struct Payload: Decodable { let removeTimeSpan: Deleted? }
+        let query = """
+        mutation Remove($id: Int!) {
+          removeTimeSpan(id: $id) { id }
+        }
+        """
+        _ = try await run(query, variables: Variables(id: id), as: Payload.self)
     }
 
     /// Stop a running timespan by id.

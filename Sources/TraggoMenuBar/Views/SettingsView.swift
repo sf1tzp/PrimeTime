@@ -143,24 +143,3 @@ struct TagSetDetailView: View {
         .formStyle(.grouped)
     }
 }
-
-// MARK: - History (placeholder)
-
-struct HistorySettingsView: View {
-    var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "clock.arrow.circlepath")
-                .font(.system(size: 40))
-                .foregroundStyle(.secondary)
-            Text("History")
-                .font(.headline)
-            Text("A browsable log of recent timespans will live here — recent entries, resume-last, and per-tag totals.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 340)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
-    }
-}

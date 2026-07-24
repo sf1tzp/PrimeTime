@@ -1,6 +1,11 @@
 import SwiftUI
 import AppKit
 
+/// The sections of the settings window, in toolbar order. Raw value = tab index.
+enum SettingsTab: Int, CaseIterable {
+    case connection, tagSets, log, calendar, history
+}
+
 /// Owns the settings window and reuses a single instance. Modelled on
 /// Rectangle's preferences window: a toolbar-style `NSTabViewController` with an
 /// icon per section, each section a SwiftUI view hosted in an `NSHostingController`.
@@ -8,13 +13,15 @@ import AppKit
 final class SettingsWindowManager {
     static let shared = SettingsWindowManager()
     private var windowController: NSWindowController?
+    private var tabController: NSTabViewController?
 
     private init() {}
 
-    func show(model: AppModel) {
+    func show(model: AppModel, tab: SettingsTab = .connection) {
         if windowController == nil {
-            windowController = Self.makeWindowController(model: model)
+            windowController = makeWindowController(model: model)
         }
+        tabController?.selectedTabViewItemIndex = tab.rawValue
         // An .accessory app isn't active when the menu is clicked, so activate
         // and order front or the window opens behind the focused app.
         NSApp.activate(ignoringOtherApps: true)
@@ -22,37 +29,50 @@ final class SettingsWindowManager {
         windowController?.window?.makeKeyAndOrderFront(nil)
     }
 
-    private static func makeWindowController(model: AppModel) -> NSWindowController {
+    private func makeWindowController(model: AppModel) -> NSWindowController {
         let tabController = NSTabViewController()
         tabController.tabStyle = .toolbar
 
+        // Every section shares one window size, so the window opens the same
+        // regardless of which menu shortcut was used and never clips a tab.
+        let size = NSSize(width: 780, height: 560)
+
         tabController.addTabViewItem(item("Connection", symbol: "person.crop.circle",
-                                          content: ConnectionSettingsView(), model: model))
+                                          content: ConnectionSettingsView(), model: model, size: size))
         tabController.addTabViewItem(item("Tag Sets", symbol: "tag",
-                                          content: TagSetsSettingsView(), model: model))
-        tabController.addTabViewItem(item("History", symbol: "clock.arrow.circlepath",
-                                          content: HistorySettingsView(), model: model))
+                                          content: TagSetsSettingsView(), model: model, size: size))
+        tabController.addTabViewItem(item("Log", symbol: "list.bullet.rectangle",
+                                          content: LogView(), model: model, size: size))
+        tabController.addTabViewItem(item("Calendar", symbol: "calendar",
+                                          content: CalendarView(), model: model, size: size))
+        tabController.addTabViewItem(item("History", symbol: "chart.pie",
+                                          content: HistoryChartsView(), model: model, size: size))
 
         let window = NSWindow(contentViewController: tabController)
         window.styleMask = [.titled, .closable, .miniaturizable]
         window.toolbarStyle = .preference          // centred, System-Settings layout
         window.titlebarSeparatorStyle = .none       // no line under the toolbar
         window.isReleasedWhenClosed = false         // we reuse the controller
+        // NSWindow(contentViewController:) doesn't reliably adopt the selected
+        // pane's fitting size, so pin the content size to the shared pane size.
+        window.setContentSize(size)
         window.center()
 
+        self.tabController = tabController
         return NSWindowController(window: window)
     }
 
-    private static func item(_ label: String, symbol: String,
-                             content: some View, model: AppModel) -> NSTabViewItem {
-        // Fixed frame so every section is the same size and the window doesn't
-        // resize as you switch tabs.
+    private func item(_ label: String, symbol: String,
+                      content: some View, model: AppModel, size: NSSize) -> NSTabViewItem {
+        // Fixed frame per section so the window sizes itself to the selection
+        // rather than to whatever SwiftUI proposes.
         let host = NSHostingController(rootView:
-            AnyView(content.environment(model).frame(width: 500, height: 420)))
+            AnyView(content.environment(model)
+                .frame(width: size.width, height: size.height)))
         // In `.toolbar` style the window title follows the selected controller's
         // `title`. Give every section the same title so it stays static (an
         // unset title would show "Untitled" when switching tabs).
-        host.title = "Traggo Menu App Settings"
+        host.title = "TraggoMenuApp Settings"
         let item = NSTabViewItem(viewController: host)
         item.label = label
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
