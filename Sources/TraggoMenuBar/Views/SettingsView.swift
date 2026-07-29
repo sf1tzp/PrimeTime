@@ -158,7 +158,7 @@ struct GeneralSettingsView: View {
                         .labelsHidden()
                 }
             }
-            Text("How many tag sets the popover lists (0 shows all), in the order from the Tag Sets tab — drag to reorder there. The rest stay a click away behind a “more…” row.")
+            Text("How many label sets the popover lists (0 shows all), in the order from the Label Sets tab — drag to reorder there. The rest stay a click away behind a “more…” row.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -316,7 +316,7 @@ struct TagSetDetailView: View {
 
     var body: some View {
         Form {
-            Section("Tag set") {
+            Section("Label set") {
                 TextField("Name", text: $tagSet.name)
             }
             Section("Launcher icon") {

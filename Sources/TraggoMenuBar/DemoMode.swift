@@ -239,7 +239,7 @@ enum DemoSeed {
         [
             Draft(startMinute: 570, durationMinutes: 15, labels: standup),
             Draft(startMinute: 600, durationMinutes: 150, labels: deepWork,
-                  note: "Tag Review: drag values between keys"),
+                  note: "Label Review: drag values between keys"),
             Draft(startMinute: 810, durationMinutes: 30,
                   note: "Phone call — forgot the tags"),
             Draft(startMinute: 870, durationMinutes: 60, labels: serverOps),

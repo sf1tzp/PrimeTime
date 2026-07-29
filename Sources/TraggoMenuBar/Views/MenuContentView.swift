@@ -65,7 +65,7 @@ struct MenuContentView: View {
             Button {
                 NSApplication.shared.terminate(nil)
             } label: {
-                Label("Quit", systemImage: "power")
+                Label("Quit PrimeTime", systemImage: "power")
             }
             .buttonStyle(MenuRowButtonStyle())
         }
@@ -163,7 +163,7 @@ struct MenuContentView: View {
             Button {
                 NSApplication.shared.terminate(nil)
             } label: {
-                Label("Quit", systemImage: "power")
+                Label("Quit PrimeTime", systemImage: "power")
             }
             .buttonStyle(MenuRowButtonStyle())
         }

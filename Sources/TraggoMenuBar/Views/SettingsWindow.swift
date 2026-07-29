@@ -40,7 +40,7 @@ final class SettingsWindowManager {
 
         tabController.addTabViewItem(item("Launcher", symbol: "square.grid.2x2",
                                           content: LauncherView(), model: model, size: size))
-        tabController.addTabViewItem(item("Tag Sets", symbol: "tag",
+        tabController.addTabViewItem(item("Label Sets", symbol: "tag",
                                           content: TagSetsSettingsView(), model: model, size: size))
         tabController.addTabViewItem(item("Log", symbol: "list.bullet.rectangle",
                                           content: LogView(), model: model, size: size))
@@ -48,7 +48,7 @@ final class SettingsWindowManager {
                                           content: CalendarView(), model: model, size: size))
         tabController.addTabViewItem(item("History", symbol: "chart.pie",
                                           content: HistoryChartsView(), model: model, size: size))
-        tabController.addTabViewItem(item("Tag Review", symbol: "stethoscope",
+        tabController.addTabViewItem(item("Label Review", symbol: "stethoscope",
                                           content: TagReviewView(), model: model, size: size))
         tabController.addTabViewItem(item("Help", symbol: "questionmark.circle",
                                           content: HelpView(), model: model, size: size))
@@ -79,7 +79,7 @@ final class SettingsWindowManager {
         // In `.toolbar` style the window title follows the selected controller's
         // `title`. Give every section the same title so it stays static (an
         // unset title would show "Untitled" when switching tabs).
-        host.title = "TraggoMenuApp Settings"
+        host.title = "PrimeTime"
         let item = NSTabViewItem(viewController: host)
         item.label = label
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)

@@ -37,7 +37,7 @@ private struct NewTagSetCard: View {
             VStack(spacing: 8) {
                 Image(systemName: "plus")
                     .font(.system(size: 28))
-                Text("New Tag Set")
+                Text("New Label Set")
                     .font(.headline)
             }
             .frame(maxWidth: .infinity, minHeight: 96)

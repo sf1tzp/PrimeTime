@@ -55,10 +55,10 @@ private struct HelpSection: Identifiable {
             colour per key: value pair, so spans differ by what they're about rather \
             than only by key.
 
-            **Tag sets** are named bundles of tags used to start timespans with one \
+            **Label sets** are named bundles of tags used to start timespans with one \
             click, with a name and an icon. A timespan started from a set keeps the \
             tags but no link to the set. Their order matters — the popover lists the \
-            first few, in order (drag to reorder in Tag Sets).
+            first few, in order (drag to reorder in Label Sets).
 
             Everything above lives on this Mac by default. Connect a **sync server** \
             (see Settings) and it becomes yours-across-machines instead: timespans, \
@@ -86,7 +86,7 @@ private struct HelpSection: Identifiable {
             symbol: "square.grid.2x2",
             body: """
             Every tag set as a clickable card — tinted with its first tag's colour and \
-            showing the icon picked in Tag Sets. Click to start the set; a card whose \
+            showing the icon picked in Label Sets. Click to start the set; a card whose \
             set is currently running is dimmed until it stops (other cards keep \
             working, since timespans may overlap). The dashed **＋** card creates a new \
             tag set.
@@ -123,7 +123,7 @@ private struct HelpSection: Identifiable {
             your per-value colours win so the charts match the pills elsewhere.
             """),
         HelpSection(
-            title: "Tag Review",
+            title: "Label Review",
             symbol: "stethoscope",
             body: """
             Scans your timespans (pick how far back) and lists every tag key with its \
