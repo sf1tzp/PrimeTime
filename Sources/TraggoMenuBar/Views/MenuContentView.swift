@@ -167,7 +167,7 @@ struct MenuContentView: View {
                 } label: {
                     Image(systemName: "plus.circle")
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(HoverIconButtonStyle())
                 .disabled(model.isBusy)
                 .help("Start alongside the running timer")
             }
@@ -235,15 +235,14 @@ struct MenuContentView: View {
             } label: {
                 Image(systemName: "pencil")
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(HoverIconButtonStyle())
             .help("Edit tags and note")
             Button {
                 Task { await model.stop(id: timer.id) }
             } label: {
                 Image(systemName: "stop.fill")
             }
-            .buttonStyle(.borderless)
-            .foregroundStyle(.red)
+            .buttonStyle(HoverIconButtonStyle())
             .disabled(model.isBusy)
             .help("Stop")
         }

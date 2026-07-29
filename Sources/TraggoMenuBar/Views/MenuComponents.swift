@@ -31,6 +31,36 @@ struct MenuRowButtonStyle: ButtonStyle {
     }
 }
 
+/// A small inline icon button (pencil, stop, ＋) for menu rows: secondary grey
+/// at rest, stepping up to primary on a subtle backing pill on mouse-over —
+/// SwiftUI's `.onHover` standing in for CSS's :hover.
+struct HoverIconButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Icon(configuration: configuration)
+    }
+
+    private struct Icon: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.isEnabled) private var isEnabled
+        @State private var hovering = false
+
+        private var highlighted: Bool { hovering && isEnabled }
+
+        var body: some View {
+            configuration.label
+                .foregroundStyle(highlighted ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                .padding(3)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(highlighted ? Color.primary.opacity(0.12) : Color.clear)
+                )
+                .contentShape(Rectangle())
+                .opacity(isEnabled ? (configuration.isPressed ? 0.6 : 1) : 0.5)
+                .onHover { hovering = $0 }
+        }
+    }
+}
+
 /// A tag shown as a coloured capsule ("key: value"), coloured by the tag's
 /// server-side colour.
 struct TagPill: View {

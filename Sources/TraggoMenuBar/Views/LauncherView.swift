@@ -28,8 +28,10 @@ struct LauncherView: View {
 }
 
 /// One launcher card: the set's icon and name on a tile tinted with the first
-/// tag's colour (accent when the set has no tags). Follows the Quick start
-/// rows' rule: plain click starts the set, disabled while a timer runs.
+/// tag's colour (accent when the set has no tags). Clicking starts the set —
+/// alongside any running timers (overlapping timespans are supported); only a
+/// set that is itself running deactivates, matching how the Quick start list
+/// hides running sets.
 private struct TagSetCard: View {
     @Environment(AppModel.self) private var model
     let set: TagSet
@@ -42,7 +44,8 @@ private struct TagSetCard: View {
         return .accentColor
     }
 
-    private var startable: Bool { model.activeTimer == nil && !model.isBusy }
+    private var isRunning: Bool { model.isRunning(set) }
+    private var startable: Bool { !isRunning && !model.isBusy }
 
     var body: some View {
         Button {
@@ -68,7 +71,9 @@ private struct TagSetCard: View {
         .disabled(!startable)
         .opacity(startable ? 1 : 0.5)
         .onHover { hovering = $0 }
-        .help(set.wireTags.isEmpty
+        .help(isRunning
+              ? "Already running — stop it from the menu bar"
+              : set.wireTags.isEmpty
               ? "Start with no tags"
               : "Start " + set.wireTags.map {
                     $0.value.isEmpty ? $0.key : "\($0.key): \($0.value)"
