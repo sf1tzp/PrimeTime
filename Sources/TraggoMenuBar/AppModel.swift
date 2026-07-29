@@ -174,15 +174,20 @@ final class AppModel {
     }
 
     func start(tagSet: TagSet) async {
+        await start(tags: tagSet.wireTags)
+    }
+
+    /// Start a timespan with the given tags — empty for an ad-hoc timer that
+    /// gets classified while it runs.
+    func start(tags: [TimeSpanTag]) async {
         guard let client else { return }
         isBusy = true
         defer { isBusy = false }
         do {
-            let wireTags = tagSet.wireTags
-            try await ensureTagDefinitions(for: wireTags)
-            // Tag sets carry no note; the note is added on the running timer.
+            try await ensureTagDefinitions(for: tags)
+            // No note at start; the note is added on the running timer.
             let created = try await client.startTimeSpan(start: Date(),
-                                                         tags: wireTags,
+                                                         tags: tags,
                                                          note: "")
             activeTimer = created
             errorMessage = nil

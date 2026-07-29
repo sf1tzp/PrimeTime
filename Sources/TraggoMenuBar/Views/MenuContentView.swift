@@ -15,6 +15,11 @@ struct MenuContentView: View {
     @State private var editingTags = false
     @State private var tagDrafts: [TagRow] = []
 
+    /// Set when starting a blank timer so that, once the new timer lands, we
+    /// open the tag editor instead of resetting it — "start → describe" as one
+    /// gesture. Consumed by the `activeTimer` change handler.
+    @State private var editTagsOnNextTimer = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if model.isAuthenticated {
@@ -32,7 +37,13 @@ struct MenuContentView: View {
         }
         .onChange(of: model.activeTimer?.id) {
             noteDraft = model.activeTimer?.note ?? ""
-            editingTags = false
+            if editTagsOnNextTimer, model.activeTimer != nil {
+                editTagsOnNextTimer = false
+                tagDrafts = [TagRow()]   // one empty row, ready to type into
+                editingTags = true
+            } else {
+                editingTags = false
+            }
         }
     }
 
@@ -162,12 +173,20 @@ struct MenuContentView: View {
                 .disabled(model.isBusy)
             }
         } else {
-            HStack {
-                Image(systemName: "pause.circle")
-                    .foregroundStyle(.secondary)
-                Text("No active timer")
-                    .foregroundStyle(.secondary)
+            // In place of a "no active timer" placeholder: an ad-hoc start with
+            // no tags — capture time first, classify it in the tag editor while
+            // the clock runs.
+            Button {
+                editTagsOnNextTimer = true
+                Task {
+                    await model.start(tags: [])
+                    if model.errorMessage != nil { editTagsOnNextTimer = false }
+                }
+            } label: {
+                Label("Start blank timer", systemImage: "circle.dashed")
             }
+            .buttonStyle(MenuRowButtonStyle())
+            .disabled(model.isBusy)
         }
     }
 
