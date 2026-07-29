@@ -1,0 +1,299 @@
+enum Role {
+    ADMIN
+    USER
+}
+directive @hasRole(role: Role!) on FIELD_DEFINITION
+
+schema {
+    query: RootQuery
+    mutation: RootMutation
+}
+
+type RootMutation {
+    createTag(key: String!, color: String!): TagDefinition @hasRole(role: USER)
+    updateTag(key: String!, newKey: String, color: String!): TagDefinition @hasRole(role: USER)
+    removeTag(key: String!): TagDefinition @hasRole(role: USER)
+
+    createUser(name: String!, pass: String!, admin: Boolean!): User @hasRole(role: ADMIN)
+    removeUser(id: Int!): User @hasRole(role: ADMIN)
+    updateUser(id: Int!, name: String!, pass: String, admin: Boolean!): User @hasRole(role: ADMIN)
+
+    login(username: String!, pass: String!, deviceName: String!, type: DeviceType!, cookie: Boolean!): Login
+
+    createDevice(name: String!, type: DeviceType!): Login @hasRole(role: USER)
+    updateDevice(id: Int!, name: String!, type: DeviceType!): Device @hasRole(role: USER)
+    removeDevice(id: Int!): Device @hasRole(role: USER)
+    removeCurrentDevice: Device! @hasRole(role: USER)
+
+    createTimeSpan(start: Time!, end: Time, tags: [InputTimeSpanTag!], note: String!): TimeSpan @hasRole(role: USER)
+    updateTimeSpan(id: Int!, start: Time!, end: Time, tags: [InputTimeSpanTag!], oldStart: Time, note: String!): TimeSpan @hasRole(role: USER)
+    removeTimeSpan(id: Int!): TimeSpan @hasRole(role: USER)
+    replaceTimeSpanTags(from: InputTimeSpanTag!, to: InputTimeSpanTag!, opt: InputReplaceOptions!): Boolean @hasRole(role: USER)
+    copyTimeSpan(id: Int!, start: Time!, end: Time): TimeSpan @hasRole(role: USER)
+    stopTimeSpan(id: Int!, end: Time!): TimeSpan @hasRole(role: USER)
+
+    createDashboard(name: String!): Dashboard! @hasRole(role: USER)
+    updateDashboard(id: Int!, name: String!): Dashboard! @hasRole(role: USER)
+    removeDashboard(id: Int!): Dashboard! @hasRole(role: USER)
+
+    addDashboardRange(dashboardId: Int!, range: InputNamedDateRange!): NamedDateRange @hasRole(role: USER)
+    updateDashboardRange(rangeId: Int!, range: InputNamedDateRange!): NamedDateRange @hasRole(role: USER)
+    removeDashboardRange(rangeId: Int!): NamedDateRange @hasRole(role: USER)
+
+    addDashboardEntry(dashboardId: Int!, entryType: EntryType!, title: String!, total: Boolean!, stats: InputStatsSelection!, pos: InputResponsiveDashboardEntryPos): DashboardEntry @hasRole(role: USER)
+    updateDashboardEntry(entryId: Int!, entryType: EntryType, title: String, total: Boolean, stats: InputStatsSelection, pos: InputResponsiveDashboardEntryPos): DashboardEntry @hasRole(role: USER)
+    removeDashboardEntry(id: Int!): DashboardEntry! @hasRole(role: USER)
+
+    setUserSettings(settings: InputUserSettings!): UserSettings! @hasRole(role: USER)
+}
+
+type RootQuery {
+    suggestTag(query: String!): [TagDefinition!] @hasRole(role: USER)
+    suggestTagValue(key: String!, query: String!): [String!] @hasRole(role: USER)
+    tags: [TagDefinition!] @hasRole(role: USER)
+    users: [User!] @hasRole(role: ADMIN)
+    currentUser: User
+    currentDevice: Device
+    devices: [Device!] @hasRole(role: USER)
+    timeSpans(fromInclusive: Time, toInclusive: Time, cursor: InputCursor): PagedTimeSpans! @hasRole(role: USER)
+    timers: [TimeSpan!] @hasRole(role: USER)
+    stats(ranges: [Range!], tags: [String!], excludeTags: [InputTimeSpanTag!], requireTags: [InputTimeSpanTag!]): [RangedStatisticsEntries!] @hasRole(role: USER)
+    stats2(now: Time!, stats: InputStatsSelection!): [RangedStatisticsEntries!] @hasRole(role: USER)
+    version: Version!
+    dashboards: [Dashboard!] @hasRole(role: USER)
+    userSettings: UserSettings!
+}
+
+input InputUserSettings {
+    theme: Theme!
+    dateLocale: DateLocale!
+    firstDayOfTheWeek: WeekDay!
+    dateTimeInputStyle: DateTimeInputStyle!
+}
+
+type UserSettings {
+    theme: Theme!
+    dateLocale: DateLocale!
+    firstDayOfTheWeek: WeekDay!
+    dateTimeInputStyle: DateTimeInputStyle!
+}
+
+enum WeekDay {
+    Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+}
+
+enum Theme {
+    GruvboxDark, GruvboxLight, MaterialDark, MaterialLight
+}
+
+enum DateLocale {
+    American, American24h, German, Australian, British
+}
+
+enum DateTimeInputStyle {
+    Fancy, Native
+}
+
+input InputReplaceOptions {
+    override: OverrideMode!
+}
+
+enum OverrideMode {
+    Override, Discard
+}
+
+input InputCursor {
+    offset: Int
+    startId: Int
+    pageSize: Int
+}
+
+type Cursor {
+    hasMore: Boolean!
+    offset: Int!
+    startId: Int!
+    pageSize: Int!
+}
+
+type Version {
+    name: String!
+    commit: String!
+    buildDate: String!
+}
+
+type Login {
+    token: String!
+    user: User!
+    device: Device!
+}
+
+type Device {
+    id: Int!
+    name: String!
+    type: DeviceType!
+    createdAt: Time!
+    activeAt: Time!
+}
+
+enum DeviceType {
+    LongExpiry, ShortExpiry, NoExpiry
+}
+
+scalar Time
+
+type TagDefinition {
+    color: String!
+    key: String!
+    user: User!
+    usages: Int!
+}
+
+type User {
+    admin: Boolean!
+    id: Int!
+    name: String!
+}
+
+type TimeSpan {
+    id: Int!
+    start: Time!
+    end: Time
+    oldStart: Time
+    tags: [TimeSpanTag!]
+    # TODO not nullable ^
+    note: String!
+}
+
+type PagedTimeSpans {
+    timeSpans: [TimeSpan!]!
+    cursor: Cursor!
+}
+
+type TimeSpanTag {
+    key: String!
+    value: String!
+}
+
+input InputTimeSpanTag {
+    key: String!
+    value: String!
+}
+
+input StatInput {
+    key: String!
+    mustHave: [InputTimeSpanTag!]
+    mustNotHave: [InputTimeSpanTag!]
+}
+
+input Range {
+    start: Time!
+    end: Time!
+}
+
+type StatisticsEntry {
+    key: String!
+    value: String!
+    timeSpendInSeconds: Float!
+}
+
+type RangedStatisticsEntries {
+    start: Time!
+    end: Time!
+    entries: [StatisticsEntry!]
+}
+
+type Dashboard {
+    id: Int!
+    name: String!,
+    items: [DashboardEntry!]!
+    ranges: [NamedDateRange!]!
+}
+
+type NamedDateRange {
+    id: Int!
+    name: String!
+    editable: Boolean!
+    range: RelativeOrStaticRange!
+}
+
+input InputNamedDateRange {
+    name: String!
+    editable: Boolean!
+    range: InputRelativeOrStaticRange!
+}
+
+type StatsSelection {
+    interval: StatsInterval!
+    tags: [String!]
+    excludeTags: [TimeSpanTag!]
+    includeTags: [TimeSpanTag!]
+    rangeId: Int
+    range: RelativeOrStaticRange
+}
+
+input InputStatsSelection {
+    interval: StatsInterval!
+    tags: [String!]
+    excludeTags: [InputTimeSpanTag!]
+    includeTags: [InputTimeSpanTag!]
+    rangeId: Int
+    range: InputRelativeOrStaticRange
+}
+
+enum StatsInterval {
+    Hourly, Daily, Weekly, Monthly, Yearly, Single
+}
+
+type RelativeOrStaticRange {
+    from: String!
+    to: String!
+}
+
+input InputRelativeOrStaticRange {
+    from: String!
+    to: String!
+}
+
+type DashboardEntry {
+    id: Int!
+    title: String!
+    total: Boolean!
+    statsSelection: StatsSelection!
+    pos: ResponsiveDashboardEntryPos!
+    entryType: EntryType!
+}
+
+type ResponsiveDashboardEntryPos {
+    desktop: DashboardEntryPos!
+    mobile: DashboardEntryPos!
+}
+input InputResponsiveDashboardEntryPos {
+    desktop: InputDashboardEntryPos
+    mobile: InputDashboardEntryPos
+}
+
+input InputDashboardEntryPos {
+    w: Int!
+    h: Int!
+    x: Int!
+    y: Int!
+}
+
+type DashboardEntryPos {
+    w: Int!
+    h: Int!
+    x: Int!
+    y: Int!
+    minW: Int!
+    minH: Int!
+}
+
+enum DashboardSize {
+    Large,
+    Medium,
+    Small
+}
+
+enum EntryType {
+    PieChart, BarChart, StackedBarChart, LineChart, VerticalTable, HorizontalTable
+}

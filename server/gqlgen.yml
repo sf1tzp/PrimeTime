@@ -1,0 +1,15 @@
+schema: schema.graphql
+
+exec:
+  filename: generated/gqlschema/generated.go
+  package: gqlschema
+
+model:
+  filename: generated/gqlmodel/generated.go
+  package: gqlmodel
+
+models:
+  Time:
+    model: primetime.tools/server/model.Time
+
+struct_tag: json

@@ -1,0 +1,22 @@
+services:
+  primetime-server:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    environment:
+      # A default admin user is created only when the database is empty.
+      # Change the password afterwards, or manage users with the admin CLI:
+      #   docker compose exec primetime-server ./admin -h
+      TRAGGO_DEFAULT_USER_NAME: admin
+      TRAGGO_DEFAULT_USER_PASS: admin
+      TRAGGO_DATABASE_DIALECT: sqlite3
+      TRAGGO_DATABASE_CONNECTION: data/primetime.db
+      TRAGGO_LOG_LEVEL: info
+    ports:
+      - "3030:3030"
+    volumes:
+      - primetime-data:/opt/primetime/data
+    restart: unless-stopped
+
+volumes:
+  primetime-data:

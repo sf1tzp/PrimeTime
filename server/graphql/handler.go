@@ -1,0 +1,32 @@
+package graphql
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/99designs/gqlgen/handler"
+	"primetime.tools/server/generated/gqlschema"
+	"primetime.tools/server/logger"
+)
+
+// Handler combines graphql handler and playground handler.
+func Handler(endpoint string, resolvers gqlschema.ResolverRoot, directives gqlschema.DirectiveRoot) http.HandlerFunc {
+	gqlHandler := handler.GraphQL(gqlschema.NewExecutableSchema(gqlschema.Config{
+		Resolvers:  resolvers,
+		Directives: directives,
+	}), handler.RequestMiddleware(logger.GQLLog()))
+	playground := handler.Playground("Traggo Playground", endpoint)
+
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if acceptHTMLAndNotJSON(request) {
+			playground.ServeHTTP(writer, request)
+		} else {
+			gqlHandler.ServeHTTP(writer, request)
+		}
+	}
+}
+
+func acceptHTMLAndNotJSON(request *http.Request) bool {
+	val := request.Header.Get("Accept")
+	return strings.Contains(val, "text/html") && !strings.Contains(val, "application/json")
+}
