@@ -8,7 +8,7 @@ import (
 	"primetime.tools/server/model"
 )
 
-func timespanToInternal(userID int, start model.Time, end *model.Time, tags []*gqlmodel.InputTimeSpanTag, note string) (model.TimeSpan, error) {
+func timespanToInternal(userID int, start model.Time, end *model.Time, tags []*gqlmodel.InputLabel, note string) (model.TimeSpan, error) {
 	_, offset := start.Time().Zone()
 	span := model.TimeSpan{
 		StartUserTime: start.OmitTimeZone(),
@@ -36,11 +36,11 @@ func timeSpanToExternal(span model.TimeSpan) *gqlmodel.TimeSpan {
 	location := time.FixedZone("unknown", span.OffsetUTC)
 
 	result := gqlmodel.TimeSpan{
-		Start: model.Time(span.StartUTC.In(location)),
-		End:   nil,
-		ID:    span.ID,
-		Tags:  tagsToExternal(span.Tags),
-		Note:  span.Note,
+		Start:  model.Time(span.StartUTC.In(location)),
+		End:    nil,
+		ID:     span.ID,
+		Labels: tagsToExternal(span.Tags),
+		Note:   span.Note,
 	}
 	if span.EndUTC != nil && !span.EndUTC.IsZero() {
 		end := *span.EndUTC
@@ -51,10 +51,10 @@ func timeSpanToExternal(span model.TimeSpan) *gqlmodel.TimeSpan {
 	return &result
 }
 
-func tagsToExternal(tags []model.TimeSpanTag) []*gqlmodel.TimeSpanTag {
-	result := []*gqlmodel.TimeSpanTag{}
+func tagsToExternal(tags []model.TimeSpanTag) []*gqlmodel.Label {
+	result := []*gqlmodel.Label{}
 	for _, tag := range tags {
-		result = append(result, &gqlmodel.TimeSpanTag{
+		result = append(result, &gqlmodel.Label{
 			Key:   tag.Key,
 			Value: tag.StringValue,
 		})
@@ -62,7 +62,7 @@ func tagsToExternal(tags []model.TimeSpanTag) []*gqlmodel.TimeSpanTag {
 	return result
 }
 
-func tagsToInternal(gqls []*gqlmodel.InputTimeSpanTag) []model.TimeSpanTag {
+func tagsToInternal(gqls []*gqlmodel.InputLabel) []model.TimeSpanTag {
 	result := make([]model.TimeSpanTag, 0)
 	for _, tag := range gqls {
 		result = append(result, tagToInternal(*tag))
@@ -70,17 +70,17 @@ func tagsToInternal(gqls []*gqlmodel.InputTimeSpanTag) []model.TimeSpanTag {
 	return result
 }
 
-func tagToInternal(gqls gqlmodel.InputTimeSpanTag) model.TimeSpanTag {
+func tagToInternal(gqls gqlmodel.InputLabel) model.TimeSpanTag {
 	return model.TimeSpanTag{
 		Key:         gqls.Key,
 		StringValue: gqls.Value,
 	}
 }
 
-func tagsToInputTag(tags []model.TimeSpanTag) []*gqlmodel.InputTimeSpanTag {
-	result := make([]*gqlmodel.InputTimeSpanTag, 0)
+func tagsToInputTag(tags []model.TimeSpanTag) []*gqlmodel.InputLabel {
+	result := make([]*gqlmodel.InputLabel, 0)
 	for _, tag := range tags {
-		result = append(result, &gqlmodel.InputTimeSpanTag{
+		result = append(result, &gqlmodel.InputLabel{
 			Key:   tag.Key,
 			Value: tag.StringValue,
 		})

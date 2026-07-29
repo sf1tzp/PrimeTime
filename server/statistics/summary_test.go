@@ -239,8 +239,8 @@ func ts(start string, d time.Duration, tags ...model.TimeSpanTag) model.TimeSpan
 type testEntry struct {
 	timespans []model.TimeSpan
 	keys      []string
-	exclude   []*gqlmodel.InputTimeSpanTag
-	include   []*gqlmodel.InputTimeSpanTag
+	exclude   []*gqlmodel.InputLabel
+	include   []*gqlmodel.InputLabel
 	name      string
 	ranges    []*gqlmodel.Range
 	expected  []*gqlmodel.RangedStatisticsEntries
@@ -274,7 +274,7 @@ func (e *testEntry) Ranges(ranges ...*gqlmodel.Range) *testEntry {
 
 func (e *testEntry) Include(includes ...model.TimeSpanTag) *testEntry {
 	for _, entry := range includes {
-		e.include = append(e.include, &gqlmodel.InputTimeSpanTag{
+		e.include = append(e.include, &gqlmodel.InputLabel{
 			Key:   entry.Key,
 			Value: entry.StringValue,
 		})
@@ -283,7 +283,7 @@ func (e *testEntry) Include(includes ...model.TimeSpanTag) *testEntry {
 }
 func (e *testEntry) Exclude(excludes ...model.TimeSpanTag) *testEntry {
 	for _, entry := range excludes {
-		e.exclude = append(e.exclude, &gqlmodel.InputTimeSpanTag{
+		e.exclude = append(e.exclude, &gqlmodel.InputLabel{
 			Key:   entry.Key,
 			Value: entry.StringValue,
 		})

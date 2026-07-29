@@ -129,77 +129,6 @@ func (d *UserWithDatabase) RunningTimeSpan(from string) *TimeSpanWithDatabase {
 	}
 }
 
-// Dashboard adds a dashboard.
-func (d *UserWithDatabase) Dashboard(name string) *DashboardWithDatabase {
-	dashboard := model.Dashboard{
-		UserID: d.User.ID,
-		Name:   name,
-	}
-
-	d.DB.Create(&dashboard)
-
-	return &DashboardWithDatabase{
-		User:      d.User,
-		Dashboard: dashboard,
-		DB:        d.DB,
-		t:         d.t,
-	}
-}
-
-// Range adds a range to the dashboard.
-func (d *DashboardWithDatabase) Range(name string) *DashboardWithDatabase {
-	dbRange := model.DashboardRange{
-		DashboardID: d.Dashboard.ID,
-		Name:        name,
-		From:        "now-1d",
-		To:          "now",
-	}
-	d.Dashboard.Ranges = append(d.Dashboard.Ranges, dbRange)
-	d.DB.Save(&dbRange)
-	return d
-}
-
-// Entry adds an entry to the dashboard.
-func (d *DashboardWithDatabase) Entry(name string) *DashboardWithDatabase {
-	entry := model.DashboardEntry{
-		DashboardID: d.Dashboard.ID,
-		Title:       name,
-	}
-	d.Dashboard.Entries = append(d.Dashboard.Entries, entry)
-	d.DB.Save(&entry)
-	return d
-}
-
-// AssertExists asserts if the dashboard exists or not.
-func (d *DashboardWithDatabase) AssertExists(exist bool) *DashboardWithDatabase {
-	existActual := !d.DB.
-		Where(&model.Dashboard{ID: d.Dashboard.ID}).
-		Find(new(model.Dashboard)).
-		RecordNotFound()
-	assert.True(d.t, exist == existActual)
-	return d
-}
-
-// AssertHasEntry asserts if the entry exists or not.
-func (d *DashboardWithDatabase) AssertHasEntry(name string, exist bool) *DashboardWithDatabase {
-	existActual := !d.DB.
-		Where(&model.DashboardEntry{DashboardID: d.Dashboard.ID, Title: name}).
-		Find(new(model.DashboardEntry)).
-		RecordNotFound()
-	assert.True(d.t, exist == existActual)
-	return d
-}
-
-// AssertHasRange asserts if the range exists or not.
-func (d *DashboardWithDatabase) AssertHasRange(name string, exist bool) *DashboardWithDatabase {
-	existActual := !d.DB.
-		Where(&model.DashboardRange{DashboardID: d.Dashboard.ID, Name: name}).
-		Find(new(model.DashboardRange)).
-		RecordNotFound()
-	assert.True(d.t, exist == existActual)
-	return d
-}
-
 // TimeSpan adds a time span.
 func (d *UserWithDatabase) TimeSpan(from string, to string) *TimeSpanWithDatabase {
 	wrapper := d.RunningTimeSpan(from)
@@ -259,12 +188,4 @@ func (d *TimeSpanWithDatabase) Tag(key string, stringValue string) *TimeSpanWith
 	d.TimeSpan.Tags = append(d.TimeSpan.Tags, tag)
 	d.DB.Save(tag)
 	return d
-}
-
-// DashboardWithDatabase wraps gorm.DB and provides helper methods
-type DashboardWithDatabase struct {
-	User      model.User
-	Dashboard model.Dashboard
-	t         assert.TestingT
-	*gorm.DB
 }

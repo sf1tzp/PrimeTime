@@ -3,15 +3,14 @@ package graphql
 import (
 	"context"
 
-	"primetime.tools/server/dashboard"
-	"primetime.tools/server/setting"
-
 	"github.com/jinzhu/copier"
 	"github.com/jinzhu/gorm"
 	"primetime.tools/server/device"
 	"primetime.tools/server/generated/gqlmodel"
 	"primetime.tools/server/generated/gqlschema"
+	"primetime.tools/server/labelset"
 	"primetime.tools/server/model"
+	"primetime.tools/server/preference"
 	"primetime.tools/server/statistics"
 	"primetime.tools/server/tag"
 	"primetime.tools/server/timespan"
@@ -37,11 +36,13 @@ func NewResolver(db *gorm.DB, passStrength int, version model.Version) gqlschema
 		ResolverForStatistics: statistics.ResolverForStatistics{
 			DB: db,
 		},
-		ResolverForSettings: setting.ResolverForSettings{
+		ResolverForPreferences: preference.ResolverForPreferences{
 			DB: db,
 		},
-		ResolverForDashboard: dashboard.NewResolverForDashboard(db),
-		version:              version,
+		ResolverForLabelSet: labelset.ResolverForLabelSet{
+			DB: db,
+		},
+		version: version,
 	}
 }
 
@@ -50,10 +51,10 @@ type resolver struct {
 	tag.ResolverForTag
 	device.ResolverForDevice
 	timespan.ResolverForTimeSpan
+	labelset.ResolverForLabelSet
 	statistics.ResolverForStatistics
 	version model.Version
-	setting.ResolverForSettings
-	dashboard.ResolverForDashboard
+	preference.ResolverForPreferences
 }
 
 func (r *resolver) RootMutation() gqlschema.RootMutationResolver {

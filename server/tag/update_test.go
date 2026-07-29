@@ -24,11 +24,12 @@ func TestUpdate_withKey(t *testing.T) {
 
 	resolver := ResolverForTag{DB: db.DB}
 	newTagName := "mega"
-	tag, err := resolver.UpdateTag(fake.User(left.User.ID), "coolio", &newTagName, "#abc")
+	tag, err := resolver.UpdateLabelDefinition(fake.User(left.User.ID), "coolio", &newTagName, "#abc")
 	require.NoError(t, err)
-	require.Equal(t, &gqlmodel.TagDefinition{
-		Color: "#abc",
-		Key:   "mega",
+	require.Equal(t, &gqlmodel.LabelDefinition{
+		Color:       "#abc",
+		Key:         "mega",
+		ValueColors: []*gqlmodel.LabelValueColor{},
 	}, tag)
 	left.AssertHasTagDefinition("coolio", false).AssertHasTagDefinition("mega", true)
 	right.AssertHasTagDefinition("coolio", true).AssertHasTagDefinition("mega", false)
@@ -46,11 +47,12 @@ func TestUpdate_lowercases(t *testing.T) {
 
 	resolver := ResolverForTag{DB: db.DB}
 	newTagName := "Mega"
-	tag, err := resolver.UpdateTag(fake.User(user.User.ID), "coolio", &newTagName, "#abc")
+	tag, err := resolver.UpdateLabelDefinition(fake.User(user.User.ID), "coolio", &newTagName, "#abc")
 	require.NoError(t, err)
-	require.Equal(t, &gqlmodel.TagDefinition{
-		Color: "#abc",
-		Key:   "mega",
+	require.Equal(t, &gqlmodel.LabelDefinition{
+		Color:       "#abc",
+		Key:         "mega",
+		ValueColors: []*gqlmodel.LabelValueColor{},
 	}, tag)
 	user.AssertHasTagDefinition("coolio", false).AssertHasTagDefinition("mega", true)
 	ts.AssertHasTag("mega", "mama", true).AssertHasTag("coolio", "mama", false)
@@ -64,7 +66,7 @@ func TestUpdate_disallow_space(t *testing.T) {
 
 	resolver := ResolverForTag{DB: db.DB}
 	newTagName := "the coolio"
-	_, err := resolver.UpdateTag(fake.User(user.User.ID), "coolio", &newTagName, "#abc")
+	_, err := resolver.UpdateLabelDefinition(fake.User(user.User.ID), "coolio", &newTagName, "#abc")
 	require.EqualError(t, err, "tag must not contain spaces")
 }
 
@@ -81,32 +83,13 @@ func TestUpdate_withoutKey(t *testing.T) {
 	rightTs.Tag("coolio", "mama")
 
 	resolver := ResolverForTag{DB: db.DB}
-	tag, err := resolver.UpdateTag(fake.User(left.User.ID), "coolio", nil, "#abc")
+	tag, err := resolver.UpdateLabelDefinition(fake.User(left.User.ID), "coolio", nil, "#abc")
 	require.NoError(t, err)
-	assert.Equal(t, &gqlmodel.TagDefinition{
-		Color: "#abc",
-		Key:   "coolio",
+	assert.Equal(t, &gqlmodel.LabelDefinition{
+		Color:       "#abc",
+		Key:         "coolio",
+		ValueColors: []*gqlmodel.LabelValueColor{},
 	}, tag)
-}
-
-func TestUpdate_dashboardEntryKey(t *testing.T) {
-	db := test.InMemoryDB(t)
-	defer db.Close()
-	left := db.User(5)
-	left.NewTagDefinition("coolio")
-	dashboard := left.Dashboard("yeah")
-	dashboard.Entry("entry")
-	entry := dashboard.Dashboard.Entries[0]
-	entry.Keys = "abc,coolio,chicken"
-	db.Save(&entry)
-
-	newTag := "yes"
-	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.UpdateTag(fake.User(left.User.ID), "coolio", &newTag, "#abc")
-	require.NoError(t, err)
-
-	db.Find(&entry)
-	require.Equal(t, "abc,yes,chicken", entry.Keys)
 }
 
 func TestUpdate_noPermissions(t *testing.T) {
@@ -119,40 +102,7 @@ func TestUpdate_noPermissions(t *testing.T) {
 	rightTs.Tag("coolio", "mama")
 
 	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.UpdateTag(fake.User(left.User.ID), "coolio", nil, "#abc")
+	_, err := resolver.UpdateLabelDefinition(fake.User(left.User.ID), "coolio", nil, "#abc")
 	require.EqualError(t, err, "tag with key 'coolio' does not exist")
 	right.AssertHasTagDefinition("coolio", true)
-}
-
-func TestUpdate_dashboardEntryKey_crossUserIsolation(t *testing.T) {
-	db := test.InMemoryDB(t)
-	defer db.Close()
-	userA := db.User(5)
-	userB := db.User(2)
-
-	userA.NewTagDefinition("project")
-	userB.NewTagDefinition("project")
-
-	dashboardA := userA.Dashboard("dashboardA")
-	dashboardA.Entry("entryA")
-	entryA := dashboardA.Dashboard.Entries[0]
-	entryA.Keys = "project,task1"
-	db.Save(&entryA)
-
-	dashboardB := userB.Dashboard("dashboardB")
-	dashboardB.Entry("entryB")
-	entryB := dashboardB.Dashboard.Entries[0]
-	entryB.Keys = "project,task2"
-	db.Save(&entryB)
-
-	newTag := "newproject"
-	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.UpdateTag(fake.User(userA.User.ID), "project", &newTag, "#abc")
-	require.NoError(t, err)
-
-	db.Find(&entryA)
-	require.Equal(t, "newproject,task1", entryA.Keys, "user A's entry should be updated")
-
-	db.Find(&entryB)
-	require.Equal(t, "project,task2", entryB.Keys, "user B's entry should NOT be modified")
 }

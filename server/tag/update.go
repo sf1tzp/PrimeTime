@@ -12,7 +12,7 @@ import (
 )
 
 // UpdateTag updates a tag.
-func (r *ResolverForTag) UpdateTag(ctx context.Context, key string, newKey *string, color string) (*gqlmodel.TagDefinition, error) {
+func (r *ResolverForTag) UpdateLabelDefinition(ctx context.Context, key string, newKey *string, color string) (*gqlmodel.LabelDefinition, error) {
 	tag := model.TagDefinition{}
 	userID := auth.GetUser(ctx).ID
 	if r.DB.Where(&model.TagDefinition{UserID: userID, Key: key}).Find(&tag).RecordNotFound() {
@@ -47,29 +47,11 @@ func (r *ResolverForTag) UpdateTag(ctx context.Context, key string, newKey *stri
 			tx.Rollback()
 			return nil, err
 		}
-		usedInEntries := []model.DashboardEntry{}
-
-		if err := tx.
-			Joins("INNER JOIN dashboards ON dashboard_entries.dashboard_id = dashboards.id").
-			Where("dashboards.user_id = ?", userID).
-			Where("keys LIKE ? OR keys LIKE ? OR keys LIKE ?", "%"+key, "%"+key+"%", key+"%").
-			Find(&usedInEntries).Error; err != nil {
+		if err := tx.Model(new(model.LabelValueColor)).
+			Where("user_id = ? AND key = ?", userID, key).
+			Update("key", *newKey).Error; err != nil {
 			tx.Rollback()
 			return nil, err
-		}
-
-		for _, entry := range usedInEntries {
-			tags := strings.Split(entry.Keys, ",")
-			for index, tagInEntry := range tags {
-				if tagInEntry == key {
-					tags[index] = *newKey
-				}
-			}
-			entry.Keys = strings.Join(tags, ",")
-			if err := tx.Save(&entry).Error; err != nil {
-				tx.Rollback()
-				return nil, err
-			}
 		}
 	}
 
@@ -78,9 +60,16 @@ func (r *ResolverForTag) UpdateTag(ctx context.Context, key string, newKey *stri
 		return nil, err
 	}
 
-	update := tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
 
-	gqlTag := &gqlmodel.TagDefinition{}
+	gqlTag := &gqlmodel.LabelDefinition{}
 	copier.Copy(gqlTag, &newValue)
-	return gqlTag, update.Error
+	colors, err := valueColors(r.DB, userID, newValue.Key)
+	if err != nil {
+		return nil, err
+	}
+	gqlTag.ValueColors = colors
+	return gqlTag, nil
 }

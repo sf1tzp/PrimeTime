@@ -82,20 +82,6 @@ func TestDatabase(t *testing.T) {
 	user.NewTagDefinition("oops")
 	user.AssertHasTagDefinition("oops", true)
 
-	dash := user.Dashboard("hello")
-
-	dash.AssertHasRange("hello", false)
-	dash.Range("hello")
-	dash.AssertHasRange("hello", true)
-
-	dash.AssertHasEntry("abc", false)
-	dash.Entry("abc")
-	dash.AssertHasEntry("abc", true)
-
-	dash.AssertExists(true)
-	db.Delete(new(model.Dashboard), "id = ?", dash.Dashboard.ID)
-	dash.AssertExists(false)
-
 	user.AssertExists(true)
 	db.Delete(new(model.User), "id = ?", user.User.ID)
 	user.AssertExists(false)

@@ -10,7 +10,7 @@ import (
 
 const date = "2019-06-10T18:30:00Z"
 
-func TestGQL_SuggestTagValue(t *testing.T) {
+func TestGQL_SuggestLabelValue(t *testing.T) {
 	db := test.InMemoryDB(t)
 	defer db.Close()
 	user := db.User(1)
@@ -22,13 +22,13 @@ func TestGQL_SuggestTagValue(t *testing.T) {
 	other.TimeSpan(date, date).Tag("proj", "secret").Tag("issue", "3")
 	resolver := ResolverForTimeSpan{DB: db.DB}
 
-	tags, err := resolver.SuggestTagValue(fake.User(1), "proj", "")
+	tags, err := resolver.SuggestLabelValue(fake.User(1), "proj", "")
 
 	require.Nil(t, err)
 	expected := []string{"gotify", "traggo", "meh"}
 	require.Equal(t, expected, tags)
 
-	tags, err = resolver.SuggestTagValue(fake.User(1), "proj", "uff")
+	tags, err = resolver.SuggestLabelValue(fake.User(1), "proj", "uff")
 
 	require.Nil(t, err)
 	require.Empty(t, tags)

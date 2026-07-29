@@ -12,7 +12,7 @@ import (
 )
 
 // CreateTag creates a tag.
-func (r *ResolverForTag) CreateTag(ctx context.Context, key string, color string) (*gqlmodel.TagDefinition, error) {
+func (r *ResolverForTag) CreateLabelDefinition(ctx context.Context, key string, color string) (*gqlmodel.LabelDefinition, error) {
 	if strings.TrimSpace(key) == "" {
 		return nil, fmt.Errorf("tag must not be empty")
 	}
@@ -32,7 +32,8 @@ func (r *ResolverForTag) CreateTag(ctx context.Context, key string, color string
 	}
 
 	create := r.DB.Create(&definition)
-	gqlTag := &gqlmodel.TagDefinition{}
+	gqlTag := &gqlmodel.LabelDefinition{}
 	copier.Copy(gqlTag, definition)
+	gqlTag.ValueColors = []*gqlmodel.LabelValueColor{}
 	return gqlTag, create.Error
 }

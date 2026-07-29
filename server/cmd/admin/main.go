@@ -24,6 +24,7 @@ import (
 	"github.com/rs/zerolog"
 	"primetime.tools/server/config"
 	"primetime.tools/server/database"
+	"primetime.tools/server/labelset"
 	"primetime.tools/server/logger"
 	"primetime.tools/server/model"
 	"primetime.tools/server/user/password"
@@ -37,6 +38,16 @@ commands:
   reset-password  -name <name> -pass <pass>
   list-users
   list-devices    [-user <name>]
+
+  list-default-sets
+  add-default-set     -name <name> [-symbol <sf-symbol>] [-labels <key=value,...>]
+  remove-default-set  -id <id>
+  seed-user           -name <name>
+
+The default-set commands manage the default label-set collection: template
+label sets copied to every newly created user. seed-user applies the
+collection to an existing user (it does not deduplicate — use it on users
+that have not been seeded).
 
 Database and password-strength settings come from the same TRAGGO_*
 configuration as the server (environment variables or .env files).
@@ -72,6 +83,14 @@ func main() {
 		listUsers(db)
 	case "list-devices":
 		listDevices(db, os.Args[2:])
+	case "list-default-sets":
+		listDefaultSets(db)
+	case "add-default-set":
+		addDefaultSet(db, os.Args[2:])
+	case "remove-default-set":
+		removeDefaultSet(db, os.Args[2:])
+	case "seed-user":
+		seedUser(db, os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 	default:
@@ -98,6 +117,9 @@ func createUser(db *gorm.DB, conf config.Config, args []string) {
 	}
 	if err := db.Create(&user).Error; err != nil {
 		fail(fmt.Sprintf("create user: %s", err))
+	}
+	if err := labelset.SeedDefaultLabelSets(db, user.ID); err != nil {
+		fail(fmt.Sprintf("seed default label sets: %s", err))
 	}
 	fmt.Printf("created user %q (id=%d admin=%t)\n", user.Name, user.ID, user.Admin)
 }

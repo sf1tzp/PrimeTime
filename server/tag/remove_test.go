@@ -15,25 +15,9 @@ func TestGQL_RemoveTag_succeeds_removesTag(t *testing.T) {
 	user.NewTagDefinition("existing")
 
 	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.RemoveTag(fake.User(3), "existing")
+	_, err := resolver.RemoveLabelDefinition(fake.User(3), "existing")
 	require.Nil(t, err)
 	user.AssertHasTagDefinition("existing", false)
-}
-
-func TestRemove_referencedInDashboardEntry(t *testing.T) {
-	db := test.InMemoryDB(t)
-	defer db.Close()
-	left := db.User(5)
-	left.NewTagDefinition("coolio")
-	dashboard := left.Dashboard("yeah")
-	dashboard.Entry("entry")
-	entry := dashboard.Dashboard.Entries[0]
-	entry.Keys = "abc,coolio,chicken"
-	db.Save(&entry)
-
-	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.RemoveTag(fake.User(left.User.ID), "coolio")
-	require.EqualError(t, err, "tag 'coolio' is used in dashboard 'yeah' entry 'entry', remove this reference before deleting the tag")
 }
 
 func TestGQL_RemoveTag_succeeds_removesTimespans(t *testing.T) {
@@ -49,7 +33,7 @@ func TestGQL_RemoveTag_succeeds_removesTimespans(t *testing.T) {
 	rightTs.Tag("tag", "def")
 
 	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.RemoveTag(fake.User(left.User.ID), "tag")
+	_, err := resolver.RemoveLabelDefinition(fake.User(left.User.ID), "tag")
 	require.Nil(t, err)
 
 	assertTagCount(t, db, 1)
@@ -67,7 +51,7 @@ func TestGQL_RemoveTag_fails_notExistingTag(t *testing.T) {
 	db.User(3)
 
 	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.RemoveTag(fake.User(3), "not existing")
+	_, err := resolver.RemoveLabelDefinition(fake.User(3), "not existing")
 	require.EqualError(t, err, "tag with key 'not existing' does not exist")
 }
 
@@ -78,7 +62,7 @@ func TestGQL_RemoveTag_fails_notPermission(t *testing.T) {
 	db.User(5)
 
 	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.RemoveTag(fake.User(5), "existing")
+	_, err := resolver.RemoveLabelDefinition(fake.User(5), "existing")
 	require.EqualError(t, err, "tag with key 'existing' does not exist")
 }
 
@@ -91,15 +75,9 @@ func TestRemove_crossUserIsolation(t *testing.T) {
 	userA.NewTagDefinition("project")
 	userB.NewTagDefinition("project")
 
-	dashboardB := userB.Dashboard("secretDashboard")
-	dashboardB.Entry("secretEntry")
-	entryB := dashboardB.Dashboard.Entries[0]
-	entryB.Keys = "project,secret"
-	db.Save(&entryB)
-
 	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.RemoveTag(fake.User(userA.User.ID), "project")
-	require.NoError(t, err, "removing user's own tag should succeed even if another user has a dashboard entry with that tag")
+	_, err := resolver.RemoveLabelDefinition(fake.User(userA.User.ID), "project")
+	require.NoError(t, err, "removing user's own tag should succeed even if another user has a tag with the same key")
 
 	userA.AssertHasTagDefinition("project", false)
 	userB.AssertHasTagDefinition("project", true)

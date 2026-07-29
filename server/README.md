@@ -1,8 +1,13 @@
 # PrimeTime server
 
-The PrimeTime sync server: a headless, tag-based time-tracking backend
+The PrimeTime sync server: a headless, label-based time-tracking backend
 speaking GraphQL. The [PrimeTime mac app](../) is the client — there is no
 web UI in this tree.
+
+The API is **PrimeTime v1** — see [docs/api-v1.md](docs/api-v1.md). It
+speaks the label vocabulary (labels, label definitions with key *and*
+per-value colours, per-user label sets with a seeded default collection)
+and is not traggo-compatible.
 
 ## Provenance
 
@@ -14,10 +19,14 @@ This tree is a derivative of [traggo/server](https://github.com/traggo/server)
   GraphQL API (timespans, tags, users/auth/devices) is the product here;
 - the Go module is renamed to `primetime.tools/server`;
 - an admin CLI is added under `cmd/admin` for the user administration the
-  web UI used to provide.
+  web UI used to provide;
+- the GraphQL contract is evolved into PrimeTime v1: label vocabulary on
+  the wire, per-value label colours, and server-side label sets. Derived Go
+  internals deliberately keep traggo's naming (`model.TagDefinition`, the
+  `tag`/`timespan` packages, table names) to keep upstream fixes
+  cherry-pickable; the schema and all new code say *label*.
 
-The API is traggo-compatible at this stage. See the repository history for
-the full record of modifications.
+See the repository history for the full record of modifications.
 
 Licensing: traggo-derived code (every file without an SPDX header) is
 GPL-3.0 ([LICENSE](LICENSE)); PrimeTime-authored additions carry
@@ -50,6 +59,9 @@ For container deployment see [../infra/](../infra/).
 go run ./cmd/admin -h
 ```
 
-Subcommands: `create-user`, `reset-password`, `list-users`, `list-devices`.
+Subcommands: `create-user`, `reset-password`, `list-users`, `list-devices`,
+plus management of the default label-set collection new users are seeded
+with: `list-default-sets`, `add-default-set`, `remove-default-set`, and
+`seed-user` (apply the collection to an existing user).
 The CLI operates directly on the database; point it at the same
 `TRAGGO_DATABASE_*` configuration as the server.

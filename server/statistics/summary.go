@@ -14,7 +14,7 @@ import (
 )
 
 // Stats groups the time spans by tag key.
-func (r *ResolverForStatistics) Stats(ctx context.Context, ranges []*gqlmodel.Range, tags []string, excludeTags []*gqlmodel.InputTimeSpanTag, requireTags []*gqlmodel.InputTimeSpanTag) ([]*gqlmodel.RangedStatisticsEntries, error) {
+func (r *ResolverForStatistics) Stats(ctx context.Context, ranges []*gqlmodel.Range, tags []string, excludeTags []*gqlmodel.InputLabel, requireTags []*gqlmodel.InputLabel) ([]*gqlmodel.RangedStatisticsEntries, error) {
 	if len(ranges) == 0 {
 		return nil, errors.New("ranges may not be empty")
 	}
@@ -164,7 +164,7 @@ func group(entries []statReturn) ([]*gqlmodel.RangedStatisticsEntries, error) {
 	return result, nil
 }
 
-func build(tags []*gqlmodel.InputTimeSpanTag, noop string) (string, []interface{}) {
+func build(tags []*gqlmodel.InputLabel, noop string) (string, []interface{}) {
 	if len(tags) == 0 {
 		return noop, nil
 	}

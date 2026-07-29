@@ -6,6 +6,7 @@ import (
 
 	"github.com/jinzhu/copier"
 	"primetime.tools/server/generated/gqlmodel"
+	"primetime.tools/server/labelset"
 	"primetime.tools/server/model"
 )
 
@@ -21,8 +22,16 @@ func (r *ResolverForUser) CreateUser(ctx context.Context, name string, pass stri
 		return nil, fmt.Errorf("user with name '%s' does already exist", newUser.Name)
 	}
 
-	create := r.DB.Create(&newUser)
+	if err := r.DB.Create(&newUser).Error; err != nil {
+		return nil, err
+	}
+
+	// New users start with the default label set collection (PrimeTime v1).
+	if err := labelset.SeedDefaultLabelSets(r.DB, newUser.ID); err != nil {
+		return nil, err
+	}
+
 	gqlUser := &gqlmodel.User{}
 	copier.Copy(gqlUser, newUser)
-	return gqlUser, create.Error
+	return gqlUser, nil
 }

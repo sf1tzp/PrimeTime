@@ -21,10 +21,10 @@ func TestGQL_SuggestTag_matchesTags(t *testing.T) {
 	db.Create(&model.TagDefinition{Key: "priority", Color: "#fff", UserID: 1})
 	db.Create(&model.TagDefinition{Key: "wood", Color: "#fff", UserID: 1})
 
-	tags, err := resolver.SuggestTag(fake.User(1), "pr")
+	tags, err := resolver.SuggestLabelKey(fake.User(1), "pr")
 
 	require.Nil(t, err)
-	expected := []*gqlmodel.TagDefinition{
+	expected := []*gqlmodel.LabelDefinition{
 		{Key: "project", Color: "#fff"},
 		{Key: "priority", Color: "#fff"},
 	}
@@ -39,9 +39,9 @@ func TestGQL_SuggestTag_noMatchingTags(t *testing.T) {
 	db.Create(&model.TagDefinition{Key: "project", Color: "#fff", UserID: 1})
 	db.Create(&model.TagDefinition{Key: "wood", Color: "#fff", UserID: 1})
 
-	tags, err := resolver.SuggestTag(fake.User(1), "fire")
+	tags, err := resolver.SuggestLabelKey(fake.User(1), "fire")
 
 	require.Nil(t, err)
-	expected := []*gqlmodel.TagDefinition{}
+	expected := []*gqlmodel.LabelDefinition{}
 	require.Equal(t, expected, tags)
 }

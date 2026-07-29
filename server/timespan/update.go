@@ -11,7 +11,7 @@ import (
 )
 
 // UpdateTimeSpan update a time span
-func (r *ResolverForTimeSpan) UpdateTimeSpan(ctx context.Context, id int, start model.Time, end *model.Time, tags []*gqlmodel.InputTimeSpanTag, oldStart *model.Time, note string) (*gqlmodel.TimeSpan, error) {
+func (r *ResolverForTimeSpan) UpdateTimeSpan(ctx context.Context, id int, start model.Time, end *model.Time, tags []*gqlmodel.InputLabel, oldStart *model.Time, note string) (*gqlmodel.TimeSpan, error) {
 	timeSpan, err := timespanToInternal(auth.GetUser(ctx).ID, start, end, tags, note)
 	if err != nil {
 		return nil, err

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"primetime.tools/server/model"
 	"primetime.tools/server/test"
 )
 
@@ -70,25 +71,24 @@ func TestGQL_RemoveUser_succeeds_removesTimeSpans(t *testing.T) {
 	otherTs.AssertExists(true).AssertHasTag("hello", "world", true)
 }
 
-func TestGQL_RemoveUser_succeeds_removesDashboard(t *testing.T) {
+func TestGQL_RemoveUser_succeeds_removesLabelSets(t *testing.T) {
 	db := test.InMemoryDB(t)
 	defer db.Close()
-	user := db.User(1)
-	other := db.User(2)
-	userDB := user.Dashboard("cool")
-	userDB.Range("cool range")
-	userDB.Entry("cool entry")
-
-	otherDB := other.Dashboard("cool")
-	otherDB.Range("cool range")
-	otherDB.Entry("cool entry")
+	db.User(1)
+	db.User(2)
+	userID, otherID := 1, 2
+	db.Create(&model.LabelSet{UserID: &userID, Name: "cool", Members: []model.LabelSetMember{{Position: 0, Key: "a", StringValue: "b"}}})
+	db.Create(&model.LabelSet{UserID: &otherID, Name: "cool", Members: []model.LabelSetMember{{Position: 0, Key: "a", StringValue: "b"}}})
 
 	resolver := ResolverForUser{DB: db.DB, PassStrength: 4}
 	_, err := resolver.RemoveUser(context.Background(), 1)
 
 	require.Nil(t, err)
-	userDB.AssertExists(false).AssertHasRange("cool range", false).AssertHasEntry("cool entry", false)
-	otherDB.AssertExists(true).AssertHasRange("cool range", true).AssertHasEntry("cool entry", true)
+	count := new(int)
+	db.Model(new(model.LabelSet)).Count(count)
+	require.Equal(t, 1, *count)
+	db.Model(new(model.LabelSetMember)).Count(count)
+	require.Equal(t, 1, *count)
 }
 
 func TestGQL_RemoveUser_fails_notExistingUser(t *testing.T) {

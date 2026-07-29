@@ -25,7 +25,7 @@ func TestRemoveTimeSpan_succeeds_removesTimeSpan(t *testing.T) {
 		ID:    ts.TimeSpan.ID,
 		Start: test.ModelTime("2019-06-11T18:00:00Z"),
 		End:   test.ModelTimeP("2019-06-11T18:00:00Z"),
-		Tags: []*gqlmodel.TimeSpanTag{
+		Labels: []*gqlmodel.Label{
 			{Key: "hello", Value: "world"},
 		},
 	}

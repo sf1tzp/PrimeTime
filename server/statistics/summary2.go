@@ -2,28 +2,24 @@ package statistics
 
 import (
 	"context"
+	stdtime "time"
 
 	"primetime.tools/server/generated/gqlmodel"
 	"primetime.tools/server/model"
-	"primetime.tools/server/setting"
 	"primetime.tools/server/time"
 )
 
 // Stats2 another version of the stats endpoint
 func (r *ResolverForStatistics) Stats2(ctx context.Context, now model.Time, stats gqlmodel.InputStatsSelection) ([]*gqlmodel.RangedStatisticsEntries, error) {
-
-	settings, err := setting.Get(ctx, r.DB)
-	if err != nil {
-		return nil, err
-	}
-
 	var ranges []*gqlmodel.Range
 
+	// PrimeTime v1 has no per-user week configuration: weeks run
+	// Monday through Sunday.
 	staticRanges, err := time.ParseRange(now.OmitTimeZone(),
 		time.RelativeRange{From: stats.Range.From, To: stats.Range.To},
 		time.InternalInterval(stats.Interval),
-		settings.FirstDayOfTheWeekTimeWeekday(),
-		settings.LastDayOfTheWeekTimeWeekday())
+		stdtime.Monday,
+		stdtime.Sunday)
 	if err != nil {
 		return nil, err
 	}
@@ -31,5 +27,5 @@ func (r *ResolverForStatistics) Stats2(ctx context.Context, now model.Time, stat
 		ranges = append(ranges, &gqlmodel.Range{Start: model.Time(r.From), End: model.Time(r.To)})
 	}
 
-	return r.Stats(ctx, ranges, stats.Tags, stats.ExcludeTags, stats.IncludeTags)
+	return r.Stats(ctx, ranges, stats.Keys, stats.ExcludeLabels, stats.IncludeLabels)
 }

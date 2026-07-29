@@ -8,8 +8,8 @@ import (
 	"primetime.tools/server/model"
 )
 
-// SuggestTagValue suggests a tag value.
-func (r *ResolverForTimeSpan) SuggestTagValue(ctx context.Context, key string, query string) ([]string, error) {
+// SuggestLabelValue suggests a tag value.
+func (r *ResolverForTimeSpan) SuggestLabelValue(ctx context.Context, key string, query string) ([]string, error) {
 	var suggestions []model.TimeSpanTag
 	find := r.DB.
 		Select("DISTINCT time_span_tags.string_value").

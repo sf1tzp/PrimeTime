@@ -11,26 +11,11 @@ import (
 )
 
 // RemoveTag removes a tag.
-func (r *ResolverForTag) RemoveTag(ctx context.Context, key string) (*gqlmodel.TagDefinition, error) {
+func (r *ResolverForTag) RemoveLabelDefinition(ctx context.Context, key string) (*gqlmodel.LabelDefinition, error) {
 	tag := model.TagDefinition{}
 	userID := auth.GetUser(ctx).ID
 	if r.DB.Where(&model.TagDefinition{UserID: userID, Key: key}).Find(&tag).RecordNotFound() {
 		return nil, fmt.Errorf("tag with key '%s' does not exist", key)
-	}
-
-	usedInEntries := []model.DashboardEntry{}
-	if err := r.DB.
-		Joins("INNER JOIN dashboards ON dashboard_entries.dashboard_id = dashboards.id").
-		Where("dashboards.user_id = ?", userID).
-		Where("keys LIKE ? OR keys LIKE ? OR keys LIKE ?", "%"+key, "%"+key+"%", key+"%").
-		Find(&usedInEntries).Error; err != nil {
-		return nil, err
-	}
-
-	if len(usedInEntries) > 0 {
-		dashboard := &model.Dashboard{ID: usedInEntries[0].DashboardID}
-		r.DB.Find(dashboard)
-		return nil, fmt.Errorf("tag '%s' is used in dashboard '%s' entry '%s', remove this reference before deleting the tag", key, dashboard.Name, usedInEntries[0].Title)
 	}
 
 	tx := r.DB.Begin()
@@ -53,8 +38,15 @@ func (r *ResolverForTag) RemoveTag(ctx context.Context, key string) (*gqlmodel.T
 		return nil, err
 	}
 
+	if err := tx.
+		Where("user_id = ? AND key = ?", userID, key).
+		Delete(new(model.LabelValueColor)).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
 	remove := tx.Commit()
-	gqlTag := &gqlmodel.TagDefinition{}
+	gqlTag := &gqlmodel.LabelDefinition{}
 	copier.Copy(gqlTag, &tag)
 	return gqlTag, remove.Error
 }

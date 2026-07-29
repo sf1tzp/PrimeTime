@@ -13,6 +13,7 @@ import (
 	"primetime.tools/server/config/mode"
 	"primetime.tools/server/database"
 	"primetime.tools/server/graphql"
+	"primetime.tools/server/labelset"
 	"primetime.tools/server/logger"
 	"primetime.tools/server/model"
 	"primetime.tools/server/server"
@@ -82,10 +83,14 @@ func initDatabase(conf config.Config) *gorm.DB {
 	c := new(int)
 	if db.Model(new(model.User)).Count(c); *c == 0 {
 		log.Info().Msg("Creating default user.")
-		db.Create(&model.User{
+		defaultUser := model.User{
 			Name:  conf.DefaultUserName,
 			Pass:  password.CreatePassword(conf.DefaultUserPass, conf.PassStrength),
-			Admin: true})
+			Admin: true}
+		db.Create(&defaultUser)
+		if err := labelset.SeedDefaultLabelSets(db, defaultUser.ID); err != nil {
+			log.Error().Err(err).Msg("Failed to seed default label sets")
+		}
 	}
 
 	return db

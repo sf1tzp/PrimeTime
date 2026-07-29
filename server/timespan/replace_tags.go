@@ -8,8 +8,8 @@ import (
 	"primetime.tools/server/model"
 )
 
-// ReplaceTimeSpanTags replaces time span tags.
-func (r *ResolverForTimeSpan) ReplaceTimeSpanTags(ctx context.Context, fromExternal gqlmodel.InputTimeSpanTag, toExternal gqlmodel.InputTimeSpanTag, opt gqlmodel.InputReplaceOptions) (*bool, error) {
+// ReplaceTimeSpanLabels replaces time span tags.
+func (r *ResolverForTimeSpan) ReplaceTimeSpanLabels(ctx context.Context, fromExternal gqlmodel.InputLabel, toExternal gqlmodel.InputLabel, opt gqlmodel.InputReplaceOptions) (*bool, error) {
 	userID := auth.GetUser(ctx).ID
 
 	from := tagToInternal(fromExternal)

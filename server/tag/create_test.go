@@ -17,12 +17,13 @@ func TestGQL_CreateTag_succeeds_addsTag(t *testing.T) {
 	db.User(5)
 
 	resolver := ResolverForTag{DB: db.DB}
-	tag, err := resolver.CreateTag(fake.User(5), "new_tag", "#fff")
+	tag, err := resolver.CreateLabelDefinition(fake.User(5), "new_tag", "#fff")
 
 	require.Nil(t, err)
-	expected := &gqlmodel.TagDefinition{
-		Key:   "new_tag",
-		Color: "#fff",
+	expected := &gqlmodel.LabelDefinition{
+		Key:         "new_tag",
+		Color:       "#fff",
+		ValueColors: []*gqlmodel.LabelValueColor{},
 	}
 	require.Equal(t, expected, tag)
 	assertTagExist(t, db, model.TagDefinition{
@@ -40,7 +41,7 @@ func TestGQL_CreateTag_fails_tagAlreadyExists(t *testing.T) {
 	db.Create(&model.TagDefinition{Key: "existing_tag", Color: "#fff", UserID: 5})
 
 	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.CreateTag(fake.User(5), "existing_tag", "#fff")
+	_, err := resolver.CreateLabelDefinition(fake.User(5), "existing_tag", "#fff")
 
 	require.EqualError(t, err, "tag with key 'existing_tag' does already exist")
 	assertTagCount(t, db, 1)
@@ -53,7 +54,7 @@ func TestGQL_CreateTag_fails_tagAlreadyExists_caseInsensitive(t *testing.T) {
 	db.Create(&model.TagDefinition{Key: "tag", Color: "#fff", UserID: 5})
 
 	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.CreateTag(fake.User(5), "Tag", "#fff")
+	_, err := resolver.CreateLabelDefinition(fake.User(5), "Tag", "#fff")
 
 	require.EqualError(t, err, "tag with key 'tag' does already exist")
 	assertTagCount(t, db, 1)
@@ -67,7 +68,7 @@ func TestGQL_CreateTag_succeeds_existingTagForOtherUser(t *testing.T) {
 	db.Create(&model.TagDefinition{Key: "existing_tag", Color: "#fff", UserID: 4})
 
 	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.CreateTag(fake.User(5), "existing_tag", "#xxx")
+	_, err := resolver.CreateLabelDefinition(fake.User(5), "existing_tag", "#xxx")
 
 	assert.Nil(t, err)
 	assertTagCount(t, db, 2)
@@ -83,7 +84,7 @@ func TestGQL_CreateTag_fails_empty(t *testing.T) {
 	defer db.Close()
 	db.User(5)
 	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.CreateTag(fake.User(5), "", "#fff")
+	_, err := resolver.CreateLabelDefinition(fake.User(5), "", "#fff")
 
 	require.EqualError(t, err, "tag must not be empty")
 	assertTagCount(t, db, 0)
@@ -94,7 +95,7 @@ func TestGQL_CreateTag_fails_includes_space(t *testing.T) {
 	defer db.Close()
 	db.User(5)
 	resolver := ResolverForTag{DB: db.DB}
-	_, err := resolver.CreateTag(fake.User(5), "test tag", "#fff")
+	_, err := resolver.CreateLabelDefinition(fake.User(5), "test tag", "#fff")
 
 	require.EqualError(t, err, "tag must not contain spaces")
 	assertTagCount(t, db, 0)

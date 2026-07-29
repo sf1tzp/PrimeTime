@@ -90,10 +90,10 @@ func Test_Stop(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := &gqlmodel.TimeSpan{
-		ID:    3,
-		Start: test.ModelTime("2019-06-10T18:30:00+02:00"),
-		End:   test.ModelTimeP("2019-06-10T18:35:00+02:00"),
-		Tags:  []*gqlmodel.TimeSpanTag{},
+		ID:     3,
+		Start:  test.ModelTime("2019-06-10T18:30:00+02:00"),
+		End:    test.ModelTimeP("2019-06-10T18:35:00+02:00"),
+		Labels: []*gqlmodel.Label{},
 	}
 	require.Equal(t, expected, timeSpan)
 

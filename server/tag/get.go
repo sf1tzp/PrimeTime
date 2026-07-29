@@ -9,8 +9,9 @@ import (
 	"primetime.tools/server/model"
 )
 
-// Tags returns all tags.
-func (r *ResolverForTag) Tags(ctx context.Context) ([]*gqlmodel.TagDefinition, error) {
+// LabelDefinitions returns all label definitions of the current user,
+// including their per-value colour overrides.
+func (r *ResolverForTag) LabelDefinitions(ctx context.Context) ([]*gqlmodel.LabelDefinition, error) {
 	var tags []model.TagDefinition
 	userID := auth.GetUser(ctx).ID
 
@@ -24,7 +25,18 @@ func (r *ResolverForTag) Tags(ctx context.Context) ([]*gqlmodel.TagDefinition, e
 		Group("time_span_tags.key").
 		SubQuery()
 	find := r.DB.Select("tag_definitions.*, ? as usages", usages).Where("user_id = ?", userID).Order("usages desc").Find(&tags)
-	result := []*gqlmodel.TagDefinition{}
+	result := []*gqlmodel.LabelDefinition{}
 	copier.Copy(&result, &tags)
+
+	colors, err := valueColorsByKey(r.DB, userID)
+	if err != nil {
+		return nil, err
+	}
+	for _, definition := range result {
+		definition.ValueColors = []*gqlmodel.LabelValueColor{}
+		if c, ok := colors[definition.Key]; ok {
+			definition.ValueColors = c
+		}
+	}
 	return result, find.Error
 }

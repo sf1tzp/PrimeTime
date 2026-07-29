@@ -30,7 +30,7 @@ var (
 		ID:    1,
 		Start: test.ModelTime("2019-06-10T18:30:00Z"),
 		End:   test.ModelTimeP("2019-06-10T18:40:00Z"),
-		Tags: []*gqlmodel.TimeSpanTag{
+		Labels: []*gqlmodel.Label{
 			{Key: "test"},
 			{Key: "test2"},
 		},
@@ -52,7 +52,7 @@ var (
 		ID:    2,
 		Start: test.ModelTime("2019-06-10T18:40:00Z"),
 		End:   test.ModelTimeP("2019-06-10T18:50:00Z"),
-		Tags: []*gqlmodel.TimeSpanTag{
+		Labels: []*gqlmodel.Label{
 			{Key: "test"},
 			{Key: "test2"},
 		},
@@ -74,7 +74,7 @@ var (
 		ID:    3,
 		Start: test.ModelTime("2019-06-10T18:50:00Z"),
 		End:   test.ModelTimeP("2019-06-10T19:00:00Z"),
-		Tags: []*gqlmodel.TimeSpanTag{
+		Labels: []*gqlmodel.Label{
 			{Key: "test"},
 			{Key: "test2"},
 		},
@@ -96,7 +96,7 @@ var (
 		ID:    4,
 		Start: test.ModelTime("2019-06-10T18:00:00Z"),
 		End:   test.ModelTimeP("2019-06-10T19:00:00Z"),
-		Tags: []*gqlmodel.TimeSpanTag{
+		Labels: []*gqlmodel.Label{
 			{Key: "test"},
 			{Key: "test2"},
 		},
@@ -118,7 +118,7 @@ var (
 		ID:    5,
 		Start: test.ModelTime("2019-06-11T18:00:00Z"),
 		End:   nil,
-		Tags: []*gqlmodel.TimeSpanTag{
+		Labels: []*gqlmodel.Label{
 			{Key: "test"},
 			{Key: "test2"},
 		},

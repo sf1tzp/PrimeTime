@@ -25,12 +25,12 @@ func TestGQL_Tags(t *testing.T) {
 	right.TimeSpan("2009-06-30T18:30:00Z", "2009-06-30T18:40:00Z").Tag("my tag", "value").Tag("my tag 2", "v")
 
 	resolver := ResolverForTag{DB: db.DB}
-	tags, err := resolver.Tags(fake.User(left.User.ID))
+	tags, err := resolver.LabelDefinitions(fake.User(left.User.ID))
 
 	require.Nil(t, err)
-	expected := []*gqlmodel.TagDefinition{
-		{Key: "my tag", Usages: 3},
-		{Key: "my tag 2", Usages: 2},
+	expected := []*gqlmodel.LabelDefinition{
+		{Key: "my tag", Usages: 3, ValueColors: []*gqlmodel.LabelValueColor{}},
+		{Key: "my tag 2", Usages: 2, ValueColors: []*gqlmodel.LabelValueColor{}},
 	}
 	require.Equal(t, expected, tags)
 }
