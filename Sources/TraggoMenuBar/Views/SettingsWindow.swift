@@ -4,7 +4,7 @@ import AppKit
 /// The sections of the settings window, in toolbar order. Raw value = tab index.
 /// Content tabs first, then the one preferences tab (connection + behaviour).
 enum SettingsTab: Int, CaseIterable {
-    case tagSets, log, calendar, history, settings
+    case launcher, tagSets, log, calendar, history, settings
 }
 
 /// Owns the settings window and reuses a single instance. Modelled on
@@ -38,6 +38,8 @@ final class SettingsWindowManager {
         // regardless of which menu shortcut was used and never clips a tab.
         let size = NSSize(width: 780, height: 560)
 
+        tabController.addTabViewItem(item("Launcher", symbol: "square.grid.2x2",
+                                          content: LauncherView(), model: model, size: size))
         tabController.addTabViewItem(item("Tag Sets", symbol: "tag",
                                           content: TagSetsSettingsView(), model: model, size: size))
         tabController.addTabViewItem(item("Log", symbol: "list.bullet.rectangle",

@@ -17,6 +17,12 @@ struct TagSet: Identifiable, Codable, Hashable {
     var id = UUID()
     var name: String = ""
     var tags: [TagRow] = []
+    /// SF Symbol shown on the set's launcher card. Optional so sets saved
+    /// before icons existed keep decoding; `symbol` supplies the default.
+    var symbolName: String?
+
+    /// The symbol to render for this set.
+    var symbol: String { symbolName ?? "tag" }
 
     /// The wire form for `createTimeSpan`. Traggo lower-cases tag keys and
     /// forbids spaces, so we normalise here to match how definitions are stored.

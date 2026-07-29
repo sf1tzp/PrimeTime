@@ -62,8 +62,9 @@ struct MenuContentView: View {
                     quickStartRow(set)
                 }
                 if candidates.count > visibleSets.count {
+                    // The launcher is the "see everything" surface.
                     Button {
-                        openSettings(tab: .tagSets)
+                        openSettings(tab: .launcher)
                     } label: {
                         Text("\(candidates.count - visibleSets.count) more…")
                             .foregroundStyle(.secondary)
@@ -82,9 +83,16 @@ struct MenuContentView: View {
 
         Divider()
 
-        // Full-width rows, like Rectangle's menu: quick access to the history
+        // Full-width rows, like Rectangle's menu: quick access to the content
         // tabs of the settings window, then Settings and Quit.
         VStack(spacing: 2) {
+            Button {
+                openSettings(tab: .launcher)
+            } label: {
+                Label("Launcher", systemImage: "square.grid.2x2")
+            }
+            .buttonStyle(MenuRowButtonStyle())
+
             Button {
                 openSettings(tab: .log)
             } label: {

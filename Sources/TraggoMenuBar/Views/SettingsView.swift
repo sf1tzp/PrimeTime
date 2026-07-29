@@ -136,6 +136,9 @@ struct TagSetDetailView: View {
             Section("Tag set") {
                 TextField("Name", text: $tagSet.name)
             }
+            Section("Launcher icon") {
+                SymbolPicker(selection: $tagSet.symbolName)
+            }
             Section("Tags") {
                 ForEach($tagSet.tags) { $tag in
                     HStack {
@@ -169,5 +172,45 @@ struct TagSetDetailView: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// A curated SF Symbols grid for the launcher-card icon — deliberately not a
+/// full symbol browser. `nil` selection renders (and highlights) the default
+/// "tag" symbol.
+private struct SymbolPicker: View {
+    @Binding var selection: String?
+
+    private static let choices = [
+        "tag", "laptopcomputer", "terminal", "hammer", "wrench.and.screwdriver",
+        "doc.text", "book", "graduationcap", "brain", "lightbulb",
+        "person.2", "phone", "envelope", "bubble.left.and.bubble.right", "calendar",
+        "cup.and.saucer", "fork.knife", "figure.walk", "figure.run", "bed.double",
+        "house", "car", "cart", "globe", "leaf",
+        "gamecontroller", "music.note", "paintbrush", "camera", "shippingbox",
+    ]
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 32), spacing: 4)],
+                  spacing: 4) {
+            ForEach(Self.choices, id: \.self) { symbol in
+                let selected = symbol == (selection ?? "tag")
+                Button {
+                    selection = symbol
+                } label: {
+                    Image(systemName: symbol)
+                        .frame(width: 28, height: 28)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(selected ? Color.accentColor.opacity(0.25) : .clear))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(selected ? Color.accentColor : .clear))
+                }
+                .buttonStyle(.borderless)
+                .help(symbol)
+            }
+        }
+        .padding(.vertical, 2)
     }
 }
