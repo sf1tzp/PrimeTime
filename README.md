@@ -63,3 +63,7 @@ just run-dev
 ```
 
 It codesigns the debug binary with a local `TraggoMenuApp Dev` certificate so that Keychain access survives rebuilds. Create a self-signed certificate with that name in Keychain Access if you want the same behavior.
+
+### Remove local data and get a "Fresh Install"
+
+`rm -rf ~/Library/Application\ Support/TraggoMenuBar && defaults delete TraggoMenuBar`
