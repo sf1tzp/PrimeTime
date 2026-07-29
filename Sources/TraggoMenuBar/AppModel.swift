@@ -70,6 +70,9 @@ final class AppModel {
     /// focused on live-timer concerns.
     @ObservationIgnored private(set) lazy var history = HistoryModel(app: self)
 
+    /// Tag review (cardinality + cleanup) state, split out for the same reason.
+    @ObservationIgnored private(set) lazy var review = TagReviewModel(app: self)
+
     // MARK: Private, non-observed
 
     @ObservationIgnored private var token: String?

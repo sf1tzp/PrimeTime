@@ -3,8 +3,9 @@ import Charts
 
 /// The History tab: a donut + totals breakdown and a daily stacked bar chart
 /// for the displayed week. Instead of the web UI's build-your-own dashboards,
-/// flexibility lives in one control: group by any tag key, or by a Tag Set
-/// (one series per member tag).
+/// flexibility lives in the grouping controls: two side-by-side donut columns,
+/// each with its own "Group by" picker (any tag key, or a Tag Set — one series
+/// per member tag), so two breakdowns of the same week sit next to each other.
 struct HistoryChartsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var colorScheme
@@ -13,8 +14,6 @@ struct HistoryChartsView: View {
         let history = model.history
         VStack(spacing: 0) {
             WeekNavigatorView()
-            Divider()
-            controls
             Divider()
 
             if let error = history.errorMessage {
@@ -25,16 +24,7 @@ struct HistoryChartsView: View {
                     .padding(6)
             }
 
-            if let grouping = history.chartGrouping {
-                let totals = folded(history.totals(for: grouping))
-                if totals.isEmpty {
-                    emptyState
-                } else {
-                    charts(grouping: grouping, totals: totals)
-                }
-            } else {
-                emptyState
-            }
+            chartsBody
         }
         .task {
             await history.loadIfNeeded()
@@ -44,66 +34,160 @@ struct HistoryChartsView: View {
         }
     }
 
-    // MARK: Controls
+    // MARK: Layout
 
-    private var controls: some View {
+    private var chartsBody: some View {
         @Bindable var history = model.history
-        return HStack {
-            Picker("Group by", selection: $history.chartGrouping) {
-                Section("Tag keys") {
-                    ForEach(model.history.groupableKeys, id: \.self) { key in
-                        Text(key).tag(ChartGrouping?.some(.key(key)))
-                    }
-                }
-                let sets = model.tagSets.filter { !$0.wireTags.isEmpty }
-                if !sets.isEmpty {
-                    Section("Tag sets") {
-                        ForEach(sets) { set in
-                            Text(set.name.isEmpty ? "Untitled" : set.name)
-                                .tag(ChartGrouping?.some(.tagSet(set.id)))
-                        }
-                    }
-                }
-            }
-            .fixedSize()
-
-            Spacer()
-
-            Text("Total \(formatDuration(model.history.weekTotalSeconds))")
-                .font(.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
-
-    // MARK: Charts
-
-    private func charts(grouping: ChartGrouping, totals: [SeriesTotal]) -> some View {
-        let colors = colorMap(for: totals, grouping: grouping)
-        let daily = foldedDaily(model.history.dailyTotals(for: grouping),
-                                keeping: Set(totals.map(\.label)))
-        let grand = totals.reduce(0) { $0 + $1.seconds }
-
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .center, spacing: 24) {
-                    donut(totals: totals, colors: colors, grand: grand)
-                    breakdownList(totals: totals, colors: colors, grand: grand)
-                    // Trailing space is deliberately left empty: reserved for
-                    // future content next to the breakdown.
-                    Spacer(minLength: 0)
+                // Two columns, each a "Group by" picker over its donut. The
+                // second compares another breakdown of the same week; until
+                // one is picked (or it has no data) a placeholder ring holds
+                // its place.
+                HStack(alignment: .top, spacing: 20) {
+                    donutColumn(selection: $history.chartGrouping, includeNone: false)
+                    Divider()
+                    donutColumn(selection: $history.chartGrouping2, includeNone: true)
                 }
-                .padding(.leading, 12)
 
-                Text("Per day")
-                    .font(.subheadline.weight(.semibold))
-                dailyChart(daily, colors: colors, seriesOrder: totals.map(\.label))
+                HStack {
+                    Text("Per day")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Text("Total \(formatDuration(model.history.weekTotalSeconds))")
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                dailyBody
             }
             .padding(12)
             .padding(.bottom, 12)
         }
     }
+
+    @ViewBuilder
+    private func donutColumn(selection: Binding<ChartGrouping?>,
+                             includeNone: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            groupingPicker("Group by", selection: selection, includeNone: includeNone)
+            if let grouping = selection.wrappedValue {
+                let totals = folded(model.history.totals(for: grouping))
+                if totals.isEmpty {
+                    placeholderDonut("No tagged time")
+                } else {
+                    let colors = colorMap(for: totals, grouping: grouping)
+                    let grand = totals.reduce(0) { $0 + $1.seconds }
+                    HStack(alignment: .center, spacing: 16) {
+                        donut(totals: totals, colors: colors, grand: grand)
+                        breakdownList(totals: totals, colors: colors, grand: grand)
+                    }
+                }
+            } else {
+                placeholderDonut("Pick a grouping to compare")
+            }
+        }
+        // Each column owns half the window so the layout stays a two-column
+        // grid even when a column is only a placeholder ring.
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Stand-in ring, same size as a real donut, for a column with no
+    /// grouping picked or no data.
+    private func placeholderDonut(_ caption: String) -> some View {
+        Circle()
+            .inset(by: 15)
+            .stroke(Color.secondary.opacity(0.15),
+                    style: StrokeStyle(lineWidth: 30, dash: [8, 5]))
+            .frame(width: 160, height: 160)
+            .overlay {
+                Text(caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(width: 90)
+            }
+    }
+
+    /// The daily bars mirror the donut columns: one stack per grouping,
+    /// side by side within each day. Two stacks rather than one combined —
+    /// a span matching both groupings would double-count in a single stack.
+    @ViewBuilder
+    private var dailyBody: some View {
+        let marks = dailyMarks
+        if marks.isEmpty {
+            Text("No tagged time this week")
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+        } else {
+            dailyChart(marks)
+        }
+    }
+
+    /// One bar-segment of the daily chart, colour resolved up front so the two
+    /// groupings can't collide on shared labels. `column` separates the
+    /// groupings' stacks (never displayed — the legend is hidden).
+    private struct DailyMark: Identifiable {
+        let id: String
+        let day: Date
+        let seconds: TimeInterval
+        let color: Color
+        let column: String
+    }
+
+    /// Marks for every active grouping, ordered so each stack keeps its
+    /// biggest series at the baseline (same rule as before).
+    private var dailyMarks: [DailyMark] {
+        let groupings: [(String, ChartGrouping)] = [
+            model.history.chartGrouping.map { ("1", $0) },
+            model.history.chartGrouping2.map { ("2", $0) },
+        ].compactMap { $0 }
+
+        var result: [DailyMark] = []
+        for (column, grouping) in groupings {
+            let totals = folded(model.history.totals(for: grouping))
+            guard !totals.isEmpty else { continue }
+            let colors = colorMap(for: totals, grouping: grouping)
+            let rank = Dictionary(uniqueKeysWithValues:
+                totals.map(\.label).enumerated().map { ($1, $0) })
+            let daily = foldedDaily(model.history.dailyTotals(for: grouping),
+                                    keeping: Set(totals.map(\.label)))
+                .sorted { (rank[$0.label] ?? .max, $0.day) < (rank[$1.label] ?? .max, $1.day) }
+            result += daily.map {
+                DailyMark(id: "\(column)-\($0.id)", day: $0.day,
+                          seconds: $0.seconds,
+                          color: colors[$0.label] ?? .gray, column: column)
+            }
+        }
+        return result
+    }
+
+    private func groupingPicker(_ label: String,
+                                selection: Binding<ChartGrouping?>,
+                                includeNone: Bool) -> some View {
+        Picker(label, selection: selection) {
+            if includeNone {
+                Text("None").tag(ChartGrouping?.none)
+            }
+            Section("Tag keys") {
+                ForEach(model.history.groupableKeys, id: \.self) { key in
+                    Text(key).tag(ChartGrouping?.some(.key(key)))
+                }
+            }
+            let sets = model.tagSets.filter { !$0.wireTags.isEmpty }
+            if !sets.isEmpty {
+                Section("Tag sets") {
+                    ForEach(sets) { set in
+                        Text(set.name.isEmpty ? "Untitled" : set.name)
+                            .tag(ChartGrouping?.some(.tagSet(set.id)))
+                    }
+                }
+            }
+        }
+        .fixedSize()
+    }
+
+    // MARK: Charts
 
     private func donut(totals: [SeriesTotal], colors: [String: Color], grand: TimeInterval) -> some View {
         Chart(totals) { item in
@@ -152,16 +236,14 @@ struct HistoryChartsView: View {
         }
     }
 
-    private func dailyChart(_ daily: [DailyTotal], colors: [String: Color], seriesOrder: [String]) -> some View {
-        // Stack biggest series at the baseline: emit marks in totals order.
-        let rank = Dictionary(uniqueKeysWithValues: seriesOrder.enumerated().map { ($1, $0) })
-        let ordered = daily.sorted {
-            (rank[$0.label] ?? .max, $0.day) < (rank[$1.label] ?? .max, $1.day)
-        }
-        return Chart(ordered) { item in
+    private func dailyChart(_ marks: [DailyMark]) -> some View {
+        Chart(marks) { item in
             BarMark(x: .value("Day", item.day, unit: .day),
                     y: .value("Hours", item.seconds / 3600))
-                .foregroundStyle(colors[item.label] ?? .gray)
+                // With one grouping the single band spans the day; with two,
+                // each day shows the groupings' stacks side by side.
+                .position(by: .value("Grouping", item.column))
+                .foregroundStyle(item.color)
                 .cornerRadius(2)
         }
         // Pin the domain to the whole week, or a single day of data would
@@ -184,19 +266,6 @@ struct HistoryChartsView: View {
             }
         }
         .frame(height: 200)
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 8) {
-            Spacer()
-            Image(systemName: "chart.pie")
-                .font(.system(size: 32))
-                .foregroundStyle(.secondary)
-            Text("No tagged time this week")
-                .foregroundStyle(.secondary)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
     }
 
     // MARK: Series colours (validated palette, fixed assignment)

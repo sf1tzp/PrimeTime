@@ -43,6 +43,9 @@ final class HistoryModel {
     /// The grouping the charts tab renders. Nil until first shown, then
     /// defaulted from the data (see `defaultGrouping`).
     var chartGrouping: ChartGrouping?
+    /// Optional second grouping, rendered as a second donut beside the first
+    /// for comparing two breakdowns of the same week. Nil = off.
+    var chartGrouping2: ChartGrouping?
 
     /// True once a load has completed, so mutations elsewhere in the app (e.g.
     /// stopping the timer from the popover) know a reload is worthwhile.

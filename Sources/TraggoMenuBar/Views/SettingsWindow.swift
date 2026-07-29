@@ -4,7 +4,7 @@ import AppKit
 /// The sections of the settings window, in toolbar order. Raw value = tab index.
 /// Content tabs first, then the one preferences tab (connection + behaviour).
 enum SettingsTab: Int, CaseIterable {
-    case launcher, tagSets, log, calendar, history, settings
+    case launcher, tagSets, log, calendar, history, review, settings
 }
 
 /// Owns the settings window and reuses a single instance. Modelled on
@@ -48,6 +48,8 @@ final class SettingsWindowManager {
                                           content: CalendarView(), model: model, size: size))
         tabController.addTabViewItem(item("History", symbol: "chart.pie",
                                           content: HistoryChartsView(), model: model, size: size))
+        tabController.addTabViewItem(item("Tag Review", symbol: "stethoscope",
+                                          content: TagReviewView(), model: model, size: size))
         tabController.addTabViewItem(item("Settings", symbol: "gear",
                                           content: GeneralSettingsView(), model: model, size: size))
 
