@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 import Testing
-@testable import TraggoMenuBar
+@testable import PrimeTime
 
 /// The demo seeder (#39): activation parsing, determinism, the content
 /// fixtures every surface depends on, and isolation from the real store.

@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 import Testing
-@testable import TraggoMenuBar
+@testable import PrimeTime
 
 /// The traggo importer's engine, exercised with a `LocalBackend` on both ends
 /// — the whole point of the source being `any Backend` is that the paged walk,

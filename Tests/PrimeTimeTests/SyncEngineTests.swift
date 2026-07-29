@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 import Testing
-@testable import TraggoMenuBar
+@testable import PrimeTime
 
 /// The sync engine against the in-process `FakeSyncServer`: push of dirty
 /// records, pull-merge, last-writer-wins in both directions, tombstone

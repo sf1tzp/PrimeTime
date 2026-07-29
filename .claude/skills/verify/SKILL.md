@@ -1,15 +1,15 @@
 ---
 name: verify
-description: Build, launch, and drive TraggoMenuBar to verify changes against the live traggo.lofi server.
+description: Build, launch, and drive PrimeTime to verify changes against the live traggo.lofi server.
 ---
 
-# Verifying TraggoMenuBar
+# Verifying PrimeTime
 
 ## Build & launch
 
 ```bash
 just build          # swift build + codesign with "TraggoMenuApp Dev"
-./.build/debug/TraggoMenuBar > /tmp/app.log 2>&1 &   # plain bash background; wait ~5-10s
+./.build/debug/PrimeTime > /tmp/app.log 2>&1 &   # plain bash background; wait ~5-10s
 ```
 
 On a machine with no codesigning identity (e.g. macbook-air), skip `just

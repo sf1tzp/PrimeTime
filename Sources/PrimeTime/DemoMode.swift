@@ -7,8 +7,8 @@ import GRDB
 /// data, for reproducible screenshots and a functional tour alongside Help.
 /// Activated per launch — the choice is never persisted — by either:
 ///
-///     PRIMETIME_DEMO=1 .build/debug/TraggoMenuBar
-///     .build/debug/TraggoMenuBar --demo
+///     PRIMETIME_DEMO=1 .build/debug/PrimeTime
+///     .build/debug/PrimeTime --demo
 ///
 /// Nothing a demo session does can touch real data: timespans, tag sets,
 /// definitions and value colours live in `demo.sqlite` beside the real

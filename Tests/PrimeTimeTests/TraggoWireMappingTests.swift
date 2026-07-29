@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import TraggoMenuBar
+@testable import PrimeTime
 
 /// The DTO ↔ domain mapping at the TraggoClient boundary: the RFC3339 time
 /// scalar, wire timespans to domain `TimeSpan`, and traggo's cursor riding

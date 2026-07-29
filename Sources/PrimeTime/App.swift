@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 @main
-struct TraggoMenuBarApp: App {
+struct PrimeTimeApp: App {
     // An AppDelegate is the cleanest place to set the activation policy so the
     // app lives only in the menu bar (no Dock icon, no app-switcher entry).
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate

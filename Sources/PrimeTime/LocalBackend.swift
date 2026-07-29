@@ -162,7 +162,7 @@ final class LocalBackend: Backend {
                                                   in: .userDomainMask,
                                                   appropriateFor: nil, create: true)
         let directory = support.appendingPathComponent(
-            Bundle.main.bundleIdentifier ?? "TraggoMenuBar", isDirectory: true)
+            Bundle.main.bundleIdentifier ?? "PrimeTime", isDirectory: true)
         try FileManager.default.createDirectory(at: directory,
                                                 withIntermediateDirectories: true)
         return directory.appendingPathComponent("primetime.sqlite")

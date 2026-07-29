@@ -61,7 +61,7 @@ Every screenshot above is Demo Mode — a seeded, throwaway copy of the app's da
 git clone <this repo>
 cd PrimeTime
 swift build
-./.build/debug/TraggoMenuBar --demo
+./.build/debug/PrimeTime --demo
 ```
 
 Look for the timer in the menu bar. Launch without `--demo` to start tracking for real.
@@ -95,9 +95,9 @@ It codesigns the debug binary with a local `TraggoMenuApp Dev` certificate so th
 To remove local data and get a fresh install:
 
 ```sh
-rm -rf ~/Library/Application\ Support/TraggoMenuBar && defaults delete TraggoMenuBar
+rm -rf ~/Library/Application\ Support/PrimeTime && defaults delete PrimeTime
 ```
 
 ## Naming & status
 
-PrimeTime is mid-spin-out from its previous life as *TraggoMenuApp*: the executable target is still `TraggoMenuBar`, and a few "tag" strings linger in smaller UI copy while the vocabulary finishes moving to "label". The rename, public distribution, and JSON export land with phase 7 (#34). The server tree's provenance and licensing are documented in [server/README.md](server/README.md).
+PrimeTime is mostly through its spin-out from its previous life as *TraggoMenuApp*: the target and executable are now `PrimeTime`, but a few "tag" strings linger in smaller UI copy while the vocabulary finishes moving to "label". Public distribution and JSON export land with phase 7 (#34). The server tree's provenance and licensing are documented in [server/README.md](server/README.md).

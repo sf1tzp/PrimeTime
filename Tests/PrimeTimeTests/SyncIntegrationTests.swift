@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 import Testing
-@testable import TraggoMenuBar
+@testable import PrimeTime
 
 /// End-to-end against a *live* PrimeTime server: two in-memory local stores
 /// ("two Macs"), each with its own device token and `SyncEngine` over the

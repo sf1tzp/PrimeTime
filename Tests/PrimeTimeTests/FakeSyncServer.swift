@@ -1,5 +1,5 @@
 import Foundation
-@testable import TraggoMenuBar
+@testable import PrimeTime
 
 /// An in-process v1 sync server: the same `SyncServerAPI` surface
 /// `PrimeTimeClient` implements over GraphQL, backed by dictionaries — the

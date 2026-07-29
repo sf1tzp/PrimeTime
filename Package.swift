@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "TraggoMenuBar",
+    name: "PrimeTime",
     platforms: [
         // macOS 14 gives us MenuBarExtra + the Observation framework (@Observable).
         .macOS(.v14)
@@ -15,16 +15,16 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "TraggoMenuBar",
+            name: "PrimeTime",
             dependencies: [.product(name: "GRDB", package: "GRDB.swift")],
-            path: "Sources/TraggoMenuBar"
+            path: "Sources/PrimeTime"
         ),
         .testTarget(
-            name: "TraggoMenuBarTests",
+            name: "PrimeTimeTests",
             // GRDB so tests can hand LocalBackend an in-memory DatabaseQueue
             // and inspect rows directly.
-            dependencies: ["TraggoMenuBar", .product(name: "GRDB", package: "GRDB.swift")],
-            path: "Tests/TraggoMenuBarTests"
+            dependencies: ["PrimeTime", .product(name: "GRDB", package: "GRDB.swift")],
+            path: "Tests/PrimeTimeTests"
         )
     ],
     // Tools 6.0 only for the Swift Testing integration; the code stays in the
