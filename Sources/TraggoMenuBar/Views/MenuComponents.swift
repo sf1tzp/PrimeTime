@@ -50,10 +50,6 @@ struct HoverIconButtonStyle: ButtonStyle {
             configuration.label
                 .foregroundStyle(highlighted ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
                 .padding(3)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(highlighted ? Color.primary.opacity(0.12) : Color.clear)
-                )
                 .contentShape(Rectangle())
                 .opacity(isEnabled ? (configuration.isPressed ? 0.6 : 1) : 0.5)
                 .onHover { hovering = $0 }
