@@ -62,9 +62,9 @@ struct TimeSpanEditorView: View {
     init(span: TimeSpan, onDone: @escaping () -> Void) {
         self.span = span
         self.onDone = onDone
-        _start = State(initialValue: span.start.date)
-        _end = State(initialValue: span.end?.date ?? Date())
-        _tagRows = State(initialValue: (span.tags ?? []).map {
+        _start = State(initialValue: span.start)
+        _end = State(initialValue: span.end ?? Date())
+        _tagRows = State(initialValue: span.labels.map {
             TagRow(key: $0.key, value: $0.value)
         })
         _note = State(initialValue: span.note)
@@ -146,7 +146,7 @@ struct TimeSpanEditorView: View {
                 id: span.id,
                 start: start,
                 end: span.isRunning ? nil : end,
-                tags: tagRows.wireTags,
+                tags: tagRows.labels,
                 note: note)
             isSaving = false
             if saved { onDone() }
@@ -193,13 +193,13 @@ extension TimeSpan {
     /// "10:32 – 11:25", or "10:32 –" while running.
     var timeRangeLabel: String {
         let f = Date.FormatStyle.dateTime.hour(.twoDigits(amPM: .omitted)).minute()
-        let startText = start.date.formatted(f)
+        let startText = start.formatted(f)
         guard let end else { return "\(startText) –" }
-        return "\(startText) – \(end.date.formatted(f))"
+        return "\(startText) – \(end.formatted(f))"
     }
 
     /// Duration so far (running spans count up to now).
     var durationSeconds: TimeInterval {
-        (end?.date ?? Date()).timeIntervalSince(start.date)
+        (end ?? Date()).timeIntervalSince(start)
     }
 }

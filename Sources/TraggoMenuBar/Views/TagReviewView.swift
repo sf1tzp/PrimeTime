@@ -178,7 +178,7 @@ struct TagReviewView: View {
     private func valueGroup(key: String, value: ValueStat) -> some View {
         DisclosureGroup {
             let instances = model.review.matches(key: key, value: value.value)
-                .sorted { $0.start.date > $1.start.date }
+                .sorted { $0.start > $1.start }
             ForEach(instances) { span in
                 if span.isRunning {
                     // Running spans can't be staged (see movableMatches);
@@ -231,7 +231,7 @@ struct TagReviewView: View {
     /// the whole selection.
     private func instanceRow(_ span: TimeSpan) -> some View {
         HStack(spacing: 8) {
-            Text(span.start.date.formatted(.dateTime.month(.abbreviated).day().hour().minute()))
+            Text(span.start.formatted(.dateTime.month(.abbreviated).day().hour().minute()))
                 .monospacedDigit()
             Text(span.isRunning ? "running" : formatDuration(span.durationSeconds))
                 .foregroundStyle(.secondary)

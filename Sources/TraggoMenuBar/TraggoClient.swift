@@ -1,11 +1,14 @@
 import Foundation
 
-/// A thin GraphQL client for Traggo. There are only ~7 operations, so a
-/// hand-rolled client over URLSession is simpler than pulling in Apollo.
+/// A thin GraphQL client for Traggo, and the `Backend` implementation the app
+/// ships with. There are only ~10 operations, so a hand-rolled client over
+/// URLSession is simpler than pulling in Apollo. Wire DTOs (TraggoModels.swift)
+/// are mapped to the domain types here, at the boundary.
 ///
 /// Auth: Traggo expects `Authorization: traggo <token>` (literally the word
-/// "traggo", not "Bearer"). The token is a "device" token minted by `login`.
-struct TraggoClient {
+/// "traggo", not "Bearer"). The token is a "device" token minted by `login` —
+/// a traggo concern, which is why `login` is not part of `Backend`.
+struct TraggoClient: Backend {
     var baseURL: URL
     var token: String?
 
@@ -66,7 +69,7 @@ struct TraggoClient {
         return payload
     }
 
-    // MARK: Operations
+    // MARK: Session (traggo-specific, not part of Backend)
 
     func login(username: String, password: String, deviceName: String) async throws -> Login {
         struct Variables: Encodable {
@@ -92,6 +95,8 @@ struct TraggoClient {
         return try await run(query, variables: vars, as: Payload.self).login
     }
 
+    // MARK: Backend operations
+
     /// Validates the stored token and returns the logged-in user (nil if the
     /// token is no longer valid).
     func currentUser() async throws -> User? {
@@ -102,23 +107,25 @@ struct TraggoClient {
 
     /// All currently-running timespans (end == null), newest first.
     func timers() async throws -> [TimeSpan] {
-        struct Payload: Decodable { let timers: [TimeSpan]? }
+        struct Payload: Decodable { let timers: [TraggoTimeSpan]? }
         let query = """
         query { timers { id start end note tags { key value } } }
         """
-        return try await run(query, variables: NoVariables(), as: Payload.self).timers ?? []
+        return try await run(query, variables: NoVariables(), as: Payload.self)
+            .timers.map { $0.map(\.domain) } ?? []
     }
 
     /// Existing tag definitions (the reusable keys, with colours).
-    func tags() async throws -> [TagDefinition] {
+    func labelDefinitions() async throws -> [LabelDefinition] {
         struct Payload: Decodable { let tags: [TagDefinition]? }
         let query = "query { tags { key color } }"
-        return try await run(query, variables: NoVariables(), as: Payload.self).tags ?? []
+        return try await run(query, variables: NoVariables(), as: Payload.self)
+            .tags.map { $0.map(\.domain) } ?? []
     }
 
     /// Create a tag definition. Required before a key can be attached to a
     /// timespan (the server rejects unknown keys).
-    func createTag(key: String, color: String) async throws {
+    func createLabelDefinition(key: String, color: String) async throws {
         struct Variables: Encodable { let key: String; let color: String }
         struct Payload: Decodable { let createTag: TagDefinition? }
         // Select key AND color: the payload decodes as TagDefinition, which
@@ -131,28 +138,9 @@ struct TraggoClient {
         _ = try await run(query, variables: Variables(key: key, color: color), as: Payload.self)
     }
 
-    /// Start a running timespan (no end time).
-    func startTimeSpan(start: Date, tags: [TimeSpanTag], note: String) async throws -> TimeSpan {
-        struct Variables: Encodable {
-            let start: TraggoTime
-            let tags: [TimeSpanTag]
-            let note: String
-        }
-        struct Payload: Decodable { let createTimeSpan: TimeSpan }
-        let query = """
-        mutation Start($start: Time!, $tags: [InputTimeSpanTag!], $note: String!) {
-          createTimeSpan(start: $start, tags: $tags, note: $note) {
-            id start end note tags { key value }
-          }
-        }
-        """
-        let vars = Variables(start: TraggoTime(start), tags: tags, note: note)
-        return try await run(query, variables: vars, as: Payload.self).createTimeSpan
-    }
-
     /// Change the colour of an existing tag key. Traggo stores colour per key,
     /// so this affects that key everywhere it's used.
-    func updateTag(key: String, color: String) async throws {
+    func updateLabelDefinition(key: String, color: String) async throws {
         struct Variables: Encodable { let key: String; let color: String }
         struct Payload: Decodable { let updateTag: TagDefinition? }
         let query = """
@@ -163,10 +151,30 @@ struct TraggoClient {
         _ = try await run(query, variables: Variables(key: key, color: color), as: Payload.self)
     }
 
+    /// Start a running timespan (no end time).
+    func startTimeSpan(start: Date, labels: [SpanLabel], note: String) async throws -> TimeSpan {
+        struct Variables: Encodable {
+            let start: TraggoTime
+            let tags: [TimeSpanTag]
+            let note: String
+        }
+        struct Payload: Decodable { let createTimeSpan: TraggoTimeSpan }
+        let query = """
+        mutation Start($start: Time!, $tags: [InputTimeSpanTag!], $note: String!) {
+          createTimeSpan(start: $start, tags: $tags, note: $note) {
+            id start end note tags { key value }
+          }
+        }
+        """
+        let vars = Variables(start: TraggoTime(start),
+                             tags: labels.map(TimeSpanTag.init), note: note)
+        return try await run(query, variables: vars, as: Payload.self).createTimeSpan.domain
+    }
+
     /// Update a timespan in place. `start` and `note` are required by the schema,
     /// so callers pass the current values for anything they're not changing.
     /// A nil `end` leaves the timespan running.
-    func updateTimeSpan(id: Int, start: Date, end: Date?, tags: [TimeSpanTag], note: String) async throws -> TimeSpan {
+    func updateTimeSpan(id: Int, start: Date, end: Date?, labels: [SpanLabel], note: String) async throws -> TimeSpan {
         struct Variables: Encodable {
             let id: Int
             let start: TraggoTime
@@ -174,7 +182,7 @@ struct TraggoClient {
             let tags: [TimeSpanTag]
             let note: String
         }
-        struct Payload: Decodable { let updateTimeSpan: TimeSpan }
+        struct Payload: Decodable { let updateTimeSpan: TraggoTimeSpan }
         let query = """
         mutation Update($id: Int!, $start: Time!, $end: Time, $tags: [InputTimeSpanTag!], $note: String!) {
           updateTimeSpan(id: $id, start: $start, end: $end, tags: $tags, note: $note) {
@@ -183,14 +191,15 @@ struct TraggoClient {
         }
         """
         let vars = Variables(id: id, start: TraggoTime(start),
-                             end: end.map(TraggoTime.init), tags: tags, note: note)
-        return try await run(query, variables: vars, as: Payload.self).updateTimeSpan
+                             end: end.map(TraggoTime.init),
+                             tags: labels.map(TimeSpanTag.init), note: note)
+        return try await run(query, variables: vars, as: Payload.self).updateTimeSpan.domain
     }
 
     /// One page of finished timespans overlapping [from, to], newest first.
     /// Running timespans (end == null) are excluded server-side; merge in
     /// `timers()` for a complete picture.
-    func timeSpans(from: Date, to: Date, cursor: Cursor?) async throws -> PagedTimeSpans {
+    func timeSpans(from: Date, to: Date, page: PageToken?) async throws -> TimeSpanPage {
         // On the first page startId must be *absent* so the server pins the walk
         // to the current newest id (an explicit 0 would filter to nothing).
         // The server caps pageSize at 100.
@@ -209,10 +218,13 @@ struct TraggoClient {
           }
         }
         """
-        let input = cursor.map { InputCursor(offset: $0.offset, startId: $0.startId, pageSize: $0.pageSize) }
+        let input = page.flatMap(Cursor.init)
+            .map { InputCursor(offset: $0.offset, startId: $0.startId, pageSize: $0.pageSize) }
             ?? InputCursor(offset: 0, startId: nil, pageSize: 100)
         let vars = Variables(fromInclusive: TraggoTime(from), toInclusive: TraggoTime(to), cursor: input)
-        return try await run(query, variables: vars, as: Payload.self).timeSpans
+        let paged = try await run(query, variables: vars, as: Payload.self).timeSpans
+        return TimeSpanPage(timeSpans: paged.timeSpans.map(\.domain),
+                            nextPage: paged.cursor.pageToken)
     }
 
     /// Delete a timespan by id.
@@ -233,7 +245,7 @@ struct TraggoClient {
     /// Stop a running timespan by id.
     func stopTimeSpan(id: Int, end: Date) async throws -> TimeSpan {
         struct Variables: Encodable { let id: Int; let end: TraggoTime }
-        struct Payload: Decodable { let stopTimeSpan: TimeSpan }
+        struct Payload: Decodable { let stopTimeSpan: TraggoTimeSpan }
         let query = """
         mutation Stop($id: Int!, $end: Time!) {
           stopTimeSpan(id: $id, end: $end) {
@@ -241,6 +253,7 @@ struct TraggoClient {
           }
         }
         """
-        return try await run(query, variables: Variables(id: id, end: TraggoTime(end)), as: Payload.self).stopTimeSpan
+        return try await run(query, variables: Variables(id: id, end: TraggoTime(end)),
+                             as: Payload.self).stopTimeSpan.domain
     }
 }

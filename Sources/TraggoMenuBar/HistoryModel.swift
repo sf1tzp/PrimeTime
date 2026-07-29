@@ -110,7 +110,7 @@ final class HistoryModel {
     // MARK: Loading
 
     func reload() async {
-        guard let client = app.api, app.isAuthenticated else { return }
+        guard let backend = app.api, app.isAuthenticated else { return }
         loadGeneration += 1
         let generation = loadGeneration
         isLoading = true
@@ -118,25 +118,25 @@ final class HistoryModel {
         do {
             let interval = weekInterval
             var finished: [TimeSpan] = []
-            var cursor: Cursor?
-            // Page until the server says there's no more (cap pages defensively).
+            var token: PageToken?
+            // Page until the backend says there's no more (cap pages defensively).
             for _ in 0..<50 {
-                let page = try await client.timeSpans(from: interval.start,
-                                                     to: interval.end,
-                                                     cursor: cursor)
+                let page = try await backend.timeSpans(from: interval.start,
+                                                       to: interval.end,
+                                                       page: token)
                 finished += page.timeSpans
-                guard page.cursor.hasMore, !page.timeSpans.isEmpty else { break }
-                cursor = page.cursor
+                guard let next = page.nextPage, !page.timeSpans.isEmpty else { break }
+                token = next
             }
             // The paged query excludes running spans; merge those in separately.
-            let running = try await client.timers()
-                .filter { $0.start.date < interval.end }
+            let running = try await backend.timers()
+                .filter { $0.start < interval.end }
             guard generation == loadGeneration else { return }  // range changed mid-fetch
 
             var seen = Set<Int>()
             spans = (running + finished)
                 .filter { seen.insert($0.id).inserted }
-                .sorted { $0.start.date > $1.start.date }
+                .sorted { $0.start > $1.start }
             hasLoaded = true
             errorMessage = nil
         } catch {
@@ -160,12 +160,12 @@ final class HistoryModel {
     // MARK: Editing
 
     /// Update a timespan in place. Returns true on success (the editor closes).
-    func update(id: Int, start: Date, end: Date?, tags: [TimeSpanTag], note: String) async -> Bool {
-        guard let client = app.api else { return false }
+    func update(id: Int, start: Date, end: Date?, tags: [SpanLabel], note: String) async -> Bool {
+        guard let backend = app.api else { return false }
         do {
             try await app.ensureTagDefinitions(for: tags)
-            _ = try await client.updateTimeSpan(id: id, start: start, end: end,
-                                                tags: tags, note: note)
+            _ = try await backend.updateTimeSpan(id: id, start: start, end: end,
+                                                 labels: tags, note: note)
             errorMessage = nil
             await reload()
             await app.refresh()   // the edit may have touched the running timer
@@ -177,9 +177,9 @@ final class HistoryModel {
     }
 
     func delete(id: Int) async {
-        guard let client = app.api else { return }
+        guard let backend = app.api else { return }
         do {
-            try await client.removeTimeSpan(id: id)
+            try await backend.removeTimeSpan(id: id)
             errorMessage = nil
             await reload()
             await app.refresh()
@@ -194,8 +194,8 @@ final class HistoryModel {
     /// to now; spans are clipped at the interval edges so overnight entries
     /// contribute to each day they touch.
     func clippedSeconds(of span: TimeSpan, in interval: DateInterval) -> TimeInterval {
-        let end = span.end?.date ?? Date()
-        let start = max(span.start.date, interval.start)
+        let end = span.end ?? Date()
+        let start = max(span.start, interval.start)
         let clippedEnd = min(end, interval.end)
         return max(0, clippedEnd.timeIntervalSince(start))
     }
@@ -205,13 +205,13 @@ final class HistoryModel {
     /// one series per member tag the span carries (a span matching several
     /// member tags counts toward each).
     private func seriesLabels(for span: TimeSpan, grouping: ChartGrouping) -> [String] {
-        let tags = span.tags ?? []
+        let tags = span.labels
         switch grouping {
         case .key(let key):
             return tags.first(where: { $0.key == key }).map { [$0.value.isEmpty ? "(no value)" : $0.value] } ?? []
         case .tagSet(let id):
             guard let set = app.tagSets.first(where: { $0.id == id }) else { return [] }
-            return set.wireTags
+            return set.labels
                 .filter { tags.contains($0) }
                 .map { $0.value.isEmpty ? $0.key : "\($0.key): \($0.value)" }
         }
@@ -267,7 +267,7 @@ final class HistoryModel {
     func defaultGrouping() -> ChartGrouping? {
         var counts: [String: Int] = [:]
         for span in spans {
-            for tag in span.tags ?? [] { counts[tag.key, default: 0] += 1 }
+            for tag in span.labels { counts[tag.key, default: 0] += 1 }
         }
         if let best = counts.max(by: { $0.value < $1.value })?.key {
             return .key(best)
@@ -283,7 +283,7 @@ final class HistoryModel {
     var groupableKeys: [String] {
         var keys = Set(app.tagDefinitions.map(\.key))
         for span in spans {
-            for tag in span.tags ?? [] { keys.insert(tag.key) }
+            for tag in span.labels { keys.insert(tag.key) }
         }
         return keys.sorted()
     }

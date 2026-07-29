@@ -174,7 +174,7 @@ struct CalendarView: View {
     }
 
     private func tagText(_ span: TimeSpan) -> String {
-        (span.tags ?? [])
+        span.labels
             .map { $0.value.isEmpty ? $0.key : "\($0.key):\($0.value)" }
             .joined(separator: " ")
     }
@@ -182,7 +182,7 @@ struct CalendarView: View {
     /// Blocks take the colour of their first tag (the web UI similarly
     /// derives block colour from tags).
     private func blockColor(_ span: TimeSpan) -> Color {
-        if let first = span.tags?.first {
+        if let first = span.labels.first {
             return model.tagColor(for: first.key, value: first.value)
         }
         return .gray
@@ -198,8 +198,8 @@ struct CalendarView: View {
         let now = Date()
         let clipped: [(TimeSpan, DateInterval)] = model.history.spans
             .compactMap { span in
-                let start = max(span.start.date, day.start)
-                let end = min(span.end?.date ?? now, day.end)
+                let start = max(span.start, day.start)
+                let end = min(span.end ?? now, day.end)
                 guard end > start else { return nil }
                 return (span, DateInterval(start: start, end: end))
             }

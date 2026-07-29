@@ -66,7 +66,7 @@ private struct TagSetCard: View {
     @State private var hovering = false
 
     private var tint: Color {
-        if let first = set.wireTags.first {
+        if let first = set.labels.first {
             return model.tagColor(for: first.key, value: first.value)
         }
         return .accentColor
@@ -101,9 +101,9 @@ private struct TagSetCard: View {
         .onHover { hovering = $0 }
         .help(isRunning
               ? "Already running — stop it from the menu bar"
-              : set.wireTags.isEmpty
+              : set.labels.isEmpty
               ? "Start with no tags"
-              : "Start " + set.wireTags.map {
+              : "Start " + set.labels.map {
                     $0.value.isEmpty ? $0.key : "\($0.key): \($0.value)"
                 }.joined(separator: ", "))
     }

@@ -174,7 +174,7 @@ struct HistoryChartsView: View {
                     Text(key).tag(ChartGrouping?.some(.key(key)))
                 }
             }
-            let sets = model.tagSets.filter { !$0.wireTags.isEmpty }
+            let sets = model.tagSets.filter { !$0.labels.isEmpty }
             if !sets.isEmpty {
                 Section("Tag sets") {
                     ForEach(sets) { set in
@@ -309,7 +309,7 @@ struct HistoryChartsView: View {
             return model.valueColor(key: key, value: label)
         case .tagSet(let id):
             guard let set = model.tagSets.first(where: { $0.id == id }),
-                  let tag = set.wireTags.first(where: {
+                  let tag = set.labels.first(where: {
                       ($0.value.isEmpty ? $0.key : "\($0.key): \($0.value)") == label
                   }) else { return nil }
             return model.valueColor(key: tag.key, value: tag.value)

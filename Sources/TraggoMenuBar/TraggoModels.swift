@@ -1,5 +1,10 @@
 import Foundation
 
+// Wire DTOs for the traggo GraphQL API, mirroring schema.graphql — which is
+// why this layer says "tag" while the domain (Backend.swift) says "label".
+// `TraggoClient` maps DTO ↔ domain at its boundary; nothing above the client
+// sees these types.
+
 // MARK: - Time scalar
 //
 // Traggo's GraphQL `Time` scalar is marshalled as RFC3339 (no fractional
@@ -50,12 +55,6 @@ struct TraggoTime: Codable, Equatable, Hashable {
 
 // MARK: - API types (mirror schema.graphql)
 
-struct User: Decodable, Equatable {
-    let id: Int
-    let name: String
-    let admin: Bool
-}
-
 struct Login: Decodable {
     let token: String
     let user: User
@@ -64,6 +63,8 @@ struct Login: Decodable {
 struct TagDefinition: Decodable, Hashable {
     let key: String
     let color: String
+
+    var domain: LabelDefinition { LabelDefinition(key: key, color: color) }
 }
 
 /// A key/value pair attached to a timespan. This is the *wire* shape for both
@@ -72,16 +73,26 @@ struct TagDefinition: Decodable, Hashable {
 struct TimeSpanTag: Codable, Hashable {
     let key: String
     let value: String
+
+    init(_ label: SpanLabel) {
+        key = label.key
+        value = label.value
+    }
+
+    var domain: SpanLabel { SpanLabel(key: key, value: value) }
 }
 
-struct TimeSpan: Decodable, Identifiable, Equatable {
+struct TraggoTimeSpan: Decodable {
     let id: Int
     let start: TraggoTime
     let end: TraggoTime?      // nil == currently running
     let note: String
     let tags: [TimeSpanTag]?
 
-    var isRunning: Bool { end == nil }
+    var domain: TimeSpan {
+        TimeSpan(id: id, start: start.date, end: end?.date, note: note,
+                 labels: (tags ?? []).map(\.domain))
+    }
 }
 
 /// Pagination cursor for `timeSpans`. `startId` pins the page walk to the
@@ -92,9 +103,27 @@ struct Cursor: Codable, Equatable {
     let offset: Int
     let startId: Int
     let pageSize: Int
+
+    /// The opaque token handed up through the protocol: the cursor,
+    /// JSON-encoded, so traggo's paging state survives the round trip without
+    /// its shape leaking upward. Nil once the server says there's no more.
+    var pageToken: PageToken? {
+        guard hasMore,
+              let data = try? JSONEncoder().encode(self),
+              let raw = String(data: data, encoding: .utf8) else { return nil }
+        return PageToken(rawValue: raw)
+    }
+
+    /// Nil for tokens this backend didn't mint — callers only ever hand back
+    /// our own, so in practice this never fails.
+    init?(_ token: PageToken) {
+        guard let data = token.rawValue.data(using: .utf8),
+              let cursor = try? JSONDecoder().decode(Cursor.self, from: data) else { return nil }
+        self = cursor
+    }
 }
 
 struct PagedTimeSpans: Decodable {
-    let timeSpans: [TimeSpan]
+    let timeSpans: [TraggoTimeSpan]
     let cursor: Cursor
 }

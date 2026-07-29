@@ -103,7 +103,7 @@ final class TagReviewModel {
     // MARK: Scanning
 
     func scan() async {
-        guard let client = app.api, app.isAuthenticated else { return }
+        guard let backend = app.api, app.isAuthenticated else { return }
         scanGeneration += 1
         let generation = scanGeneration
         isScanning = true
@@ -113,18 +113,18 @@ final class TagReviewModel {
             let from = range.start
             let to = Date().addingTimeInterval(86_400)
             var finished: [TimeSpan] = []
-            var cursor: Cursor?
+            var token: PageToken?
             // Page until done (cap defensively: 500 pages × 100 = 50k spans).
             for _ in 0..<500 {
-                let page = try await client.timeSpans(from: from, to: to, cursor: cursor)
+                let page = try await backend.timeSpans(from: from, to: to, page: token)
                 guard generation == scanGeneration else { return }
                 finished += page.timeSpans
                 scannedCount = finished.count
-                guard page.cursor.hasMore, !page.timeSpans.isEmpty else { break }
-                cursor = page.cursor
+                guard let next = page.nextPage, !page.timeSpans.isEmpty else { break }
+                token = next
             }
             // The paged query excludes running spans; their tags count too.
-            let running = try await client.timers()
+            let running = try await backend.timers()
             guard generation == scanGeneration else { return }
 
             var seen = Set<Int>()
@@ -145,8 +145,8 @@ final class TagReviewModel {
     var keyStats: [KeyStat] {
         var byKey: [String: [String: (count: Int, seconds: TimeInterval)]] = [:]
         for span in spans {
-            let duration = max(0, (span.end?.date ?? Date()).timeIntervalSince(span.start.date))
-            for tag in span.tags ?? [] {
+            let duration = max(0, (span.end ?? Date()).timeIntervalSince(span.start))
+            for tag in span.labels {
                 let current = byKey[tag.key]?[tag.value] ?? (0, 0)
                 byKey[tag.key, default: [:]][tag.value] =
                     (current.count + 1, current.seconds + duration)
@@ -165,7 +165,7 @@ final class TagReviewModel {
     /// blast radius shown before a rename and the set it rewrites.
     func matches(key: String, value: String? = nil) -> [TimeSpan] {
         spans.filter { span in
-            (span.tags ?? []).contains { $0.key == key && (value == nil || $0.value == value) }
+            span.labels.contains { $0.key == key && (value == nil || $0.value == value) }
         }
     }
 
@@ -237,7 +237,7 @@ final class TagReviewModel {
             let color = app.tagDefinitions.first(where: { $0.key == change.fromKey })?.color
                 ?? "#2196f3"
             do {
-                try await app.api?.createTag(key: toKey, color: color)
+                try await app.api?.createLabelDefinition(key: toKey, color: color)
                 await app.refresh()
             } catch {
                 errorMessage = error.localizedDescription
@@ -248,7 +248,7 @@ final class TagReviewModel {
             tags.map { tag in
                 tag.key == change.fromKey
                     && (change.fromValue == nil || tag.value == change.fromValue)
-                    ? TimeSpanTag(key: toKey, value: change.toValue ?? tag.value)
+                    ? SpanLabel(key: toKey, value: change.toValue ?? tag.value)
                     : tag
             }
         }
@@ -280,19 +280,19 @@ final class TagReviewModel {
     /// The rewrite engine: N × updateTimeSpan, one span at a time — traggo has
     /// no bulk rename. Not transactional; failures are counted and skipped.
     private func rewrite(_ matches: [TimeSpan],
-                         _ transform: ([TimeSpanTag]) -> [TimeSpanTag]) async {
+                         _ transform: ([SpanLabel]) -> [SpanLabel]) async {
         renameDone = 0
         renameTotal = matches.count
         renameFailures = 0
         cancelRequested = false
-        guard let client = app.api, !matches.isEmpty else { return }
+        guard let backend = app.api, !matches.isEmpty else { return }
         for span in matches {
             if cancelRequested { break }
             do {
                 // A nil end leaves running spans running.
-                let updated = try await client.updateTimeSpan(
-                    id: span.id, start: span.start.date, end: span.end?.date,
-                    tags: transform(span.tags ?? []), note: span.note)
+                let updated = try await backend.updateTimeSpan(
+                    id: span.id, start: span.start, end: span.end,
+                    labels: transform(span.labels), note: span.note)
                 if let index = spans.firstIndex(where: { $0.id == updated.id }) {
                     spans[index] = updated
                 }

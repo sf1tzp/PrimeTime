@@ -54,7 +54,7 @@ final class AppModel {
     /// (the ＋ on a quick-start row, the blank-timer row), so this is a list
     /// rather than a single timer.
     var activeTimers: [TimeSpan] = []
-    var tagDefinitions: [TagDefinition] = []
+    var tagDefinitions: [LabelDefinition] = []
 
     /// The first-started running timespan — the popover's top row and the one
     /// the menu-bar label counts up for.
@@ -64,6 +64,8 @@ final class AppModel {
     /// Updated once per second while a timer runs so elapsed labels tick.
     var currentDate = Date()
 
+    /// Whether the backend is ready to serve data. For the traggo backend
+    /// that means a validated login; a future local store is always ready.
     var isAuthenticated: Bool { user != nil }
 
     /// History (log / calendar / charts) state, split out so this class stays
@@ -76,11 +78,14 @@ final class AppModel {
     // MARK: Private, non-observed
 
     @ObservationIgnored private var token: String?
+    /// The concrete client, kept for the session operations (login) that the
+    /// `Backend` protocol deliberately leaves out. Data paths go through `api`.
     @ObservationIgnored private var client: TraggoClient?
 
-    /// The current client, for sibling models (see `HistoryModel`). Rebuilt when
-    /// the server URL or token changes, hence exposed as a computed property.
-    var api: TraggoClient? { client }
+    /// The current backend, for this model and its siblings (see
+    /// `HistoryModel`). Rebuilt when the server URL or token changes, hence
+    /// exposed as a computed property.
+    var api: (any Backend)? { client }
     @ObservationIgnored private var pollTask: Task<Void, Never>?
     @ObservationIgnored private var tickTimer: Timer?
     /// Debounce timers for per-key colour writes, so dragging in the colour
@@ -132,9 +137,9 @@ final class AppModel {
     // MARK: Auth
 
     private func validateSession() async {
-        guard let client else { return }
+        guard let backend = api else { return }
         do {
-            if let user = try await client.currentUser() {
+            if let user = try await backend.currentUser() {
                 self.user = user
                 startPolling()
                 await refresh()
@@ -182,13 +187,13 @@ final class AppModel {
     // MARK: Data
 
     func refresh() async {
-        guard let client, isAuthenticated else { return }
+        guard let backend = api, isAuthenticated else { return }
         do {
-            async let timers = client.timers()
-            async let tags = client.tags()
-            let (runningTimers, definitions) = try await (timers, tags)
-            activeTimers = runningTimers.sorted { $0.start.date < $1.start.date }
-            tagDefinitions = definitions
+            async let timers = backend.timers()
+            async let definitions = backend.labelDefinitions()
+            let (runningTimers, labelDefinitions) = try await (timers, definitions)
+            activeTimers = runningTimers.sorted { $0.start < $1.start }
+            tagDefinitions = labelDefinitions
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -196,23 +201,23 @@ final class AppModel {
     }
 
     func start(tagSet: TagSet) async {
-        await start(tags: tagSet.wireTags)
+        await start(tags: tagSet.labels)
     }
 
     /// Start a timespan with the given tags — empty for an ad-hoc timer that
     /// gets classified while it runs. Returns the created timespan so the
     /// caller can e.g. open it for editing right away.
     @discardableResult
-    func start(tags: [TimeSpanTag]) async -> TimeSpan? {
-        guard let client else { return nil }
+    func start(tags: [SpanLabel]) async -> TimeSpan? {
+        guard let backend = api else { return nil }
         isBusy = true
         defer { isBusy = false }
         do {
             try await ensureTagDefinitions(for: tags)
             // No note at start; the note is added on the running timer.
-            let created = try await client.startTimeSpan(start: Date(),
-                                                         tags: tags,
-                                                         note: "")
+            let created = try await backend.startTimeSpan(start: Date(),
+                                                          labels: tags,
+                                                          note: "")
             activeTimers.append(created)   // newest last, until refresh re-sorts
             errorMessage = nil
             await refresh()
@@ -226,27 +231,27 @@ final class AppModel {
 
     /// Ensure every tag key exists as a definition, or the server rejects the
     /// timespan. Creates missing ones with a default colour.
-    func ensureTagDefinitions(for tags: [TimeSpanTag]) async throws {
-        guard let client else { return }
+    func ensureTagDefinitions(for tags: [SpanLabel]) async throws {
+        guard let backend = api else { return }
         let existing = Set(tagDefinitions.map(\.key))
         for tag in tags where !existing.contains(tag.key) {
-            try await client.createTag(key: tag.key, color: "#2196f3")
+            try await backend.createLabelDefinition(key: tag.key, color: "#2196f3")
         }
     }
 
     /// Update the tags and note on a running timespan, preserving its start.
     /// Missing tag definitions are created first (traggo rejects unknown
     /// keys), the same guard `start(tags:)` uses.
-    func updateRunning(id: Int, tags: [TimeSpanTag], note: String) async {
-        guard let client,
+    func updateRunning(id: Int, tags: [SpanLabel], note: String) async {
+        guard let backend = api,
               let span = activeTimers.first(where: { $0.id == id }) else { return }
         isBusy = true
         defer { isBusy = false }
         do {
             try await ensureTagDefinitions(for: tags)
-            let updated = try await client.updateTimeSpan(
-                id: span.id, start: span.start.date, end: span.end?.date,
-                tags: tags, note: note)
+            let updated = try await backend.updateTimeSpan(
+                id: span.id, start: span.start, end: span.end,
+                labels: tags, note: note)
             replaceActiveTimer(with: updated)
             errorMessage = nil
             await history.reloadIfLoaded()
@@ -257,11 +262,11 @@ final class AppModel {
 
     /// Stop a running timespan — a specific one, or the top row's by default.
     func stop(id: Int? = nil) async {
-        guard let client, let target = id ?? activeTimer?.id else { return }
+        guard let backend = api, let target = id ?? activeTimer?.id else { return }
         isBusy = true
         defer { isBusy = false }
         do {
-            _ = try await client.stopTimeSpan(id: target, end: Date())
+            _ = try await backend.stopTimeSpan(id: target, end: Date())
             activeTimers.removeAll { $0.id == target }
             errorMessage = nil
             await refresh()
@@ -282,8 +287,8 @@ final class AppModel {
     /// row was clicked) also catches a matching timespan started from the web
     /// UI, and the set reappears naturally when the timespan stops.
     func isRunning(_ set: TagSet) -> Bool {
-        let want = Set(set.wireTags)
-        return activeTimers.contains { Set($0.tags ?? []) == want }
+        let want = Set(set.labels)
+        return activeTimers.contains { Set($0.labels) == want }
     }
 
     // MARK: Creating tag sets from existing tags
@@ -291,9 +296,9 @@ final class AppModel {
     /// Whether some saved tag set carries exactly these tags — exact set
     /// equality, same rule as `isRunning(_:)`. Log rows without a match offer
     /// "save these tags as a tag set".
-    func hasTagSet(matching tags: [TimeSpanTag]) -> Bool {
+    func hasTagSet(matching tags: [SpanLabel]) -> Bool {
         let want = Set(tags)
-        return tagSets.contains { Set($0.wireTags) == want }
+        return tagSets.contains { Set($0.labels) == want }
     }
 
     /// Set when another surface (a Log row's ＋, the Launcher's ＋ card)
@@ -304,7 +309,7 @@ final class AppModel {
     /// Append a fresh tag set — seeded from existing tags when given — and
     /// mark it for selection in the Tag Sets pane, where the user names it.
     @discardableResult
-    func newTagSet(from tags: [TimeSpanTag] = []) -> TagSet {
+    func newTagSet(from tags: [SpanLabel] = []) -> TagSet {
         let set = TagSet(name: "New tag set",
                          tags: tags.map { TagRow(key: $0.key, value: $0.value) })
         tagSets.append(set)
@@ -368,13 +373,13 @@ final class AppModel {
     }
 
     private func commitTagColor(key: String, color: Color) async {
-        guard let client, let hex = color.hexString else { return }
+        guard let backend = api, let hex = color.hexString else { return }
         do {
-            // updateTag needs an existing key; createTag reserves a new one.
+            // update needs an existing key; create reserves a new one.
             if tagDefinitions.contains(where: { $0.key == key }) {
-                try await client.updateTag(key: key, color: hex)
+                try await backend.updateLabelDefinition(key: key, color: hex)
             } else {
-                try await client.createTag(key: key, color: hex)
+                try await backend.createLabelDefinition(key: key, color: hex)
             }
             await refresh()   // pull the updated definitions back
         } catch {
@@ -386,7 +391,7 @@ final class AppModel {
 
     var menuBarLabel: String? {
         guard let active = activeTimer else { return nil }
-        return "● " + elapsedString(since: active.start.date)
+        return "● " + elapsedString(since: active.start)
     }
 
     func elapsedString(since start: Date) -> String {

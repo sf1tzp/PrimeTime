@@ -50,7 +50,7 @@ struct LogView: View {
     /// first, each with its spans (already sorted newest first).
     private var daysWithSpans: [(day: DateInterval, spans: [TimeSpan])] {
         model.history.days.reversed().compactMap { day in
-            let spans = model.history.spans.filter { day.contains($0.start.date) }
+            let spans = model.history.spans.filter { day.contains($0.start) }
             return spans.isEmpty ? nil : (day, spans)
         }
     }
@@ -92,9 +92,9 @@ struct LogView: View {
                         .frame(width: 110, alignment: .leading)
 
                         VStack(alignment: .leading, spacing: 3) {
-                            if let tags = span.tags, !tags.isEmpty {
+                            if !span.labels.isEmpty {
                                 FlowLayout(spacing: 4) {
-                                    ForEach(tags, id: \.self) { tag in
+                                    ForEach(span.labels, id: \.self) { tag in
                                         TagPill(key: tag.key, value: tag.value,
                                                 color: model.tagColor(for: tag.key, value: tag.value))
                                     }
@@ -119,9 +119,9 @@ struct LogView: View {
                 // Tags with no matching saved set can become one, right where
                 // the pattern is noticed — the Tag Sets pane opens on the new
                 // set with only the name left to fill in.
-                if let tags = span.tags, !tags.isEmpty, !model.hasTagSet(matching: tags) {
+                if !span.labels.isEmpty, !model.hasTagSet(matching: span.labels) {
                     Button {
-                        model.newTagSet(from: tags)
+                        model.newTagSet(from: span.labels)
                         SettingsWindowManager.shared.show(model: model, tab: .tagSets)
                     } label: {
                         Image(systemName: "plus")

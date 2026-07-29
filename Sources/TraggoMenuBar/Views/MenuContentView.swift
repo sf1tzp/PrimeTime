@@ -209,10 +209,10 @@ struct MenuContentView: View {
     @ViewBuilder
     private func runningRow(_ timer: TimeSpan) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text(model.elapsedString(since: timer.start.date))
+            Text(model.elapsedString(since: timer.start))
                 .font(.system(.body, design: .monospaced))
                 .monospacedDigit()
-            let tags = timer.tags ?? []
+            let tags = timer.labels
             if tags.isEmpty {
                 Text("No tags")
                     .font(.caption)
@@ -293,7 +293,7 @@ struct MenuContentView: View {
     }
 
     private func beginEditing(_ timer: TimeSpan) {
-        let rows = (timer.tags ?? []).map { TagRow(key: $0.key, value: $0.value) }
+        let rows = timer.labels.map { TagRow(key: $0.key, value: $0.value) }
         tagDrafts = rows.isEmpty ? [TagRow()] : rows  // an empty row, ready to type
         noteDraft = timer.note
         editingTimerID = timer.id
@@ -301,9 +301,9 @@ struct MenuContentView: View {
 
     private func saveEdits() {
         guard let id = editingTimerID else { return }
-        let wire = tagDrafts.wireTags
+        let labels = tagDrafts.labels
         Task {
-            await model.updateRunning(id: id, tags: wire, note: noteDraft)
+            await model.updateRunning(id: id, tags: labels, note: noteDraft)
             if model.errorMessage == nil { editingTimerID = nil }
         }
     }

@@ -2,7 +2,7 @@ import Foundation
 
 /// One editable tag inside a tag set. It carries a stable `id` so SwiftUI list
 /// editing keeps field focus as you type — but that `id` is local only and
-/// never sent to the server (we convert to `TimeSpanTag` on the wire).
+/// never persisted to the backend (we convert to `SpanLabel` at the boundary).
 struct TagRow: Identifiable, Codable, Hashable {
     var id = UUID()
     var key: String = ""
@@ -24,9 +24,10 @@ struct TagSet: Identifiable, Codable, Hashable {
     /// The symbol to render for this set.
     var symbol: String { symbolName ?? "tag" }
 
-    /// The wire form for `createTimeSpan`. Traggo lower-cases tag keys and
-    /// forbids spaces, so we normalise here to match how definitions are stored.
-    var wireTags: [TimeSpanTag] { tags.wireTags }
+    /// The domain form for starting a timespan. Traggo lower-cases tag keys
+    /// and forbids spaces, so we normalise here to match how definitions are
+    /// stored.
+    var labels: [SpanLabel] { tags.labels }
 
     static let samples: [TagSet] = [
         TagSet(name: "Deep Work", tags: [TagRow(key: "type", value: "programming")]),
@@ -41,9 +42,9 @@ func normalizeKey(_ key: String) -> String {
 }
 
 extension [TagRow] {
-    /// Drop empty rows and normalise keys — the wire form for any mutation.
-    var wireTags: [TimeSpanTag] {
+    /// Drop empty rows and normalise keys — the domain form for any mutation.
+    var labels: [SpanLabel] {
         filter { !$0.key.trimmingCharacters(in: .whitespaces).isEmpty }
-            .map { TimeSpanTag(key: normalizeKey($0.key), value: $0.value) }
+            .map { SpanLabel(key: normalizeKey($0.key), value: $0.value) }
     }
 }
