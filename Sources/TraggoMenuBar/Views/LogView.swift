@@ -75,45 +75,62 @@ struct LogView: View {
             TimeSpanEditorView(span: span) { editingID = nil }
                 .background(Color.accentColor.opacity(0.06))
         } else {
-            Button {
-                editingID = span.id
-            } label: {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(span.timeRangeLabel)
-                            .font(.callout.monospacedDigit())
-                        Text(span.isRunning
-                             ? "running"
-                             : formatDuration(span.durationSeconds))
-                            .font(.caption)
-                            .foregroundStyle(span.isRunning ? .orange : .secondary)
-                    }
-                    .frame(width: 110, alignment: .leading)
+            HStack(spacing: 0) {
+                Button {
+                    editingID = span.id
+                } label: {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(span.timeRangeLabel)
+                                .font(.callout.monospacedDigit())
+                            Text(span.isRunning
+                                 ? "running"
+                                 : formatDuration(span.durationSeconds))
+                                .font(.caption)
+                                .foregroundStyle(span.isRunning ? .orange : .secondary)
+                        }
+                        .frame(width: 110, alignment: .leading)
 
-                    VStack(alignment: .leading, spacing: 3) {
-                        if let tags = span.tags, !tags.isEmpty {
-                            FlowLayout(spacing: 4) {
-                                ForEach(tags, id: \.self) { tag in
-                                    TagPill(key: tag.key, value: tag.value,
-                                            color: model.tagColor(for: tag.key, value: tag.value))
+                        VStack(alignment: .leading, spacing: 3) {
+                            if let tags = span.tags, !tags.isEmpty {
+                                FlowLayout(spacing: 4) {
+                                    ForEach(tags, id: \.self) { tag in
+                                        TagPill(key: tag.key, value: tag.value,
+                                                color: model.tagColor(for: tag.key, value: tag.value))
+                                    }
                                 }
                             }
+                            if !span.note.isEmpty {
+                                Text(span.note)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
                         }
-                        if !span.note.isEmpty {
-                            Text(span.note)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-                        }
+                        Spacer(minLength: 0)
                     }
-                    Spacer(minLength: 0)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .help("Click to edit")
+
+                // Tags with no matching saved set can become one, right where
+                // the pattern is noticed — the Tag Sets pane opens on the new
+                // set with only the name left to fill in.
+                if let tags = span.tags, !tags.isEmpty, !model.hasTagSet(matching: tags) {
+                    Button {
+                        model.newTagSet(from: tags)
+                        SettingsWindowManager.shared.show(model: model, tab: .tagSets)
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(HoverIconButtonStyle())
+                    .help("Save these tags as a tag set")
+                    .padding(.trailing, 10)
+                }
             }
-            .buttonStyle(.plain)
-            .help("Click to edit")
         }
     }
 

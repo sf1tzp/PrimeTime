@@ -72,10 +72,20 @@ struct TagSetsSettingsView: View {
 
     var body: some View {
         splitView
-            // Pre-select the first set so the editor is populated on open.
-            .onAppear {
-                if selection == nil { selection = model.tagSets.first?.id }
-            }
+            // Pre-select a set so the editor is populated on open: one handed
+            // over from another surface (Log ＋ / Launcher ＋ card) wins,
+            // otherwise the first set.
+            .onAppear { consumePendingSelection() }
+            .onChange(of: model.pendingTagSetSelection) { consumePendingSelection() }
+    }
+
+    private func consumePendingSelection() {
+        if let pending = model.pendingTagSetSelection {
+            selection = pending
+            model.pendingTagSetSelection = nil
+        } else if selection == nil {
+            selection = model.tagSets.first?.id
+        }
     }
 
     private var splitView: some View {

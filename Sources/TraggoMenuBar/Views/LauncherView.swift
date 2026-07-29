@@ -10,20 +10,48 @@ struct LauncherView: View {
 
     var body: some View {
         ScrollView {
-            if model.tagSets.isEmpty {
-                Text("No tag sets yet — add some in the Tag Sets tab.")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 60)
-            } else {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(model.tagSets) { set in
-                        TagSetCard(set: set)
-                    }
+            // The trailing ＋ card doubles as the empty state: with no sets
+            // saved, the grid is just the invitation to create one.
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(model.tagSets) { set in
+                    TagSetCard(set: set)
                 }
-                .padding(16)
+                NewTagSetCard()
             }
+            .padding(16)
         }
+    }
+}
+
+/// The trailing "create" tile: dashed outline, no fill, so it reads as an
+/// action rather than a set. Opens the Tag Sets pane on a fresh set.
+private struct NewTagSetCard: View {
+    @Environment(AppModel.self) private var model
+    @State private var hovering = false
+
+    var body: some View {
+        Button {
+            model.newTagSet()
+            SettingsWindowManager.shared.show(model: model, tab: .tagSets)
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 28))
+                Text("New Tag Set")
+                    .font(.headline)
+            }
+            .frame(maxWidth: .infinity, minHeight: 96)
+            .foregroundStyle(hovering ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(.secondary.opacity(hovering ? 0.7 : 0.4),
+                                  style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help("Create a tag set")
     }
 }
 

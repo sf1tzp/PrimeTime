@@ -286,6 +286,32 @@ final class AppModel {
         return activeTimers.contains { Set($0.tags ?? []) == want }
     }
 
+    // MARK: Creating tag sets from existing tags
+
+    /// Whether some saved tag set carries exactly these tags — exact set
+    /// equality, same rule as `isRunning(_:)`. Log rows without a match offer
+    /// "save these tags as a tag set".
+    func hasTagSet(matching tags: [TimeSpanTag]) -> Bool {
+        let want = Set(tags)
+        return tagSets.contains { Set($0.wireTags) == want }
+    }
+
+    /// Set when another surface (a Log row's ＋, the Launcher's ＋ card)
+    /// creates a tag set and wants the Tag Sets pane to open on it.
+    /// Consumed by the pane when it appears or sees the change.
+    var pendingTagSetSelection: TagSet.ID?
+
+    /// Append a fresh tag set — seeded from existing tags when given — and
+    /// mark it for selection in the Tag Sets pane, where the user names it.
+    @discardableResult
+    func newTagSet(from tags: [TimeSpanTag] = []) -> TagSet {
+        let set = TagSet(name: "New tag set",
+                         tags: tags.map { TagRow(key: $0.key, value: $0.value) })
+        tagSets.append(set)
+        pendingTagSetSelection = set.id
+        return set
+    }
+
     // MARK: Tag colours (stored server-side, per key)
 
     /// The colour to render a tag with. With "colour by value" on, a local
