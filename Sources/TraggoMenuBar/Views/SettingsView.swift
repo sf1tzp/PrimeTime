@@ -124,7 +124,7 @@ struct TagSetDetailView: View {
             Section("Tags") {
                 ForEach($tagSet.tags) { $tag in
                     HStack {
-                        colorPicker(for: tag)
+                        TagColorPicker(key: tag.key, value: tag.value)
                         TextField("key", text: $tag.key)
                             .autocorrectionDisabled()
                         Text(":").foregroundStyle(.secondary)
@@ -154,34 +154,5 @@ struct TagSetDetailView: View {
             }
         }
         .formStyle(.grouped)
-    }
-
-    /// With "colour by value" off (or the value empty) this edits the tag key's
-    /// server-side colour, as before. With it on, it edits the local override
-    /// for this exact key: value pair instead.
-    @ViewBuilder
-    private func colorPicker(for tag: TagRow) -> some View {
-        let keyEmpty = tag.key.trimmingCharacters(in: .whitespaces).isEmpty
-        if model.colorTagsByValue && !tag.value.isEmpty {
-            ColorPicker("", selection: Binding(
-                get: { model.tagColor(for: tag.key, value: tag.value) },
-                set: { model.setValueColor(key: tag.key, value: tag.value, color: $0) }
-            ), supportsOpacity: false)
-            .labelsHidden()
-            .disabled(keyEmpty)
-            .contextMenu {
-                Button("Use key colour") {
-                    model.clearValueColor(key: tag.key, value: tag.value)
-                }
-                .disabled(model.valueColor(key: tag.key, value: tag.value) == nil)
-            }
-        } else {
-            ColorPicker("", selection: Binding(
-                get: { model.tagColor(for: tag.key) },
-                set: { model.scheduleTagColor(for: tag.key, color: $0) }
-            ), supportsOpacity: false)
-            .labelsHidden()
-            .disabled(keyEmpty)
-        }
     }
 }

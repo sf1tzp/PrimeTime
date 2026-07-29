@@ -9,6 +9,12 @@ struct MenuContentView: View {
     /// active timer changes (not on every poll, so it won't clobber typing).
     @State private var noteDraft = ""
 
+    /// Whether the running timer's tags are being edited in place, and a local
+    /// draft of them. Seeded on entering edit mode so a background poll can't
+    /// clobber edits; discarded when the active timer changes.
+    @State private var editingTags = false
+    @State private var tagDrafts: [TagRow] = []
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if model.isAuthenticated {
@@ -26,6 +32,7 @@ struct MenuContentView: View {
         }
         .onChange(of: model.activeTimer?.id) {
             noteDraft = model.activeTimer?.note ?? ""
+            editingTags = false
         }
     }
 
@@ -135,13 +142,10 @@ struct MenuContentView: View {
                 Text(model.elapsedString(since: active.start.date))
                     .font(.system(.title2, design: .monospaced))
                     .monospacedDigit()
-                if let tags = active.tags, !tags.isEmpty {
-                    FlowLayout(spacing: 4) {
-                        ForEach(tags.indices, id: \.self) { i in
-                            TagPill(key: tags[i].key, value: tags[i].value,
-                                    color: model.tagColor(for: tags[i].key, value: tags[i].value))
-                        }
-                    }
+                if editingTags {
+                    tagEditor
+                } else {
+                    activeTagsDisplay(active.tags ?? [])
                 }
                 HStack {
                     TextField("Add a note…", text: $noteDraft)
@@ -164,6 +168,86 @@ struct MenuContentView: View {
                 Text("No active timer")
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    /// Read-only tag pills for the running timer, with a pencil to edit them.
+    /// The pencil shows even with no tags so the user can add the first one.
+    @ViewBuilder
+    private func activeTagsDisplay(_ tags: [TimeSpanTag]) -> some View {
+        HStack(alignment: .top, spacing: 4) {
+            if tags.isEmpty {
+                Text("No tags")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                FlowLayout(spacing: 4) {
+                    ForEach(tags.indices, id: \.self) { i in
+                        TagPill(key: tags[i].key, value: tags[i].value,
+                                color: model.tagColor(for: tags[i].key, value: tags[i].value))
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+            Button {
+                beginEditingTags()
+            } label: {
+                Image(systemName: "pencil")
+            }
+            .buttonStyle(.borderless)
+            .help("Edit tags")
+        }
+    }
+
+    /// Inline row editor for the running timer's tags — one row per tag (colour
+    /// swatch, key, value, remove), plus Add / Cancel / Save. Save commits the
+    /// draft to the server via `updateActiveTags`.
+    private var tagEditor: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach($tagDrafts) { $tag in
+                HStack(spacing: 4) {
+                    TagColorPicker(key: tag.key, value: tag.value)
+                    TextField("key", text: $tag.key)
+                        .textFieldStyle(.roundedBorder)
+                        .autocorrectionDisabled()
+                    Text(":").foregroundStyle(.secondary)
+                    TextField("value", text: $tag.value)
+                        .textFieldStyle(.roundedBorder)
+                    Button(role: .destructive) {
+                        tagDrafts.removeAll { $0.id == tag.id }
+                    } label: {
+                        Image(systemName: "minus.circle")
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            HStack {
+                Button {
+                    tagDrafts.append(TagRow())
+                } label: {
+                    Label("Add tag", systemImage: "plus")
+                }
+                .buttonStyle(.borderless)
+                Spacer()
+                Button("Cancel") { editingTags = false }
+                    .buttonStyle(.borderless)
+                Button("Save") { saveTags() }
+                    .disabled(model.isBusy)
+            }
+        }
+    }
+
+    private func beginEditingTags() {
+        tagDrafts = (model.activeTimer?.tags ?? [])
+            .map { TagRow(key: $0.key, value: $0.value) }
+        editingTags = true
+    }
+
+    private func saveTags() {
+        let wire = tagDrafts.wireTags
+        Task {
+            await model.updateActiveTags(wire)
+            if model.errorMessage == nil { editingTags = false }
         }
     }
 

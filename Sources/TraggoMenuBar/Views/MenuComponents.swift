@@ -49,6 +49,42 @@ struct TagPill: View {
     }
 }
 
+/// A colour swatch for a tag. With "colour by value" on (and a non-empty
+/// value) it edits the local per-`key: value` override; otherwise it edits the
+/// tag key's server-side colour. Disabled when the key is blank. Shared by the
+/// Tag Sets settings pane and the running-timer tag editor.
+struct TagColorPicker: View {
+    @Environment(AppModel.self) private var model
+    let key: String
+    let value: String
+
+    private var keyEmpty: Bool { key.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    var body: some View {
+        if model.colorTagsByValue && !value.isEmpty {
+            ColorPicker("", selection: Binding(
+                get: { model.tagColor(for: key, value: value) },
+                set: { model.setValueColor(key: key, value: value, color: $0) }
+            ), supportsOpacity: false)
+            .labelsHidden()
+            .disabled(keyEmpty)
+            .contextMenu {
+                Button("Use key colour") {
+                    model.clearValueColor(key: key, value: value)
+                }
+                .disabled(model.valueColor(key: key, value: value) == nil)
+            }
+        } else {
+            ColorPicker("", selection: Binding(
+                get: { model.tagColor(for: key) },
+                set: { model.scheduleTagColor(for: key, color: $0) }
+            ), supportsOpacity: false)
+            .labelsHidden()
+            .disabled(keyEmpty)
+        }
+    }
+}
+
 /// A simple left-to-right flow layout that wraps to the next line when it runs
 /// out of width — used for rows of `TagPill`s.
 struct FlowLayout: Layout {

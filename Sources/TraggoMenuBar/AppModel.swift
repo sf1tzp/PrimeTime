@@ -219,6 +219,26 @@ final class AppModel {
         }
     }
 
+    /// Replace the tags on the running timespan, preserving its start and note.
+    /// Missing tag definitions are created first (traggo rejects unknown keys),
+    /// the same guard `start(tagSet:)` uses.
+    func updateActiveTags(_ tags: [TimeSpanTag]) async {
+        guard let client, let active = activeTimer else { return }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            try await ensureTagDefinitions(for: tags)
+            let updated = try await client.updateTimeSpan(
+                id: active.id, start: active.start.date, end: active.end?.date,
+                tags: tags, note: active.note)
+            activeTimer = updated
+            errorMessage = nil
+            await history.reloadIfLoaded()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func stop() async {
         guard let client, let active = activeTimer else { return }
         isBusy = true
