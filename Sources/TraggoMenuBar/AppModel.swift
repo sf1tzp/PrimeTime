@@ -118,7 +118,10 @@ final class AppModel {
 
     // MARK: Private, non-observed
 
-    @ObservationIgnored private var token: String?
+    /// The traggo session token. Not observation-ignored: the import surface's
+    /// `hasTraggoSession` reads it, and must react when a one-off login saves
+    /// one or an expired one is dropped.
+    private var token: String?
     /// The concrete client, kept for the session operations (login) that the
     /// `Backend` protocol deliberately leaves out. Data paths go through `api`.
     @ObservationIgnored private var client: TraggoClient?
@@ -174,9 +177,12 @@ final class AppModel {
             ? true : defaults.bool(forKey: Keys.colorTagsByValue)  // default on
         menuTagSetLimit = defaults.object(forKey: Keys.menuTagSetLimit) == nil
             ? 5 : defaults.integer(forKey: Keys.menuTagSetLimit)  // 0 = all
+        // Into a local first: `token` is observation-tracked, and a tracked
+        // property can't be *read* before the whole object is initialised.
         // A demo never reads the real token: local mode is forced below, and
         // the token could otherwise flow into a traggo session.
-        token = demo ? nil : Keychain.get(account: "token")
+        let savedToken = demo ? nil : Keychain.get(account: "token")
+        token = savedToken
         tagSets = []          // loaded per-backend by activateBackend()
         valueColors = [:]
 
@@ -192,7 +198,7 @@ final class AppModel {
             // a later logout can't silently flip the mode.
             backendKind = kind
         } else {
-            backendKind = token != nil ? .traggo : .local
+            backendKind = savedToken != nil ? .traggo : .local
             defaults.set(backendKind.rawValue, forKey: Keys.backendKind)
         }
 
@@ -327,6 +333,79 @@ final class AppModel {
         activeTimers = []
         tagDefinitions = []
         rebuildClient()
+    }
+
+    // MARK: Import from traggo (#30)
+
+    /// Live state of the one-shot traggo import, observed by the Settings
+    /// pane. Errors are kept apart from `errorMessage` so the 30-second poll
+    /// can't overwrite a failed import's explanation.
+    var isImporting = false
+    /// Spans upserted so far, for progress while the import walks pages.
+    var importedSpanCount = 0
+    var importSummary: ImportSummary?
+    var importError: String?
+
+    /// Whether a traggo session is saved (in the Keychain) — the import can
+    /// reuse it instead of asking for credentials.
+    var hasTraggoSession: Bool { token != nil }
+
+    /// One-shot import of a traggo server's full history into the local store.
+    /// Pass credentials only when no saved session exists (or the saved one
+    /// expired): a successful one-off login keeps its token exactly as the
+    /// traggo-mode sign-in would, so re-runs — and a later switch to traggo
+    /// mode — are already signed in.
+    func importFromTraggo(username: String = "", password: String = "") async {
+        guard !isImporting else { return }
+        guard let store = localStore else {
+            importError = "The local database isn't open."
+            return
+        }
+        guard var client else {
+            importError = "Invalid server URL"
+            return
+        }
+        isImporting = true
+        importedSpanCount = 0
+        importSummary = nil
+        importError = nil
+        defer { isImporting = false }
+        do {
+            if !username.isEmpty {
+                let result = try await client.login(username: username,
+                                                    password: password,
+                                                    deviceName: deviceName)
+                token = result.token
+                Keychain.set(result.token, account: "token")
+                rebuildClient()
+                client.token = result.token
+            } else if try await client.currentUser() == nil {
+                // The saved token is dead. Drop it — hasTraggoSession flips,
+                // so the credential fields appear next to this explanation.
+                token = nil
+                Keychain.delete(account: "token")
+                rebuildClient()
+                importError = "The saved sign-in has expired — enter your username and password."
+                return
+            }
+            // The origin string namespaces the server's span ids in the local
+            // mapping. Use the parsed URL (trailing slash trimmed) so trivial
+            // respellings of the same server don't fork the namespace.
+            var origin = client.baseURL.absoluteString
+            while origin.hasSuffix("/") { origin.removeLast() }
+            let importer = HistoryImporter(source: client, destination: store,
+                                           origin: origin)
+            let summary = try await importer.run { count in
+                await MainActor.run { self.importedSpanCount = count }
+            }
+            importSummary = summary
+            // Imported data is live state: running traggo timers now tick in
+            // the popover, and key colours reach every tag chip.
+            await refresh()
+            await history.reloadIfLoaded()
+        } catch {
+            importError = error.localizedDescription
+        }
     }
 
     // MARK: Data

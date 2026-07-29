@@ -33,6 +33,9 @@ struct GeneralSettingsView: View {
                     storagePicker
                 }
             }
+            if model.backendKind == .local {
+                importSection
+            }
             if model.backendKind == .traggo {
                 serverSections
             }
@@ -61,6 +64,9 @@ struct GeneralSettingsView: View {
             }
         } else {
             Text("Timespans and tag colours live on the server; tag sets and value colours stay on this Mac. Switching back to local storage keeps both sets of data intact.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text("To copy this server’s history into the local database, switch to “On this Mac” and use Import from Traggo.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -143,6 +149,72 @@ struct GeneralSettingsView: View {
         guard !username.isEmpty, !password.isEmpty else { return }
         Task {
             await model.login(username: username, password: password)
+            password = ""   // never keep the password around
+        }
+    }
+
+    // MARK: Import from traggo (#30, local mode only)
+
+    /// The one-shot importer's surface. Reuses the saved traggo session when
+    /// one exists; otherwise asks for a one-off sign-in whose token is kept,
+    /// so re-runs (and a later switch to traggo mode) are already signed in.
+    private var importSection: some View {
+        @Bindable var model = model
+        return Section("Import from Traggo") {
+            Text("Copy a Traggo server’s full history — finished and running timespans, plus tag keys and their colours — into the local database. Safe to run again: timespans already imported are updated, not duplicated.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            TextField("Server URL", text: $model.serverURL)
+            if model.hasTraggoSession {
+                Text("Using the saved Traggo sign-in.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                TextField("Username", text: $username)
+                    .autocorrectionDisabled()
+                SecureField("Password", text: $password)
+            }
+            HStack {
+                if model.isImporting {
+                    ProgressView().controlSize(.small)
+                    Text("Imported \(model.importedSpanCount) timespans…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Import from Traggo…", action: runImport)
+                    .disabled(model.isImporting
+                        || (!model.hasTraggoSession && (username.isEmpty || password.isEmpty)))
+            }
+            if let summary = model.importSummary {
+                Label(summaryText(summary), systemImage: "checkmark.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+            }
+            if let error = model.importError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(3)
+            }
+        }
+    }
+
+    private func summaryText(_ summary: ImportSummary) -> String {
+        var parts = ["Imported \(summary.spansImported) timespans"]
+        if summary.spansUpdated > 0 {
+            parts.append("(\(summary.spansInserted) new, \(summary.spansUpdated) updated)")
+        }
+        if summary.runningSpans > 0 {
+            parts.append("— \(summary.runningSpans) still running —")
+        }
+        parts.append("and \(summary.definitionsCreated + summary.definitionsRecolored) tag keys.")
+        return parts.joined(separator: " ")
+    }
+
+    private func runImport() {
+        Task {
+            await model.importFromTraggo(username: username, password: password)
             password = ""   // never keep the password around
         }
     }
