@@ -49,9 +49,24 @@ struct KeyStat: Identifiable {
     var seconds: TimeInterval { values.reduce(0) { $0 + $1.seconds } }
 }
 
+/// One pending tag rewrite, staged for review in the Approve Changes pane.
+/// The shape covers every cleanup the tab offers: rename a value (same key,
+/// new value), rename a key (`fromValue` and `toValue` nil — values ride
+/// along), move a value under another key, and move just a subset of its
+/// instances (`spanIDs` non-nil).
+struct StagedChange: Identifiable {
+    var id = UUID()
+    let fromKey: String
+    let fromValue: String?    // nil = every value under the key
+    let toKey: String
+    var toValue: String?      // nil = keep each span's value; editable while staged
+    let spanIDs: [Int]?       // nil = every scanned match
+}
+
 /// State and behaviour for the Tag Review tab: scans timespans to compute
-/// per-key value cardinality, and rewrites spans to fix drift (rename a value
-/// or a key). Sibling of `HistoryModel`, owned by `AppModel`.
+/// per-key value cardinality, and stages tag rewrites (renames, moves between
+/// keys) that apply as one approved batch. Sibling of `HistoryModel`, owned by
+/// `AppModel`.
 @MainActor
 @Observable
 final class TagReviewModel {
@@ -66,12 +81,18 @@ final class TagReviewModel {
     var scannedCount = 0
     var errorMessage: String?
 
-    // Rename progress, observed by the confirm sheet.
-    var isRenaming = false
+    /// Pending rewrites, in staging order — applied together on approve.
+    var staged: [StagedChange] = []
+
+    // Batch/rewrite progress, observed by the Approve Changes pane.
+    var isApplying = false
+    /// Index into the batch of the change currently applying.
+    var applyIndex = 0
     var renameDone = 0
     var renameTotal = 0
     var renameFailures = 0
     @ObservationIgnored private var cancelRequested = false
+    @ObservationIgnored private var cancelBatch = false
     /// Invalidates in-flight scans when the range changes mid-fetch.
     @ObservationIgnored private var scanGeneration = 0
 
@@ -148,73 +169,123 @@ final class TagReviewModel {
         }
     }
 
-    // MARK: Renames
+    // MARK: Staging
 
-    /// Rewrite every scanned span carrying `key: from` to carry `key: to` —
-    /// the typo/merge fix. Also updates local tag sets that reference the old
-    /// spelling, or they'd quietly recreate it.
-    func renameValue(key: String, from: String, to: String) async {
-        await rewrite(matches(key: key, value: from)) { tags in
-            tags.map { $0.key == key && $0.value == from ? TimeSpanTag(key: key, value: to) : $0 }
-        }
-        app.tagSets = app.tagSets.map { set in
-            var set = set
-            set.tags = set.tags.map { row in
-                var row = row
-                if normalizeKey(row.key) == key, row.value == from { row.value = to }
-                return row
-            }
-            return set
-        }
+    func stage(_ change: StagedChange) {
+        staged.append(change)
     }
 
-    /// Rewrite every scanned span carrying key `from` to carry `to` instead,
-    /// creating the target definition with the old key's colour if needed.
-    /// The old definition stays on the server (traggo keeps it; harmless and
-    /// still reusable).
-    func renameKey(from: String, to rawTo: String) async {
-        let to = normalizeKey(rawTo)
-        guard !to.isEmpty, to != from else { return }
-        if !app.tagDefinitions.contains(where: { $0.key == to }) {
-            let color = app.tagDefinitions.first(where: { $0.key == from })?.color ?? "#2196f3"
-            do {
-                try await app.api?.createTag(key: to, color: color)
-            } catch {
-                errorMessage = error.localizedDescription
-                return
-            }
-        }
-        await rewrite(matches(key: from)) { tags in
-            tags.map { $0.key == from ? TimeSpanTag(key: to, value: $0.value) : $0 }
-        }
-        app.tagSets = app.tagSets.map { set in
-            var set = set
-            set.tags = set.tags.map { row in
-                var row = row
-                if normalizeKey(row.key) == from { row.key = to }
-                return row
-            }
-            return set
-        }
+    func discard(_ id: StagedChange.ID) {
+        staged.removeAll { $0.id == id }
     }
 
-    func cancelRename() {
+    /// The matches a staged change may touch: running spans are excluded —
+    /// rewriting a timespan that's still ticking proved flaky (its identity
+    /// shifts under the list mid-drag), and the popover already edits the
+    /// live timer. It becomes movable once stopped and rescanned.
+    func movableMatches(key: String, value: String? = nil) -> [TimeSpan] {
+        matches(key: key, value: value).filter { !$0.isRunning }
+    }
+
+    /// The spans a staged change would rewrite right now — its blast radius.
+    /// Explicit span ids are re-filtered against the tag match, so instances
+    /// already moved (or edited away) drop out rather than being re-written.
+    func spans(for change: StagedChange) -> [TimeSpan] {
+        let all = movableMatches(key: change.fromKey, value: change.fromValue)
+        guard let ids = change.spanIDs else { return all }
+        return all.filter { ids.contains($0.id) }
+    }
+
+    /// Apply the staged batch in order. Changes that fail (or are interrupted
+    /// by cancel) stay staged — applying again converges, since spans already
+    /// rewritten no longer match.
+    func applyStaged() async {
+        guard !isApplying, !staged.isEmpty else { return }
+        isApplying = true
+        cancelBatch = false
+        defer { isApplying = false }
+        let batch = staged
+        var keep: [StagedChange] = []
+        for (index, change) in batch.enumerated() {
+            applyIndex = index
+            if cancelBatch {
+                keep.append(contentsOf: batch[index...])
+                break
+            }
+            if !(await apply(change)) {
+                keep.append(change)
+            }
+        }
+        staged = keep
+    }
+
+    /// Stop the batch: the in-flight rewrite halts and everything not fully
+    /// applied stays staged.
+    func cancelApply() {
+        cancelBatch = true
         cancelRequested = true
     }
 
+    /// Apply one change; false when it should stay staged (failures/cancel).
+    private func apply(_ change: StagedChange) async -> Bool {
+        let toKey = normalizeKey(change.toKey)
+        guard !toKey.isEmpty else { return false }
+        // The server rejects unknown keys: make sure the target definition
+        // exists, carrying the source key's colour. The old definition stays
+        // on the server (traggo keeps it; harmless and still reusable).
+        if !app.tagDefinitions.contains(where: { $0.key == toKey }) {
+            let color = app.tagDefinitions.first(where: { $0.key == change.fromKey })?.color
+                ?? "#2196f3"
+            do {
+                try await app.api?.createTag(key: toKey, color: color)
+                await app.refresh()
+            } catch {
+                errorMessage = error.localizedDescription
+                return false
+            }
+        }
+        await rewrite(spans(for: change)) { tags in
+            tags.map { tag in
+                tag.key == change.fromKey
+                    && (change.fromValue == nil || tag.value == change.fromValue)
+                    ? TimeSpanTag(key: toKey, value: change.toValue ?? tag.value)
+                    : tag
+            }
+        }
+        // Whole-value (and whole-key) changes update local tag sets too, or
+        // quick-starting one would recreate the old spelling. Subset moves
+        // leave tag sets alone — the set still legitimately means the rest.
+        if change.spanIDs == nil {
+            updateTagSets(for: change, toKey: toKey)
+        }
+        return renameFailures == 0 && !cancelRequested
+    }
+
+    private func updateTagSets(for change: StagedChange, toKey: String) {
+        app.tagSets = app.tagSets.map { set in
+            var set = set
+            set.tags = set.tags.map { row in
+                var row = row
+                if normalizeKey(row.key) == change.fromKey,
+                   change.fromValue == nil || row.value == change.fromValue {
+                    row.key = toKey
+                    if let toValue = change.toValue { row.value = toValue }
+                }
+                return row
+            }
+            return set
+        }
+    }
+
     /// The rewrite engine: N × updateTimeSpan, one span at a time — traggo has
-    /// no bulk rename. Not transactional; failures are counted and skipped,
-    /// and re-running the same rename converges (already-rewritten spans no
-    /// longer match).
+    /// no bulk rename. Not transactional; failures are counted and skipped.
     private func rewrite(_ matches: [TimeSpan],
                          _ transform: ([TimeSpanTag]) -> [TimeSpanTag]) async {
-        guard let client = app.api, !matches.isEmpty else { return }
-        isRenaming = true
         renameDone = 0
         renameTotal = matches.count
         renameFailures = 0
         cancelRequested = false
-        defer { isRenaming = false }
+        guard let client = app.api, !matches.isEmpty else { return }
         for span in matches {
             if cancelRequested { break }
             do {
