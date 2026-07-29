@@ -4,12 +4,17 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jinzhu/copier"
 	"primetime.tools/server/auth"
 	"primetime.tools/server/generated/gqlmodel"
 	"primetime.tools/server/model"
 )
+
+// syncNow is the clock for sync timestamps (UpdatedAtUTC): whole seconds so
+// values round-trip through RFC3339 exactly. Overridable in tests.
+var syncNow = func() time.Time { return time.Now().UTC().Truncate(time.Second) }
 
 // CreateTag creates a tag.
 func (r *ResolverForTag) CreateLabelDefinition(ctx context.Context, key string, color string) (*gqlmodel.LabelDefinition, error) {
@@ -22,9 +27,10 @@ func (r *ResolverForTag) CreateLabelDefinition(ctx context.Context, key string, 
 
 	userID := auth.GetUser(ctx).ID
 	definition := &model.TagDefinition{
-		Key:    strings.ToLower(key),
-		Color:  color,
-		UserID: userID,
+		Key:          strings.ToLower(key),
+		Color:        color,
+		UserID:       userID,
+		UpdatedAtUTC: syncNow(),
 	}
 
 	if !r.DB.Where("user_id = ?", userID).Where("key = ?", strings.ToLower(key)).Find(new(model.TagDefinition)).RecordNotFound() {
@@ -35,5 +41,6 @@ func (r *ResolverForTag) CreateLabelDefinition(ctx context.Context, key string, 
 	gqlTag := &gqlmodel.LabelDefinition{}
 	copier.Copy(gqlTag, definition)
 	gqlTag.ValueColors = []*gqlmodel.LabelValueColor{}
+	gqlTag.UpdatedAt = model.Time(definition.UpdatedAtUTC)
 	return gqlTag, create.Error
 }

@@ -13,6 +13,11 @@ type TimeSpan struct {
 	UserID        int `gorm:"type:int REFERENCES users(id) ON DELETE CASCADE"`
 	Tags          []TimeSpanTag
 	Note          string
+	// UpdatedAtUTC is the server time of the last write, truncated to whole
+	// seconds so it round-trips through RFC3339 exactly. It drives the
+	// timeSpanChanges delta feed and last-writer-wins sync. Managed
+	// explicitly by the write paths, not by gorm.
+	UpdatedAtUTC time.Time
 }
 
 // TimeSpanTag is a tag for a time range

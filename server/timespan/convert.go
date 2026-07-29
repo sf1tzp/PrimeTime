@@ -8,6 +8,11 @@ import (
 	"primetime.tools/server/model"
 )
 
+// syncNow is the clock for sync timestamps (UpdatedAtUTC, tombstones):
+// whole seconds so values round-trip through RFC3339 exactly, which the
+// timeSpanChanges checkpoint relies on. Overridable in tests.
+var syncNow = func() time.Time { return time.Now().UTC().Truncate(time.Second) }
+
 func timespanToInternal(userID int, start model.Time, end *model.Time, tags []*gqlmodel.InputLabel, note string) (model.TimeSpan, error) {
 	_, offset := start.Time().Zone()
 	span := model.TimeSpan{
@@ -17,6 +22,7 @@ func timespanToInternal(userID int, start model.Time, end *model.Time, tags []*g
 		Tags:          tagsToInternal(tags),
 		OffsetUTC:     offset,
 		Note:          note,
+		UpdatedAtUTC:  syncNow(),
 	}
 
 	if end != nil {
@@ -36,11 +42,12 @@ func timeSpanToExternal(span model.TimeSpan) *gqlmodel.TimeSpan {
 	location := time.FixedZone("unknown", span.OffsetUTC)
 
 	result := gqlmodel.TimeSpan{
-		Start:  model.Time(span.StartUTC.In(location)),
-		End:    nil,
-		ID:     span.ID,
-		Labels: tagsToExternal(span.Tags),
-		Note:   span.Note,
+		Start:     model.Time(span.StartUTC.In(location)),
+		End:       nil,
+		ID:        span.ID,
+		Labels:    tagsToExternal(span.Tags),
+		Note:      span.Note,
+		UpdatedAt: model.Time(span.UpdatedAtUTC),
 	}
 	if span.EndUTC != nil && !span.EndUTC.IsZero() {
 		end := *span.EndUTC

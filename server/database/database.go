@@ -3,6 +3,7 @@ package database
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"    // enable the mysql dialect
@@ -41,6 +42,21 @@ func New(dialect, connection string) (*gorm.DB, error) {
 
 	log.Debug().Msg("Auto migrating schema's")
 	db.AutoMigrate(model.All()...)
+
+	// Backfill sync timestamps on rows that predate the updated_at_utc
+	// columns (AutoMigrate adds them as NULL, which breaks scanning into
+	// time.Time and would hide the rows from the sync delta feed). The unix
+	// epoch means "predates sync": ancient, so it loses last-writer-wins to
+	// any real edit.
+	epoch := time.Unix(0, 0).UTC()
+	for _, table := range []string{
+		"time_spans", "tag_definitions", "label_value_colors",
+		"label_sets", "user_preferences",
+	} {
+		db.Table(table).
+			Where("updated_at_utc IS NULL").
+			Update("updated_at_utc", epoch)
+	}
 
 	log.Debug().Msg("Database initialized")
 	return db, nil

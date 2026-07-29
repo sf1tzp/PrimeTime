@@ -30,14 +30,20 @@ func (r *ResolverForTag) SetLabelValueColor(ctx context.Context, key string, val
 		Where("user_id = ? AND key = ? AND value = ?", userID, key, value).
 		Find(&existing).RecordNotFound()
 	if notFound {
-		row := model.LabelValueColor{UserID: userID, Key: key, Value: value, Color: color}
+		row := model.LabelValueColor{
+			UserID: userID, Key: key, Value: value, Color: color,
+			UpdatedAtUTC: syncNow(),
+		}
 		if err := r.DB.Create(&row).Error; err != nil {
 			return nil, err
 		}
 	} else {
 		if err := r.DB.Model(new(model.LabelValueColor)).
 			Where("user_id = ? AND key = ? AND value = ?", userID, key, value).
-			Update("color", color).Error; err != nil {
+			Updates(map[string]interface{}{
+				"color":          color,
+				"updated_at_utc": syncNow(),
+			}).Error; err != nil {
 			return nil, err
 		}
 	}
@@ -90,6 +96,7 @@ func labelDefinition(db *gorm.DB, userID int, key string) (*gqlmodel.LabelDefini
 		Color:       definition.Color,
 		Usages:      usages,
 		ValueColors: colors,
+		UpdatedAt:   model.Time(definition.UpdatedAtUTC),
 	}, nil
 }
 
@@ -104,7 +111,10 @@ func valueColors(db *gorm.DB, userID int, key string) ([]*gqlmodel.LabelValueCol
 	}
 	result := []*gqlmodel.LabelValueColor{}
 	for _, row := range rows {
-		result = append(result, &gqlmodel.LabelValueColor{Value: row.Value, Color: row.Color})
+		result = append(result, &gqlmodel.LabelValueColor{
+			Value: row.Value, Color: row.Color,
+			UpdatedAt: model.Time(row.UpdatedAtUTC),
+		})
 	}
 	return result, nil
 }
@@ -120,7 +130,10 @@ func valueColorsByKey(db *gorm.DB, userID int) (map[string][]*gqlmodel.LabelValu
 	}
 	result := map[string][]*gqlmodel.LabelValueColor{}
 	for _, row := range rows {
-		result[row.Key] = append(result[row.Key], &gqlmodel.LabelValueColor{Value: row.Value, Color: row.Color})
+		result[row.Key] = append(result[row.Key], &gqlmodel.LabelValueColor{
+			Value: row.Value, Color: row.Color,
+			UpdatedAt: model.Time(row.UpdatedAtUTC),
+		})
 	}
 	return result, nil
 }

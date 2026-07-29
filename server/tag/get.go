@@ -32,7 +32,9 @@ func (r *ResolverForTag) LabelDefinitions(ctx context.Context) ([]*gqlmodel.Labe
 	if err != nil {
 		return nil, err
 	}
-	for _, definition := range result {
+	for i, definition := range result {
+		// copier maps by field name; UpdatedAtUTC → UpdatedAt is manual.
+		definition.UpdatedAt = model.Time(tags[i].UpdatedAtUTC)
 		definition.ValueColors = []*gqlmodel.LabelValueColor{}
 		if c, ok := colors[definition.Key]; ok {
 			definition.ValueColors = c

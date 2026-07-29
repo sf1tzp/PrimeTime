@@ -65,6 +65,17 @@ func (r *ResolverForTimeSpan) ReplaceTimeSpanLabels(ctx context.Context, fromExt
 		}
 	}
 
+	// Bump the sync timestamp of every span carrying either key, so the
+	// rewrite reaches syncing devices. Conservatively over-broad (some
+	// bumped spans may be unchanged); re-delivery is harmless.
+	if err := tx.Model(new(model.TimeSpan)).
+		Where("user_id = ?", userID).
+		Where("id IN (SELECT time_span_id FROM time_span_tags WHERE key IN (?, ?))", from.Key, to.Key).
+		Update("updated_at_utc", syncNow()).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
 	commit := tx.Commit()
 
 	return nil, commit.Error

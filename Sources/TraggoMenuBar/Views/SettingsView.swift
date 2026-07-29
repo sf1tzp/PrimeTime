@@ -9,109 +9,134 @@ struct GeneralSettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var username = ""
     @State private var password = ""
+    @State private var syncURL = ""
+    @State private var syncUsername = ""
+    @State private var syncPassword = ""
 
     var body: some View {
         @Bindable var model = model
         Form {
             Section("Storage") {
-                // In demo mode the picker disappears entirely: the session is
-                // pinned to the demo store, and this note is the mode's one
-                // visible indicator (kept out of the popover so screenshots
-                // include it only deliberately).
+                // In demo mode the section is pinned to the demo store, and
+                // this note is the mode's one visible indicator (kept out of
+                // the popover so screenshots include it only deliberately).
                 if model.isDemo {
                     Label("Demo mode", systemImage: "sparkles")
                     Text("Seeded sample data, regenerated on every demo launch. Your real database and settings are untouched — quit and relaunch without PRIMETIME_DEMO to get back to them.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    if let path = model.localDatabasePath {
-                        Text(path)
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                    }
                 } else {
-                    storagePicker
+                    Text("Everything lives in a local database — no server, no account needed. Connect a sync server below to share your data across Macs.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let path = model.localDatabasePath {
+                    Text(path)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
                 }
             }
-            if model.backendKind == .local {
+            // A demo must never reach a real server: no sync, no import.
+            if !model.isDemo {
+                syncSection
                 importSection
-            }
-            if model.backendKind == .traggo {
-                serverSections
             }
             menuAndTagSections
         }
         .formStyle(.grouped)
     }
 
-    @ViewBuilder
-    private var storagePicker: some View {
-        @Bindable var model = model
-        Picker("Keep data", selection: $model.backendKind) {
-            Text("On this Mac").tag(BackendKind.local)
-            Text("On a Traggo server").tag(BackendKind.traggo)
-        }
-        .pickerStyle(.segmented)
-        if model.backendKind == .local {
-            Text("Everything lives in a local database — no server, no account. Connect to a Traggo server here if you have one; each choice keeps its own data.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            if let path = model.localDatabasePath {
-                Text(path)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-            }
-        } else {
-            Text("Timespans and tag colours live on the server; tag sets and value colours stay on this Mac. Switching back to local storage keeps both sets of data intact.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text("To copy this server’s history into the local database, switch to “On this Mac” and use Import from Traggo.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-    }
+    // MARK: Sync server (#33)
 
+    /// Connect-to-sync-server flow, and the connection's status once made.
+    /// Wording stays product-neutral ("sync server") — the app's own rename
+    /// is #34.
     @ViewBuilder
-    private var serverSections: some View {
+    private var syncSection: some View {
         @Bindable var model = model
-        Section("Server") {
-            TextField("Server URL", text: $model.serverURL)
-            TextField("Device name", text: $model.deviceName)
-                .help("Shows up under Devices in Traggo, so you can revoke this app.")
-        }
-        Section("Account") {
-            if let user = model.user {
+        Section("Sync") {
+            if let engine = model.syncEngine, let server = model.syncServer {
+                LabeledContent("Server", value: server.url)
+                LabeledContent("Account", value: server.userName)
                 LabeledContent("Status") {
-                    Label("Connected", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                    switch engine.status {
+                    case .syncing:
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text("Syncing…")
+                        }
+                    case .idle:
+                        Label(lastSyncedText(engine.lastSyncedAt),
+                              systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    case .error:
+                        Label("Offline — changes will sync when the server is reachable",
+                              systemImage: "exclamationmark.arrow.circlepath")
+                            .foregroundStyle(.orange)
+                    }
                 }
-                LabeledContent("Signed in as", value: user.name)
-                Button("Log out", role: .destructive) { model.logout() }
-            } else {
-                // The sign-in form, demoted here from the popover. The
-                // password lives only in local @State and is cleared
-                // as soon as a login attempt finishes.
-                TextField("Username", text: $username)
-                    .autocorrectionDisabled()
-                SecureField("Password", text: $password)
-                    .onSubmit(submit)
+                if case .error(let message) = engine.status {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                }
                 HStack {
-                    if model.isBusy {
+                    Button("Sync now") { Task { await engine.syncNow() } }
+                        .disabled(engine.status == .syncing)
+                    Spacer()
+                    Button("Disconnect", role: .destructive) {
+                        model.disconnectSyncServer()
+                    }
+                }
+                Text("Everything syncs: timespans, tag keys and colours, tag sets, and the settings below. Edits made offline catch up on the next sync.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Optional: connect a sync server to share timespans, tag sets, and colours across your Macs. Everything keeps working offline; changes sync in the background.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextField("Server URL", text: $syncURL)
+                    .autocorrectionDisabled()
+                TextField("Username", text: $syncUsername)
+                    .autocorrectionDisabled()
+                SecureField("Password", text: $syncPassword)
+                    .onSubmit(connect)
+                TextField("Device name", text: $model.deviceName)
+                    .help("How this Mac appears in the server's device list, so you can revoke it later.")
+                HStack {
+                    if model.isConnectingSync {
                         ProgressView().controlSize(.small)
                     }
                     Spacer()
-                    Button("Sign in", action: submit)
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(username.isEmpty || password.isEmpty || model.isBusy)
+                    Button("Connect", action: connect)
+                        .disabled(syncURL.isEmpty || syncUsername.isEmpty
+                            || syncPassword.isEmpty || model.isConnectingSync)
                 }
-                if let error = model.errorMessage {
+                if let error = model.syncConnectError {
                     Text(error)
                         .font(.caption)
                         .foregroundStyle(.red)
                         .lineLimit(3)
                 }
             }
+        }
+    }
+
+    private func lastSyncedText(_ date: Date?) -> String {
+        guard let date else { return "Connected" }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return "Synced \(formatter.localizedString(for: date, relativeTo: Date()))"
+    }
+
+    private func connect() {
+        guard !syncURL.isEmpty, !syncUsername.isEmpty, !syncPassword.isEmpty else { return }
+        Task {
+            await model.connectSyncServer(url: syncURL, username: syncUsername,
+                                          password: syncPassword)
+            syncPassword = ""   // never keep the password around
         }
     }
 
@@ -145,19 +170,11 @@ struct GeneralSettingsView: View {
         }
     }
 
-    private func submit() {
-        guard !username.isEmpty, !password.isEmpty else { return }
-        Task {
-            await model.login(username: username, password: password)
-            password = ""   // never keep the password around
-        }
-    }
-
-    // MARK: Import from traggo (#30, local mode only)
+    // MARK: Import from traggo (#30)
 
     /// The one-shot importer's surface. Reuses the saved traggo session when
     /// one exists; otherwise asks for a one-off sign-in whose token is kept,
-    /// so re-runs (and a later switch to traggo mode) are already signed in.
+    /// so re-runs are already signed in.
     private var importSection: some View {
         @Bindable var model = model
         return Section("Import from Traggo") {
@@ -338,20 +355,13 @@ struct TagSetDetailView: View {
         .formStyle(.grouped)
     }
 
-    /// In traggo mode the key/value colour split doubles as a server/local
-    /// split, which is worth calling out; in local mode both live in the same
-    /// database and the story is just "per pair" vs "per key".
+    /// Key and value colours both live in the local database (and follow the
+    /// user across Macs once a sync server is connected), so the story is
+    /// just "per pair" vs "per key".
     private var colorCaption: String {
-        switch (model.colorTagsByValue, model.backendKind) {
-        case (true, .traggo):
-            "Colours are saved per key: value pair on this Mac and override the key’s server colour. Right-click a swatch to go back to the key colour."
-        case (true, .local):
-            "Colours are saved per key: value pair and override the key’s colour. Right-click a swatch to go back to the key colour."
-        case (false, .traggo):
-            "Colours are saved per tag key on the server, so recolouring a key here also changes it in every other tag set that uses it."
-        case (false, .local):
-            "Colours are saved per tag key, so recolouring a key here also changes it in every other tag set that uses it."
-        }
+        model.colorTagsByValue
+            ? "Colours are saved per key: value pair and override the key’s colour. Right-click a swatch to go back to the key colour."
+            : "Colours are saved per tag key, so recolouring a key here also changes it in every other tag set that uses it."
     }
 }
 

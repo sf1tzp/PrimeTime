@@ -7,26 +7,36 @@ import GRDB
 // "tag" — a schema is the one place a rename would churn data, so it's born
 // with the final words. `LabelDefinition` persists directly (it *is* its row);
 // `TimeSpan` doesn't, because its labels live in a child table, so a pair of
-// private row types bridges it.
+// row types bridges it. Row types are internal (not private) so the sync
+// store surface (SyncStore.swift) shares them.
 
 extension LabelDefinition: FetchableRecord, PersistableRecord {
     static var databaseTableName: String { "label_definition" }
 }
 
-/// One `time_span` row — the span without its labels.
-private struct TimeSpanRow: Codable, FetchableRecord, MutablePersistableRecord {
+/// One `time_span` row — the span without its labels. `dirty`/`modifiedAt`
+/// are sync metadata (v3-sync): dirty means "not known to be on the sync
+/// server" — rows are born dirty — and `modifiedAt` is the local wall-clock
+/// time of the last local edit, this record's side of last-writer-wins.
+struct TimeSpanRow: Codable, FetchableRecord, MutablePersistableRecord {
     static let databaseTableName = "time_span"
     var id: Int64?
     var start: Date
     var end: Date?     // NULL = currently running
     var note: String
+    var dirty = true
+    var modifiedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id, start, end, note, dirty, modifiedAt = "modified_at"
+    }
 
     mutating func didInsert(_ inserted: InsertionSuccess) { id = inserted.rowID }
 }
 
 /// One label on one span (`time_span_label`). Label order within a span is the
 /// insertion order (rowid), so a span's labels render the way they were saved.
-private struct SpanLabelRow: Codable, FetchableRecord, PersistableRecord {
+struct SpanLabelRow: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "time_span_label"
     var spanId: Int64
     var key: String
@@ -42,7 +52,7 @@ private struct SpanLabelRow: Codable, FetchableRecord, PersistableRecord {
 /// local row it landed in. This is what makes the importer idempotent — a
 /// re-run finds the mapping and upserts — and it rehearses phase 6's
 /// local-id ↔ server-id bookkeeping.
-private struct SpanOriginRow: Codable, FetchableRecord, PersistableRecord {
+struct SpanOriginRow: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "span_origin"
     var origin: String
     var originId: Int64
@@ -55,27 +65,41 @@ private struct SpanOriginRow: Codable, FetchableRecord, PersistableRecord {
 
 /// A per-`key: value` colour override (`value_color`) — first-class here,
 /// unlike traggo where it's a client-side overlay on top of per-key colours.
-private struct ValueColorRow: Codable, FetchableRecord, PersistableRecord {
+/// `dirty`/`modifiedAt` as on `TimeSpanRow`.
+struct ValueColorRow: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "value_color"
     var key: String
     var value: String
     var color: String
+    var dirty = true
+    var modifiedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case key, value, color, dirty, modifiedAt = "modified_at"
+    }
 }
 
 /// A saved tag set (`label_set`). `id` is the TagSet's UUID string so set
 /// identity survives the round trip (quick-start matching, pane selection).
-private struct LabelSetRow: Codable, FetchableRecord, PersistableRecord {
+/// `dirty`/`modifiedAt` as on `TimeSpanRow`.
+struct LabelSetRow: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "label_set"
     var id: String
     var name: String
     var symbol: String?
     var position: Int
+    var dirty = true
+    var modifiedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, symbol, position, dirty, modifiedAt = "modified_at"
+    }
 }
 
 /// One member tag of a set (`label_set_member`), ordered by `position`.
 /// Key/value are stored as typed — un-normalised — matching what the legacy
 /// UserDefaults JSON kept; normalisation stays at the `TagSet.labels` boundary.
-private struct LabelSetMemberRow: Codable, FetchableRecord, PersistableRecord {
+struct LabelSetMemberRow: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "label_set_member"
     var setId: String
     var position: Int
@@ -198,8 +222,11 @@ final class LocalBackend: Backend {
         // One-time import of what used to be the app's only local persistence.
         // Running it as a migration gives the exactly-once semantics for free
         // (recorded in grdb_migrations, per database file). The legacy keys
-        // are copied, not cleared: traggo mode still reads them, so switching
-        // backends never loses the UserDefaults-era data.
+        // are copied, not cleared, so nothing regresses if the old build runs
+        // again. Inserts spell out the v1 columns because this migration runs
+        // before v3-sync adds the sync metadata columns the record types now
+        // carry; v3's defaults then mark these rows dirty like everything
+        // else.
         migrator.registerMigration("v1-import-user-defaults") { db in
             let sets: [TagSet]
             if let data = legacyPresets,
@@ -209,11 +236,22 @@ final class LocalBackend: Backend {
                 // Fresh install: seed the same samples first-run always had.
                 sets = TagSet.samples
             }
-            try insert(tagSets: sets, db)
+            for (position, set) in sets.enumerated() {
+                try db.execute(
+                    sql: "INSERT INTO label_set (id, name, symbol, position) VALUES (?, ?, ?, ?)",
+                    arguments: [set.id.uuidString, set.name, set.symbolName, position])
+                for (memberPosition, tag) in set.tags.enumerated() {
+                    try db.execute(
+                        sql: "INSERT INTO label_set_member (set_id, position, key, value) VALUES (?, ?, ?, ?)",
+                        arguments: [set.id.uuidString, memberPosition, tag.key, tag.value])
+                }
+            }
 
             for (composite, color) in legacyColors ?? [:] {
                 guard let (key, value) = ValueColorKey.split(composite) else { continue }
-                try ValueColorRow(key: key, value: value, color: color).insert(db)
+                try db.execute(
+                    sql: "INSERT INTO value_color (key, value, color) VALUES (?, ?, ?)",
+                    arguments: [key, value, color])
             }
         }
 
@@ -228,6 +266,61 @@ final class LocalBackend: Backend {
                 t.column("span_id", .integer).notNull().unique()
                     .references("time_span", onDelete: .cascade)
                 t.primaryKey(["origin", "origin_id"])
+            }
+        }
+
+        // Sync metadata (#33) — the migration the v1 schema left room for.
+        // Every syncable table gets a dirty flag ("not known to be on the
+        // sync server"; existing rows are born dirty because nothing that
+        // predates this migration was ever pushed) and modified_at, the
+        // local wall-clock time of the last local edit — this store's side
+        // of last-writer-wins. Identity and deletions live in side tables,
+        // the span_origin idea graduated: sync_map pairs a local id with
+        // its id on the connected server, sync_tombstone remembers local
+        // deletions until they are pushed, and sync_server is the single
+        // row that *is* the connection (URL, account, pull checkpoint) —
+        // connected-ness is a property of the store, not a separate
+        // backend. The device token lives in the Keychain, never here.
+        migrator.registerMigration("v3-sync") { db in
+            for table in ["time_span", "label_definition", "value_color", "label_set"] {
+                try db.alter(table: table) { t in
+                    t.add(column: "dirty", .boolean).notNull().defaults(to: true)
+                    t.add(column: "modified_at", .datetime)
+                }
+            }
+            try db.create(table: "sync_server") { t in
+                t.column("id", .integer).primaryKey().check { $0 == 1 }
+                t.column("url", .text).notNull()
+                t.column("user_id", .integer).notNull()
+                t.column("user_name", .text).notNull()
+                // False after a disconnect: syncing stops but mappings and
+                // clean/dirty state survive, so reconnecting to the same
+                // server resumes instead of duplicating everything.
+                t.column("active", .boolean).notNull().defaults(to: true)
+                // The timespan delta-feed checkpoint: the last pulled
+                // record's (updatedAt, id) — see docs/api-v1.md "Sync".
+                t.column("checkpoint", .datetime)
+                t.column("checkpoint_after_id", .integer).notNull().defaults(to: 0)
+                // Preference sync metadata rides here because the two
+                // preference *values* live in UserDefaults, not this file.
+                t.column("prefs_dirty", .boolean).notNull().defaults(to: true)
+                t.column("prefs_modified_at", .datetime)
+                t.column("last_synced_at", .datetime)
+            }
+            try db.create(table: "sync_map") { t in
+                t.column("entity", .text).notNull()    // SyncEntity raw value
+                t.column("local_id", .text).notNull()  // span rowid / set UUID
+                t.column("server_id", .integer).notNull()
+                t.primaryKey(["entity", "local_id"])
+                t.uniqueKey(["entity", "server_id"])
+            }
+            try db.create(table: "sync_tombstone") { t in
+                t.column("entity", .text).notNull()
+                // The server-side identity to delete: a server id for spans
+                // and label sets, a key␟value composite for value colours.
+                t.column("target", .text).notNull()
+                t.column("deleted_at", .datetime).notNull()
+                t.primaryKey(["entity", "target"])
             }
         }
 
@@ -249,15 +342,19 @@ final class LocalBackend: Backend {
     func createLabelDefinition(key: String, color: String) async throws {
         try await dbQueue.write { db in
             // A duplicate insert throws (unique key), matching traggo's
-            // create-vs-update split that callers already navigate.
+            // create-vs-update split that callers already navigate. The
+            // insert only names the domain columns, so `dirty` takes its
+            // born-dirty default; stamp the local edit time separately.
             try LabelDefinition(key: key, color: color).insert(db)
+            try db.execute(sql: "UPDATE label_definition SET modified_at = ? WHERE key = ?",
+                           arguments: [Date(), key])
         }
     }
 
     func updateLabelDefinition(key: String, color: String) async throws {
         try await dbQueue.write { db in
-            try db.execute(sql: "UPDATE label_definition SET color = ? WHERE key = ?",
-                           arguments: [color, key])
+            try db.execute(sql: "UPDATE label_definition SET color = ?, dirty = 1, modified_at = ? WHERE key = ?",
+                           arguments: [color, Date(), key])
             guard db.changesCount > 0 else {
                 throw Error(message: "No such tag key: \(key)")
             }
@@ -278,7 +375,8 @@ final class LocalBackend: Backend {
 
     func startTimeSpan(start: Date, labels: [SpanLabel], note: String) async throws -> TimeSpan {
         try await dbQueue.write { db in
-            var row = TimeSpanRow(id: nil, start: start, end: nil, note: note)
+            var row = TimeSpanRow(id: nil, start: start, end: nil, note: note,
+                                  dirty: true, modifiedAt: Date())
             try row.insert(db)
             try Self.insert(labels: labels, spanId: row.id!, db)
             return try Self.span(for: row, db)
@@ -293,6 +391,8 @@ final class LocalBackend: Backend {
             row.start = start
             row.end = end
             row.note = note
+            row.dirty = true
+            row.modifiedAt = Date()
             try row.update(db)
             // Labels are replaced wholesale — the protocol's "every field is
             // written" contract — which also renumbers their display order.
@@ -308,6 +408,8 @@ final class LocalBackend: Backend {
                 throw Error(message: "No such timespan: \(id)")
             }
             row.end = end
+            row.dirty = true
+            row.modifiedAt = Date()
             try row.update(db)
             return try Self.span(for: row, db)
         }
@@ -315,9 +417,13 @@ final class LocalBackend: Backend {
 
     func removeTimeSpan(id: Int) async throws {
         try await dbQueue.write { db in
-            guard try TimeSpanRow.deleteOne(db, key: Int64(id)) else {
+            guard try TimeSpanRow.exists(db, key: Int64(id)) else {
                 throw Error(message: "No such timespan: \(id)")
             }
+            // If the span is known to the sync server, remember the deletion
+            // until it's pushed; the mapping row itself is retired with it.
+            try Self.tombstoneIfMapped(entity: .span, localId: String(id), db)
+            _ = try TimeSpanRow.deleteOne(db, key: Int64(id))
             // time_span_label rows follow via ON DELETE CASCADE.
         }
     }
@@ -374,13 +480,60 @@ final class LocalBackend: Backend {
         }
     }
 
-    /// Replace-all in one transaction — the same snapshot semantics as the
-    /// UserDefaults JSON blob this supersedes, and position renumbering falls
-    /// out for free.
+    /// Snapshot save with per-row diffing: the caller still hands over the
+    /// whole list (the semantics the UserDefaults JSON blob had), but rows
+    /// are updated in place so sync metadata survives — only sets that
+    /// actually changed go dirty, and a set that disappears leaves a
+    /// tombstone if the sync server knows it. Members are rewritten
+    /// wholesale (they carry no metadata of their own).
     func saveTagSets(_ sets: [TagSet]) throws {
         try dbQueue.write { db in
-            try LabelSetRow.deleteAll(db)   // members cascade
-            try Self.insert(tagSets: sets, db)
+            let now = Date()
+            let existing = try LabelSetRow.fetchAll(db)
+            let members = try LabelSetMemberRow.order(Column("position")).fetchAll(db)
+            let byId = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+            let membersBySet = Dictionary(grouping: members, by: \.setId)
+            var kept = Set<String>()
+
+            for (position, set) in sets.enumerated() {
+                let id = set.id.uuidString
+                kept.insert(id)
+                let newMembers = set.tags.enumerated().map { index, tag in
+                    LabelSetMemberRow(setId: id, position: index,
+                                      key: tag.key, value: tag.value)
+                }
+                if var row = byId[id] {
+                    let oldMembers = membersBySet[id] ?? []
+                    let changed = row.name != set.name
+                        || row.symbol != set.symbolName
+                        || row.position != position
+                        || oldMembers.count != newMembers.count
+                        || !zip(oldMembers, newMembers).allSatisfy {
+                            $0.key == $1.key && $0.value == $1.value
+                        }
+                    row.name = set.name
+                    row.symbol = set.symbolName
+                    row.position = position
+                    if changed {
+                        row.dirty = true
+                        row.modifiedAt = now
+                    }
+                    try row.update(db)
+                } else {
+                    try LabelSetRow(id: id, name: set.name, symbol: set.symbolName,
+                                    position: position, dirty: true,
+                                    modifiedAt: now).insert(db)
+                }
+                try LabelSetMemberRow.filter(Column("set_id") == id).deleteAll(db)
+                for member in newMembers {
+                    try member.insert(db)
+                }
+            }
+
+            for row in existing where !kept.contains(row.id) {
+                try Self.tombstoneIfMapped(entity: .labelSet, localId: row.id, db)
+                _ = try row.delete(db)   // members cascade
+            }
         }
     }
 
@@ -396,12 +549,43 @@ final class LocalBackend: Backend {
         }
     }
 
+    /// Snapshot save with per-row diffing, like `saveTagSets`: unchanged
+    /// overrides keep their sync metadata, removed ones leave a tombstone
+    /// when a sync server is connected (value colours have no id mapping —
+    /// their key␟value pair *is* the identity on both sides).
     func saveValueColors(_ colors: [String: String]) throws {
         try dbQueue.write { db in
-            try ValueColorRow.deleteAll(db)
+            let now = Date()
+            let existing = try ValueColorRow.fetchAll(db)
+            let byComposite = Dictionary(uniqueKeysWithValues: existing.map {
+                (ValueColorKey.join($0.key, $0.value), $0)
+            })
+            var kept = Set<String>()
+
             for (composite, color) in colors {
                 guard let (key, value) = ValueColorKey.split(composite) else { continue }
-                try ValueColorRow(key: key, value: value, color: color).insert(db)
+                kept.insert(composite)
+                if var row = byComposite[composite] {
+                    if row.color != color {
+                        row.color = color
+                        row.dirty = true
+                        row.modifiedAt = now
+                        try row.update(db)
+                    }
+                } else {
+                    try ValueColorRow(key: key, value: value, color: color,
+                                      dirty: true, modifiedAt: now).insert(db)
+                }
+            }
+
+            let connected = try Self.hasSyncServer(db)
+            for row in existing where !kept.contains(ValueColorKey.join(row.key, row.value)) {
+                if connected {
+                    try Self.tombstone(entity: .valueColor,
+                                       target: ValueColorKey.join(row.key, row.value),
+                                       at: now, db)
+                }
+                _ = try row.delete(db)
             }
         }
     }
@@ -451,10 +635,16 @@ final class LocalBackend: Backend {
                 if let existing = try LabelDefinition.fetchOne(db, key: definition.key) {
                     if existing.color != definition.color {
                         try definition.update(db)
+                        try db.execute(
+                            sql: "UPDATE label_definition SET dirty = 1, modified_at = ? WHERE key = ?",
+                            arguments: [Date(), definition.key])
                         recolored += 1
                     }
                 } else {
                     try definition.insert(db)
+                    try db.execute(
+                        sql: "UPDATE label_definition SET modified_at = ? WHERE key = ?",
+                        arguments: [Date(), definition.key])
                     created += 1
                 }
             }
@@ -481,13 +671,18 @@ final class LocalBackend: Backend {
                     row.start = span.start
                     row.end = span.end
                     row.note = span.note
+                    // Imported data is local data: it still has to reach the
+                    // sync server, so imports dirty the row like any edit.
+                    row.dirty = true
+                    row.modifiedAt = Date()
                     try row.update(db)
                     try SpanLabelRow.filter(Column("span_id") == mapping.spanId).deleteAll(db)
                     try Self.insert(labels: span.labels, spanId: mapping.spanId, db)
                     updated += 1
                 } else {
                     var row = TimeSpanRow(id: nil, start: span.start,
-                                          end: span.end, note: span.note)
+                                          end: span.end, note: span.note,
+                                          dirty: true, modifiedAt: Date())
                     try row.insert(db)
                     try Self.insert(labels: span.labels, spanId: row.id!, db)
                     try SpanOriginRow(origin: origin, originId: Int64(span.id),
@@ -501,30 +696,19 @@ final class LocalBackend: Backend {
 
     // MARK: Shared row plumbing
 
-    private static func insert(tagSets sets: [TagSet], _ db: Database) throws {
-        for (position, set) in sets.enumerated() {
-            try LabelSetRow(id: set.id.uuidString, name: set.name,
-                            symbol: set.symbolName, position: position).insert(db)
-            for (memberPosition, tag) in set.tags.enumerated() {
-                try LabelSetMemberRow(setId: set.id.uuidString, position: memberPosition,
-                                      key: tag.key, value: tag.value).insert(db)
-            }
-        }
-    }
-
-    private static func insert(labels: [SpanLabel], spanId: Int64, _ db: Database) throws {
+    static func insert(labels: [SpanLabel], spanId: Int64, _ db: Database) throws {
         for label in labels {
             try SpanLabelRow(spanId: spanId, key: label.key, value: label.value).insert(db)
         }
     }
 
-    private static func span(for row: TimeSpanRow, _ db: Database) throws -> TimeSpan {
+    static func span(for row: TimeSpanRow, _ db: Database) throws -> TimeSpan {
         try spans(for: [row], db).first!
     }
 
     /// Assemble domain `TimeSpan`s: one labels query for the whole page rather
     /// than one per span.
-    private static func spans(for rows: [TimeSpanRow], _ db: Database) throws -> [TimeSpan] {
+    static func spans(for rows: [TimeSpanRow], _ db: Database) throws -> [TimeSpan] {
         guard !rows.isEmpty else { return [] }
         let ids = rows.compactMap(\.id)
         let labelRows = try SpanLabelRow

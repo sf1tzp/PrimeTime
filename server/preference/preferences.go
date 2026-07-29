@@ -8,12 +8,17 @@ package preference
 
 import (
 	"context"
+	"time"
 
 	"github.com/jinzhu/gorm"
 	"primetime.tools/server/auth"
 	"primetime.tools/server/generated/gqlmodel"
 	"primetime.tools/server/model"
 )
+
+// syncNow is the clock for sync timestamps (UpdatedAtUTC): whole seconds so
+// values round-trip through RFC3339 exactly. Overridable in tests.
+var syncNow = func() time.Time { return time.Now().UTC().Truncate(time.Second) }
 
 // ResolverForPreferences resolves user preference things.
 type ResolverForPreferences struct {
@@ -44,6 +49,7 @@ func (r *ResolverForPreferences) SetUserPreferences(ctx context.Context, input g
 		UserID:            userID,
 		ColorByValue:      input.ColorByValue,
 		MenuLabelSetLimit: input.MenuLabelSetLimit,
+		UpdatedAtUTC:      syncNow(),
 	}
 
 	existing := model.UserPreferences{}
@@ -57,6 +63,7 @@ func (r *ResolverForPreferences) SetUserPreferences(ctx context.Context, input g
 			Updates(map[string]interface{}{
 				"color_by_value":       input.ColorByValue,
 				"menu_label_set_limit": input.MenuLabelSetLimit,
+				"updated_at_utc":       preferences.UpdatedAtUTC,
 			}).Error; err != nil {
 			return nil, err
 		}
@@ -69,5 +76,6 @@ func toExternal(preferences model.UserPreferences) *gqlmodel.UserPreferences {
 	return &gqlmodel.UserPreferences{
 		ColorByValue:      preferences.ColorByValue,
 		MenuLabelSetLimit: preferences.MenuLabelSetLimit,
+		UpdatedAt:         model.Time(preferences.UpdatedAtUTC),
 	}
 }

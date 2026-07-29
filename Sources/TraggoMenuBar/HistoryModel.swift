@@ -182,6 +182,7 @@ final class HistoryModel {
             errorMessage = nil
             await reload()
             await app.refresh()   // the edit may have touched the running timer
+            app.syncSoon()
             return true
         } catch {
             errorMessage = error.localizedDescription
@@ -196,6 +197,7 @@ final class HistoryModel {
             errorMessage = nil
             await reload()
             await app.refresh()
+            app.syncSoon()
         } catch {
             errorMessage = error.localizedDescription
         }

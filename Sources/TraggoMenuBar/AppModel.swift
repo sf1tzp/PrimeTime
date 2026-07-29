@@ -3,15 +3,16 @@ import Observation
 import SwiftUI
 import AppKit
 
-/// Where the app's data lives: the local SQLite store (the default — no
-/// server, no login) or a traggo server. Settings switches between them; each
-/// keeps its own data, nothing syncs (that's phase 6).
-enum BackendKind: String, CaseIterable {
-    case local, traggo
-}
-
 /// The whole app's state and behaviour. `@MainActor` because everything here
 /// drives the UI; `@Observable` so SwiftUI views re-render when it changes.
+///
+/// Storage model (#33): the local SQLite store is the *only* backend — every
+/// read and write goes through it, no server required. Connecting a sync
+/// server doesn't switch backends; it attaches a `SyncEngine` that
+/// reconciles the same store with the server in the background, which is
+/// what turns tag sets, colours, and preferences from per-Mac into per-user.
+/// The old live-traggo mode is gone; `TraggoClient` survives only as the
+/// importer's source.
 @MainActor
 @Observable
 final class AppModel {
@@ -29,33 +30,17 @@ final class AppModel {
 
     // MARK: Persisted configuration
 
-    /// The active backend choice. Switching tears down the old backend's
-    /// runtime state (timers, history, scans — span ids from one store are
-    /// meaningless in the other) and boots the new one.
-    var backendKind: BackendKind {
-        didSet {
-            guard backendKind != oldValue else { return }
-            defaults.set(backendKind.rawValue, forKey: Keys.backendKind)
-            switchBackend()
-        }
-    }
-
+    /// The traggo server URL — import-only now: the one-shot importer's
+    /// source. (The sync server's URL lives in the store's sync_server row.)
     var serverURL: String {
-        didSet {
-            defaults.set(serverURL, forKey: Keys.serverURL)
-            rebuildClient()
-        }
+        didSet { defaults.set(serverURL, forKey: Keys.serverURL) }
     }
 
     var deviceName: String {
         didSet { defaults.set(deviceName, forKey: Keys.deviceName) }
     }
 
-    /// The saved tag sets. In-memory shape is the same whichever backend is
-    /// active; persistence routes per backend — the local store's database in
-    /// local mode, the legacy UserDefaults JSON in traggo mode (unchanged, so
-    /// nothing regresses for server users). Switching backends reloads from
-    /// the newly active store.
+    /// The saved tag sets, persisted in the local store.
     var tagSets: [TagSet] {
         didSet { persistTagSets() }
     }
@@ -65,24 +50,30 @@ final class AppModel {
     /// can look different. On by default — differentiating spans by value is
     /// PrimeTime's headline improvement over vanilla traggo, with key colours
     /// remaining useful for navigating Tag Review; an explicitly stored false
-    /// (a user who turned it off) is respected.
+    /// (a user who turned it off) is respected. Syncs as a user preference
+    /// when a server is connected.
     var colorTagsByValue: Bool {
-        didSet { defaults.set(colorTagsByValue, forKey: Keys.colorTagsByValue) }
+        didSet {
+            defaults.set(colorTagsByValue, forKey: Keys.colorTagsByValue)
+            preferenceChanged()
+        }
     }
 
     /// Per-`key: value` colour overrides (hex strings), keyed by
-    /// `ValueColorKey.join`. Traggo only stores colours per key, so in traggo
-    /// mode these are a client-side convenience (UserDefaults); in local mode
-    /// they're first-class rows in the same database as everything else.
+    /// `ValueColorKey.join` — first-class rows in the local store, and
+    /// per-user (not per-Mac) once a sync server is connected.
     var valueColors: [String: String] {
         didSet { persistValueColors() }
     }
 
     /// How many tag sets the popover's Quick start list shows, in tag-set
     /// order; 0 means all. Keeps the popover a quick-glance surface when many
-    /// sets are saved.
+    /// sets are saved. Syncs as a user preference when a server is connected.
     var menuTagSetLimit: Int {
-        didSet { defaults.set(menuTagSetLimit, forKey: Keys.menuTagSetLimit) }
+        didSet {
+            defaults.set(menuTagSetLimit, forKey: Keys.menuTagSetLimit)
+            preferenceChanged()
+        }
     }
 
     // MARK: Runtime state (observed by the UI)
@@ -104,9 +95,9 @@ final class AppModel {
     /// Updated once per second while a timer runs so elapsed labels tick.
     var currentDate = Date()
 
-    /// Whether the active backend is ready to serve data. The local store is
-    /// ready as soon as it opens (its `user` is set synchronously); the traggo
-    /// backend needs a validated login.
+    /// Whether the store is ready to serve data — as soon as it opens (its
+    /// `user` is set synchronously); false only if opening the database
+    /// failed.
     var isReady: Bool { user != nil }
 
     /// History (log / calendar / charts) state, split out so this class stays
@@ -118,43 +109,34 @@ final class AppModel {
 
     // MARK: Private, non-observed
 
-    /// The traggo session token. Not observation-ignored: the import surface's
+    /// The saved traggo session token — import-only: it lets a re-import skip
+    /// the credential prompt. Not observation-ignored: the import surface's
     /// `hasTraggoSession` reads it, and must react when a one-off login saves
     /// one or an expired one is dropped.
     private var token: String?
-    /// The concrete client, kept for the session operations (login) that the
-    /// `Backend` protocol deliberately leaves out. Data paths go through `api`.
-    @ObservationIgnored private var client: TraggoClient?
-    /// The local store, opened lazily on first local-mode activation and kept
-    /// open for the app's lifetime (switching to traggo doesn't close it — a
-    /// switch back is instant and the file is single-user anyway).
+    /// The local store — the only backend. Opened at launch and kept open for
+    /// the app's lifetime.
     @ObservationIgnored private var localStore: LocalBackend?
-    /// Suppresses the tagSets/valueColors persistence observers while they're
-    /// being *loaded* from a store, so restoring state never echoes a write.
+    /// Suppresses the tagSets/valueColors/preference persistence observers
+    /// while they're being *loaded* (from the store or from a sync pull), so
+    /// restoring state never echoes a write or re-dirties a synced record.
     @ObservationIgnored private var isRestoringState = false
 
-    /// The current backend, for this model and its siblings (see
-    /// `HistoryModel`). Computed so a backend switch (or a traggo client
-    /// rebuild on URL/token change) is picked up everywhere at once.
-    var api: (any Backend)? {
-        switch backendKind {
-        case .local: localStore
-        case .traggo: client
-        }
-    }
+    /// The storage seam, for this model and its siblings (see
+    /// `HistoryModel`). Always the local store; the protocol survives
+    /// because the importer still consumes arbitrary backends.
+    var api: (any Backend)? { localStore }
 
     /// Where the local database lives, for display in Settings.
     var localDatabasePath: String? {
         localStore?.databaseURL?.path
     }
-    @ObservationIgnored private var pollTask: Task<Void, Never>?
     @ObservationIgnored private var tickTimer: Timer?
     /// Debounce timers for per-key colour writes, so dragging in the colour
     /// picker doesn't fire an `updateTag` on every intermediate value.
     @ObservationIgnored private var colorTasks: [String: Task<Void, Never>] = [:]
 
     private enum Keys {
-        static let backendKind = "backendKind"
         static let serverURL = "serverURL"
         static let deviceName = "deviceName"
         // Stored under the legacy "presets" key so existing saved sets survive.
@@ -162,6 +144,10 @@ final class AppModel {
         static let colorTagsByValue = "colorTagsByValue"
         static let valueColors = "valueColors"
         static let menuTagSetLimit = "menuTagSetLimit"
+        /// Keychain accounts: the sync server's device token, and the legacy
+        /// traggo token the importer still reuses.
+        static let syncToken = "sync-token"
+        static let traggoToken = "token"
     }
 
     // MARK: Lifecycle
@@ -179,33 +165,16 @@ final class AppModel {
             ? 5 : defaults.integer(forKey: Keys.menuTagSetLimit)  // 0 = all
         // Into a local first: `token` is observation-tracked, and a tracked
         // property can't be *read* before the whole object is initialised.
-        // A demo never reads the real token: local mode is forced below, and
-        // the token could otherwise flow into a traggo session.
-        let savedToken = demo ? nil : Keychain.get(account: "token")
-        token = savedToken
-        tagSets = []          // loaded per-backend by activateBackend()
+        // A demo never reads the real token — nothing in a demo may reach a
+        // real server.
+        token = demo ? nil : Keychain.get(account: Keys.traggoToken)
+        tagSets = []          // loaded by activateStore()
         valueColors = [:]
 
-        if demo {
-            // Forced local against the demo store, never persisted; Settings
-            // hides the storage picker so a demo can't reach traggo at all.
-            backendKind = .local
-        } else if let raw = defaults.string(forKey: Keys.backendKind),
-                  let kind = BackendKind(rawValue: raw) {
-            // Local is the default for fresh installs. An install that
-            // predates the choice (no stored kind) but has a traggo token
-            // keeps its traggo behaviour — and the inference is persisted so
-            // a later logout can't silently flip the mode.
-            backendKind = kind
-        } else {
-            backendKind = savedToken != nil ? .traggo : .local
-            defaults.set(backendKind.rawValue, forKey: Keys.backendKind)
-        }
-
-        rebuildClient()
-        activateBackend()
+        activateStore()
+        startSyncIfConfigured()
         startTicking()
-        Task { await bootstrap() }
+        Task { await refresh() }
     }
 
     /// Demo sessions read and write a scratch suite, wiped on each launch, so
@@ -219,127 +188,144 @@ final class AppModel {
         return defaults
     }
 
-    private func rebuildClient() {
-        guard let url = URL(string: serverURL) else {
-            client = nil
-            return
-        }
-        client = TraggoClient(baseURL: url, token: token)
-    }
-
-    /// Point the model at the active backend's stores: open the local database
-    /// (running its migrations, including the one-time UserDefaults import) or
-    /// fall back to the legacy UserDefaults data for traggo mode, and set the
-    /// synchronous parts of readiness.
-    private func activateBackend() {
+    /// Open the store (running its migrations, including the one-time
+    /// UserDefaults import) and load the state it owns.
+    private func activateStore() {
         isRestoringState = true
         defer { isRestoringState = false }
-        switch backendKind {
-        case .local:
-            if localStore == nil {
-                do {
-                    // Demo mode rebuilds and reseeds demo.sqlite instead —
-                    // the real database is never even opened.
-                    localStore = isDemo ? try LocalBackend.demo() : try LocalBackend()
-                } catch {
-                    errorMessage = "Could not open the local database: \(error.localizedDescription)"
-                }
-            }
-            if let store = localStore {
-                tagSets = (try? store.loadTagSets()) ?? []
-                valueColors = (try? store.loadValueColors()) ?? [:]
-                user = LocalBackend.localUser   // no login; ready immediately
-            }
-        case .traggo:
-            tagSets = loadLegacyTagSets()
-            valueColors = defaults
-                .dictionary(forKey: Keys.valueColors) as? [String: String] ?? [:]
-            user = nil                          // until the session validates
-        }
-    }
-
-    /// Runtime part of a backend switch (the persisted choice is written by
-    /// `backendKind.didSet`): drop everything owned by the old backend, then
-    /// activate and boot the new one.
-    private func switchBackend() {
-        pollTask?.cancel()
-        pollTask = nil
-        user = nil
-        activeTimers = []
-        tagDefinitions = []
-        errorMessage = nil
-        history.reset()
-        review.reset()
-        activateBackend()
-        Task { await bootstrap() }
-    }
-
-    private func bootstrap() async {
-        switch backendKind {
-        case .local:
-            guard localStore != nil else { return }
-            await refresh()
-        case .traggo:
-            guard token != nil else { return }
-            await validateSession()
-        }
-    }
-
-    // MARK: Auth
-
-    private func validateSession() async {
-        guard let backend = api else { return }
         do {
-            if let user = try await backend.currentUser() {
-                self.user = user
-                startPolling()
-                await refresh()
-            } else {
-                logout() // token no longer valid
-            }
+            // Demo mode rebuilds and reseeds demo.sqlite instead —
+            // the real database is never even opened.
+            localStore = isDemo ? try LocalBackend.demo() : try LocalBackend()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "Could not open the local database: \(error.localizedDescription)"
+        }
+        if let store = localStore {
+            tagSets = (try? store.loadTagSets()) ?? []
+            valueColors = (try? store.loadValueColors()) ?? [:]
+            user = LocalBackend.localUser   // no login; ready immediately
         }
     }
 
-    func login(username: String, password: String) async {
-        guard let client else {
-            errorMessage = "Invalid server URL"
+    // MARK: Sync server (#33)
+
+    /// The engine reconciling the store with a connected sync server; nil
+    /// when no server is connected (or in demo mode — a demo never syncs).
+    var syncEngine: SyncEngine?
+    /// The connection row, mirrored from the store for Settings to display.
+    var syncServer: SyncServerRow?
+    var isConnectingSync = false
+    var syncConnectError: String?
+
+    /// Re-attach the engine for a connection that survives a relaunch: an
+    /// active sync_server row in the store plus the device token in the
+    /// Keychain.
+    private func startSyncIfConfigured() {
+        guard !isDemo, let store = localStore else { return }
+        syncServer = try? store.syncServer()
+        guard let row = syncServer, row.active,
+              let token = Keychain.get(account: Keys.syncToken),
+              let url = URL(string: row.url) else { return }
+        startSyncEngine(client: PrimeTimeClient(baseURL: url, token: token))
+        syncEngine?.kick(after: 1)
+    }
+
+    /// Mint a device token on the sync server, remember the connection, and
+    /// run the first reconciliation. The password is used once and never
+    /// stored; the token goes to the Keychain.
+    func connectSyncServer(url: String, username: String, password: String) async {
+        guard !isDemo, let store = localStore, !isConnectingSync else { return }
+        var normalized = url.trimmingCharacters(in: .whitespaces)
+        while normalized.hasSuffix("/") { normalized.removeLast() }
+        guard let serverURL = URL(string: normalized), serverURL.scheme != nil else {
+            syncConnectError = "Invalid server URL"
             return
         }
-        isBusy = true
-        defer { isBusy = false }
+        isConnectingSync = true
+        defer { isConnectingSync = false }
         do {
+            var client = PrimeTimeClient(baseURL: serverURL, token: nil)
             let result = try await client.login(username: username,
                                                 password: password,
                                                 deviceName: deviceName)
-            token = result.token
-            Keychain.set(result.token, account: "token")
-            rebuildClient()          // client now carries the token
-            user = result.user
-            errorMessage = nil
-            startPolling()
-            await refresh()
+            Keychain.set(result.token, account: Keys.syncToken)
+            try store.connectSyncServer(url: normalized, user: result.user)
+            syncServer = try? store.syncServer()
+            client.token = result.token
+            syncConnectError = nil
+            startSyncEngine(client: client)
+            await syncEngine?.syncNow()
         } catch {
-            errorMessage = error.localizedDescription
+            syncConnectError = error.localizedDescription
         }
     }
 
-    func logout() {
-        pollTask?.cancel()
-        token = nil
-        Keychain.delete(account: "token")
-        user = nil
-        activeTimers = []
-        tagDefinitions = []
-        rebuildClient()
+    /// Stop syncing. Local data, server-id mappings, and clean/dirty state
+    /// all stay, so reconnecting to the same server resumes instead of
+    /// duplicating.
+    func disconnectSyncServer() {
+        syncEngine?.stop()
+        syncEngine = nil
+        try? localStore?.disconnectSyncServer()
+        Keychain.delete(account: Keys.syncToken)
+        syncServer = try? localStore?.syncServer()
+    }
+
+    private func startSyncEngine(client: PrimeTimeClient) {
+        guard let store = localStore else { return }
+        let engine = SyncEngine(store: store, server: client)
+        engine.readPreferences = { [weak self] in
+            (self?.colorTagsByValue ?? true, self?.menuTagSetLimit ?? 5)
+        }
+        engine.applyPreferences = { [weak self] colorByValue, limit in
+            guard let self else { return }
+            self.isRestoringState = true
+            defer { self.isRestoringState = false }
+            self.colorTagsByValue = colorByValue
+            self.menuTagSetLimit = limit
+        }
+        engine.onLocalChange = { [weak self] in
+            guard let self else { return }
+            self.reloadFromStore()
+            Task {
+                await self.refresh()
+                await self.history.reloadIfLoaded()
+            }
+        }
+        engine.startPeriodicSync()
+        syncEngine = engine
+    }
+
+    /// A local mutation happened — reconcile soon. Called by every write
+    /// path here and in the sibling models; harmlessly does nothing when no
+    /// server is connected.
+    func syncSoon() {
+        syncEngine?.kick()
+    }
+
+    /// One of the two synced preferences changed by hand: stamp it dirty in
+    /// the store (a no-op until a server is connected) and reconcile soon.
+    private func preferenceChanged() {
+        guard !isRestoringState else { return }
+        try? localStore?.markPreferencesDirty()
+        syncSoon()
+    }
+
+    /// Re-read the state a sync pull may have rewritten (tag sets, value
+    /// colours) without echoing the loads back as writes.
+    private func reloadFromStore() {
+        guard let store = localStore else { return }
+        isRestoringState = true
+        defer { isRestoringState = false }
+        tagSets = (try? store.loadTagSets()) ?? []
+        valueColors = (try? store.loadValueColors()) ?? [:]
     }
 
     // MARK: Import from traggo (#30)
 
     /// Live state of the one-shot traggo import, observed by the Settings
-    /// pane. Errors are kept apart from `errorMessage` so the 30-second poll
-    /// can't overwrite a failed import's explanation.
+    /// pane. Errors are kept apart from `errorMessage` so a background
+    /// refresh can't overwrite a failed import's explanation.
     var isImporting = false
     /// Spans upserted so far, for progress while the import walks pages.
     var importedSpanCount = 0
@@ -350,21 +336,21 @@ final class AppModel {
     /// reuse it instead of asking for credentials.
     var hasTraggoSession: Bool { token != nil }
 
-    /// One-shot import of a traggo server's full history into the local store.
-    /// Pass credentials only when no saved session exists (or the saved one
-    /// expired): a successful one-off login keeps its token exactly as the
-    /// traggo-mode sign-in would, so re-runs — and a later switch to traggo
-    /// mode — are already signed in.
+    /// One-shot import of a traggo server's full history into the local
+    /// store — `TraggoClient`'s only remaining job. Pass credentials only
+    /// when no saved session exists (or the saved one expired): a successful
+    /// one-off login keeps its token so re-runs are already signed in.
     func importFromTraggo(username: String = "", password: String = "") async {
         guard !isImporting else { return }
         guard let store = localStore else {
             importError = "The local database isn't open."
             return
         }
-        guard var client else {
+        guard let url = URL(string: serverURL) else {
             importError = "Invalid server URL"
             return
         }
+        var client = TraggoClient(baseURL: url, token: token)
         isImporting = true
         importedSpanCount = 0
         importSummary = nil
@@ -376,15 +362,13 @@ final class AppModel {
                                                     password: password,
                                                     deviceName: deviceName)
                 token = result.token
-                Keychain.set(result.token, account: "token")
-                rebuildClient()
+                Keychain.set(result.token, account: Keys.traggoToken)
                 client.token = result.token
             } else if try await client.currentUser() == nil {
                 // The saved token is dead. Drop it — hasTraggoSession flips,
                 // so the credential fields appear next to this explanation.
                 token = nil
-                Keychain.delete(account: "token")
-                rebuildClient()
+                Keychain.delete(account: Keys.traggoToken)
                 importError = "The saved sign-in has expired — enter your username and password."
                 return
             }
@@ -400,9 +384,11 @@ final class AppModel {
             }
             importSummary = summary
             // Imported data is live state: running traggo timers now tick in
-            // the popover, and key colours reach every tag chip.
+            // the popover, and key colours reach every tag chip — and it has
+            // to reach a connected sync server like any other local write.
             await refresh()
             await history.reloadIfLoaded()
+            syncSoon()
         } catch {
             importError = error.localizedDescription
         }
@@ -446,6 +432,7 @@ final class AppModel {
             errorMessage = nil
             await refresh()
             await history.reloadIfLoaded()
+            syncSoon()
             return created
         } catch {
             errorMessage = error.localizedDescription
@@ -479,6 +466,7 @@ final class AppModel {
             replaceActiveTimer(with: updated)
             errorMessage = nil
             await history.reloadIfLoaded()
+            syncSoon()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -495,6 +483,7 @@ final class AppModel {
             errorMessage = nil
             await refresh()
             await history.reloadIfLoaded()
+            syncSoon()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -600,6 +589,7 @@ final class AppModel {
                 try await backend.createLabelDefinition(key: key, color: hex)
             }
             await refresh()   // pull the updated definitions back
+            syncSoon()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -622,17 +612,7 @@ final class AppModel {
             : String(format: "%d:%02d", minutes, secs)
     }
 
-    // MARK: Polling + ticking
-
-    private func startPolling() {
-        pollTask?.cancel()
-        pollTask = Task { [weak self] in
-            while !Task.isCancelled {
-                await self?.refresh()
-                try? await Task.sleep(for: .seconds(30))
-            }
-        }
-    }
+    // MARK: Ticking
 
     private func startTicking() {
         tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
@@ -644,37 +624,19 @@ final class AppModel {
         }
     }
 
-    // MARK: Tag-set + value-colour persistence (routed per backend)
-
-    private func loadLegacyTagSets() -> [TagSet] {
-        guard let data = defaults.data(forKey: Keys.tagSets),
-              let sets = try? JSONDecoder().decode([TagSet].self, from: data) else {
-            return TagSet.samples
-        }
-        return sets
-    }
+    // MARK: Tag-set + value-colour persistence
 
     private func persistTagSets() {
         guard !isRestoringState else { return }
-        switch backendKind {
-        case .local:
-            do { try localStore?.saveTagSets(tagSets) }
-            catch { errorMessage = error.localizedDescription }
-        case .traggo:
-            if let data = try? JSONEncoder().encode(tagSets) {
-                defaults.set(data, forKey: Keys.tagSets)
-            }
-        }
+        do { try localStore?.saveTagSets(tagSets) }
+        catch { errorMessage = error.localizedDescription }
+        syncSoon()
     }
 
     private func persistValueColors() {
         guard !isRestoringState else { return }
-        switch backendKind {
-        case .local:
-            do { try localStore?.saveValueColors(valueColors) }
-            catch { errorMessage = error.localizedDescription }
-        case .traggo:
-            defaults.set(valueColors, forKey: Keys.valueColors)
-        }
+        do { try localStore?.saveValueColors(valueColors) }
+        catch { errorMessage = error.localizedDescription }
+        syncSoon()
     }
 }

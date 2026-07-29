@@ -35,17 +35,13 @@ struct MenuContentView: View {
         }
     }
 
-    /// Local mode is ready the moment its store opens, so this shows only in
-    /// traggo mode before a session validates (or if the local database failed
-    /// to open). Sign-in itself lives in Settings now — the popover just
-    /// points there.
+    /// The store is ready the moment it opens, so this shows only if the
+    /// local database failed to open.
     @ViewBuilder
     private var notReadyBody: some View {
-        Text(model.backendKind == .traggo ? "Not signed in" : "Local database unavailable")
+        Text("Local database unavailable")
             .font(.headline)
-        Text(model.backendKind == .traggo
-             ? "Sign in to \(model.serverURL) in Settings — or switch there to keeping data on this Mac, no server needed."
-             : "Check the error below, then relaunch the app.")
+        Text("Check the error below, then relaunch the app.")
             .font(.caption)
             .foregroundStyle(.secondary)
 

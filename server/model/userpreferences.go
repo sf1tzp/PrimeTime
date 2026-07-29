@@ -3,6 +3,8 @@
 
 package model
 
+import "time"
+
 // UserPreferences is the per-user client state a second device should
 // inherit. Colouring *data* (key and value colours) already syncs via label
 // definitions; these are the remaining bits. Absence of a row means the
@@ -14,6 +16,10 @@ type UserPreferences struct {
 	ColorByValue bool
 	// MenuLabelSetLimit is how many label sets the menu shows (0 = all).
 	MenuLabelSetLimit int
+	// UpdatedAtUTC is the server time of the last write (whole seconds),
+	// for last-writer-wins sync; the zero value means "never written" and
+	// loses to any device's local edit. Managed explicitly, not by gorm.
+	UpdatedAtUTC time.Time
 }
 
 // DefaultUserPreferences returns the preferences of a fresh user.

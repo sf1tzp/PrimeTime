@@ -3,6 +3,8 @@
 
 package model
 
+import "time"
+
 // LabelSet is a named, ordered, launchable combination of labels (the
 // launcher cards in the PrimeTime app). Sets belong to a user; rows with a
 // nil UserID and DefaultCollection set are templates — the "default
@@ -19,6 +21,9 @@ type LabelSet struct {
 	// DefaultCollection marks a template set that is copied to new users.
 	DefaultCollection bool
 	Members           []LabelSetMember
+	// UpdatedAtUTC is the server time of the last write (whole seconds),
+	// for last-writer-wins sync. Managed explicitly, not by gorm.
+	UpdatedAtUTC time.Time
 }
 
 // LabelSetMember is one label (key/value pair) inside a label set.

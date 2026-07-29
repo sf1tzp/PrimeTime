@@ -24,6 +24,7 @@ func toExternal(set model.LabelSet) *gqlmodel.LabelSet {
 		Name:       set.Name,
 		SymbolName: set.SymbolName,
 		Labels:     labels,
+		UpdatedAt:  model.Time(set.UpdatedAtUTC),
 	}
 }
 

@@ -49,19 +49,21 @@ private struct HelpSection: Identifiable {
             A tag is a **key: value** pair on a timespan, like `project: traggo`. Values \
             are free text; keys are lower-cased with spaces turned into “-”.
 
-            Tag **keys** each carry a colour, stored with your timespans — in the local \
-            database when data is kept on this Mac, or on the Traggo server when \
-            connected to one (where recolouring a key also changes the web UI). Either \
-            way, recolouring a key changes it everywhere the key appears. *Colour tags \
-            by value* (on by default; see Settings) additionally lets you pick a colour \
-            per key: value pair, so spans differ by what they're about rather than only \
-            by key; those overrides always stay on this Mac.
+            Tag **keys** each carry a colour, stored with your timespans in the local \
+            database; recolouring a key changes it everywhere the key appears. *Colour \
+            tags by value* (on by default; see Settings) additionally lets you pick a \
+            colour per key: value pair, so spans differ by what they're about rather \
+            than only by key.
 
             **Tag sets** are named bundles of tags used to start timespans with one \
-            click, with a name and an icon. They're a convenience stored on this Mac, \
-            not a server concept: a timespan started from a set keeps the tags but no \
-            link to the set. Their order matters — the popover lists the first few, in \
-            order (drag to reorder in Tag Sets).
+            click, with a name and an icon. A timespan started from a set keeps the \
+            tags but no link to the set. Their order matters — the popover lists the \
+            first few, in order (drag to reorder in Tag Sets).
+
+            Everything above lives on this Mac by default. Connect a **sync server** \
+            (see Settings) and it becomes yours-across-machines instead: timespans, \
+            key and value colours, tag sets, and the two settings below all follow \
+            your account to every connected Mac.
             """),
         HelpSection(
             title: "Menu bar popover",
@@ -144,15 +146,20 @@ private struct HelpSection: Identifiable {
             title: "Settings",
             symbol: "gear",
             body: """
-            **Storage** picks where your data lives: on this Mac (a local database — \
-            the default; no server, no account) or on a Traggo server, with the server \
-            URL, device name (how this Mac appears under Traggo's devices), and \
-            sign-in. Each choice keeps its own data; switching doesn't move timespans \
-            between them.
+            **Storage** is a local database on this Mac — the default needs no server \
+            and no account. **Sync** optionally connects a sync server: sign in once \
+            and this Mac gets a device token (revocable server-side; your password is \
+            never stored). From then on every change — starting and stopping \
+            timespans, edits, colours, tag sets, the settings below — lands locally \
+            first and syncs in the background, so nothing waits on the network and \
+            offline edits catch up on reconnect. If the same thing was edited on two \
+            Macs, the most recent edit wins. **Import from Traggo** copies an existing \
+            Traggo server's history into the local database (safe to re-run).
 
             **Quick-start tag sets** caps how many sets the popover lists (0 shows \
             all). **Colour tags by value** (on by default) enables the per-pair colour \
-            overrides described above; turn it off to colour strictly by key.
+            overrides described above; turn it off to colour strictly by key. With a \
+            sync server connected, both follow your account across Macs.
             """),
     ]
 }

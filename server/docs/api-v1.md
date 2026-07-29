@@ -78,10 +78,12 @@ type LabelSet {
 ```
 
 - `labelSets: [LabelSet!]` — the current user's sets in launcher order.
-- `createLabelSet(name, symbolName, labels)` — appends to the launcher
-  order. Member order is the input order.
-- `updateLabelSet(id, name, symbolName, labels)` — replaces name, symbol,
-  and members wholesale.
+- `createLabelSet(name, symbolName, labels, position)` — appends to the
+  launcher order, or inserts at the optional 0-based `position` (clamped).
+  Member order is the input order.
+- `updateLabelSet(id, name, symbolName, labels, position)` — replaces name,
+  symbol, and members wholesale; the optional `position` also moves the set
+  (omitted = stays put).
 - `moveLabelSet(id, position)` — move a set to a 0-based position
   (clamped); returns all sets in their new order.
 - `removeLabelSet(id)` — deletes the set and its members.
@@ -156,6 +158,63 @@ type UserPreferences {
   Review) and `menuLabelSetLimit = 5`.
 - `setUserPreferences(preferences: InputUserPreferences!)` — replaces both
   values.
+
+## Sync
+
+v1 is sync-capable: a local-first client keeps its own store and
+reconciles with the server in the background, last-writer-wins per record.
+Two mechanisms support that:
+
+**`updatedAt` timestamps.** Every syncable record — `TimeSpan`,
+`LabelDefinition`, `LabelValueColor`, `LabelSet`, `UserPreferences` —
+carries `updatedAt: Time!`: the server time of its last write, truncated
+to whole seconds so a value that round-trips through RFC3339 still
+compares exactly. Clients resolve conflicts by comparing a record's
+server `updatedAt` against the wall-clock time of their own unpushed
+edit; the newer write wins. `UserPreferences.updatedAt` is the zero time
+(`0001-01-01T00:00:00Z`) until the user first writes preferences, so any
+device's real edit wins over never-set defaults. Rows that predate the
+timestamps report the unix epoch — ancient, so they lose to any real
+edit. Bulk operations that rewrite labels on timespans
+(`updateLabelDefinition` with `newKey`, `replaceTimeSpanLabels`) bump the
+affected timespans' `updatedAt` so the rewrites reach syncing devices.
+
+**The timespan delta feed.** Timespans are the one high-cardinality
+entity, so instead of snapshot pulls they get a changes-since query:
+
+```graphql
+timeSpanChanges(since: Time!, afterId: Int!, limit: Int): TimeSpanChanges!
+
+type TimeSpanChanges {
+    timeSpans: [TimeSpan!]!      # written after (since, afterId), ordered by (updatedAt, id)
+    deleted: [DeletedTimeSpan!]! # tombstones with deletedAt >= since
+    hasMore: Boolean!
+    now: Time!                   # server time, for "last synced" display
+}
+type DeletedTimeSpan { id: Int!, deletedAt: Time! }
+```
+
+The checkpoint is a `(since, afterId)` pair. First sync: the zero time
+and `0`. While `hasMore` is true, continue with the last returned span's
+`(updatedAt, id)` — the id tie-break is what lets a page full of
+same-second writes advance. `limit` defaults to (and is capped at) 200.
+Running spans travel through the feed like any other change.
+
+`removeTimeSpan` writes a tombstone; `deleted` returns them with
+`deletedAt >= since`, so a deletion is re-delivered rather than ever
+missed (dropping an already-absent span is a no-op). Tombstones whose id
+is a live timespan again are suppressed. Deletions of snapshot-pulled
+entities (label sets, definitions, value colours) need no tombstones: a
+record the client knew as synced that is absent from the next snapshot
+was deleted on the server.
+
+Low-cardinality entities — `labelDefinitions` (key and value colours ride
+along), `labelSets`, `userPreferences` — sync by whole snapshot each
+pass; their `updatedAt` values drive the same last-writer-wins rule. The
+optional `position` argument on `createLabelSet` / `updateLabelSet`
+exists so a sync client can push a set's launcher slot in the same call.
+A launcher reorder bumps `updatedAt` only on sets whose position actually
+changed.
 
 ## Renames from the traggo wire (for importers)
 

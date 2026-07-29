@@ -318,5 +318,6 @@ final class TagReviewModel {
         // The rewrite may have touched the running timer or loaded history.
         await app.refresh()
         await app.history.reloadIfLoaded()
+        app.syncSoon()
     }
 }

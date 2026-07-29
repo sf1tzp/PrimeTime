@@ -29,10 +29,11 @@ func SeedDefaultLabelSets(db *gorm.DB, userID int) error {
 
 	for i, template := range templates {
 		set := model.LabelSet{
-			UserID:     &userID,
-			Name:       template.Name,
-			SymbolName: template.SymbolName,
-			Position:   i,
+			UserID:       &userID,
+			Name:         template.Name,
+			SymbolName:   template.SymbolName,
+			Position:     i,
+			UpdatedAtUTC: syncNow(),
 		}
 		for _, member := range template.Members {
 			set.Members = append(set.Members, model.LabelSetMember{
@@ -51,9 +52,10 @@ func SeedDefaultLabelSets(db *gorm.DB, userID int) error {
 				continue
 			}
 			definition := model.TagDefinition{
-				UserID: userID,
-				Key:    member.Key,
-				Color:  DefaultLabelColor,
+				UserID:       userID,
+				Key:          member.Key,
+				Color:        DefaultLabelColor,
+				UpdatedAtUTC: syncNow(),
 			}
 			if err := db.Create(&definition).Error; err != nil {
 				return err

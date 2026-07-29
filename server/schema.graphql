@@ -25,8 +25,8 @@ type RootMutation {
     setLabelValueColor(key: String!, value: String!, color: String!): LabelDefinition @hasRole(role: USER)
     clearLabelValueColor(key: String!, value: String!): LabelDefinition @hasRole(role: USER)
 
-    createLabelSet(name: String!, symbolName: String!, labels: [InputLabel!]!): LabelSet @hasRole(role: USER)
-    updateLabelSet(id: Int!, name: String!, symbolName: String!, labels: [InputLabel!]!): LabelSet @hasRole(role: USER)
+    createLabelSet(name: String!, symbolName: String!, labels: [InputLabel!]!, position: Int): LabelSet @hasRole(role: USER)
+    updateLabelSet(id: Int!, name: String!, symbolName: String!, labels: [InputLabel!]!, position: Int): LabelSet @hasRole(role: USER)
     moveLabelSet(id: Int!, position: Int!): [LabelSet!] @hasRole(role: USER)
     removeLabelSet(id: Int!): LabelSet @hasRole(role: USER)
 
@@ -61,11 +61,41 @@ type RootQuery {
     currentDevice: Device
     devices: [Device!] @hasRole(role: USER)
     timeSpans(fromInclusive: Time, toInclusive: Time, cursor: InputCursor): PagedTimeSpans! @hasRole(role: USER)
+    timeSpanChanges(since: Time!, afterId: Int!, limit: Int): TimeSpanChanges! @hasRole(role: USER)
     timers: [TimeSpan!] @hasRole(role: USER)
     stats(ranges: [Range!], keys: [String!], excludeLabels: [InputLabel!], requireLabels: [InputLabel!]): [RangedStatisticsEntries!] @hasRole(role: USER)
     stats2(now: Time!, stats: InputStatsSelection!): [RangedStatisticsEntries!] @hasRole(role: USER)
     version: Version!
     userPreferences: UserPreferences! @hasRole(role: USER)
+}
+
+# Sync (see docs/api-v1.md, "Sync"). Every syncable record carries
+# `updatedAt` — the server time of its last write, whole seconds — for
+# last-writer-wins reconciliation. Timespans additionally get a delta feed:
+# `timeSpanChanges` returns records written strictly after the checkpoint
+# (updatedAt, afterId), ordered by (updatedAt, id), plus tombstones for
+# deletions. Low-cardinality entities (label definitions, label sets,
+# user preferences) sync by snapshot instead — clients pull them whole.
+
+# One page of the timespan delta feed.
+type TimeSpanChanges {
+    # Timespans written after the (since, afterId) checkpoint, ordered by
+    # (updatedAt, id) ascending — running and finished alike.
+    timeSpans: [TimeSpan!]!
+    # Tombstones of timespans deleted at or after `since`. Not paged;
+    # deletions are rare and re-delivery is harmless.
+    deleted: [DeletedTimeSpan!]!
+    # True when more changes exist beyond this page; continue with the last
+    # returned timespan's (updatedAt, id) as the next checkpoint.
+    hasMore: Boolean!
+    # The server's current time, for display ("last synced ...").
+    now: Time!
+}
+
+# A record of a deleted timespan, kept so other devices can drop it too.
+type DeletedTimeSpan {
+    id: Int!
+    deletedAt: Time!
 }
 
 # Per-user preferences a second device should inherit. Colouring *data* (key
@@ -78,6 +108,8 @@ type UserPreferences {
     colorByValue: Boolean!
     # How many label sets the menu shows (0 = all).
     menuLabelSetLimit: Int!
+    # When the preferences were last written (zero-valued time if never set).
+    updatedAt: Time!
 }
 
 input InputUserPreferences {
@@ -139,12 +171,14 @@ type LabelDefinition {
     color: String!
     valueColors: [LabelValueColor!]!
     usages: Int!
+    updatedAt: Time!
 }
 
 # A colour override for one value of a label key.
 type LabelValueColor {
     value: String!
     color: String!
+    updatedAt: Time!
 }
 
 # A named, ordered, launchable combination of labels with an SF Symbol icon.
@@ -154,6 +188,7 @@ type LabelSet {
     name: String!
     symbolName: String!
     labels: [Label!]!
+    updatedAt: Time!
 }
 
 type User {
@@ -169,6 +204,7 @@ type TimeSpan {
     oldStart: Time
     labels: [Label!]
     note: String!
+    updatedAt: Time!
 }
 
 type PagedTimeSpans {
