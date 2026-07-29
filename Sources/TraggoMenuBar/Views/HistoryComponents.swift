@@ -73,8 +73,7 @@ struct TimeSpanEditorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                DatePicker("Start", selection: $start,
-                           displayedComponents: [.date, .hourAndMinute])
+                MinuteSteppingDatePicker(label: "Start", date: $start)
                 if span.isRunning {
                     // Stopping belongs to the popover's Stop button; here a
                     // running span just keeps running.
@@ -82,8 +81,7 @@ struct TimeSpanEditorView: View {
                         .foregroundStyle(.secondary)
                         .font(.callout)
                 } else {
-                    DatePicker("End", selection: $end,
-                               displayedComponents: [.date, .hourAndMinute])
+                    MinuteSteppingDatePicker(label: "End", date: $end)
                 }
             }
 
@@ -152,6 +150,39 @@ struct TimeSpanEditorView: View {
                 note: note)
             isSaving = false
             if saved { onDone() }
+        }
+    }
+}
+
+/// A date+time field whose up/down buttons step by the minute. The stock
+/// `.stepperField` picker sends the arrows to whichever element is selected —
+/// the *year*, before anything is clicked — so use the stepper-less `.field`
+/// style and supply our own minute stepper. Arrow keys inside the field still
+/// adjust the clicked element as usual.
+private struct MinuteSteppingDatePicker: View {
+    let label: String
+    @Binding var date: Date
+
+    var body: some View {
+        HStack(spacing: 2) {
+            DatePicker(label, selection: $date,
+                       displayedComponents: [.date, .hourAndMinute])
+                .datePickerStyle(.field)
+            Stepper(label) {
+                step(by: 1)
+            } onDecrement: {
+                step(by: -1)
+            }
+            .labelsHidden()
+        }
+    }
+
+    /// Calendar arithmetic rather than ±60s so steps stay wall-clock minutes
+    /// across DST transitions.
+    private func step(by minutes: Int) {
+        if let stepped = Calendar.current.date(byAdding: .minute,
+                                               value: minutes, to: date) {
+            date = stepped
         }
     }
 }
