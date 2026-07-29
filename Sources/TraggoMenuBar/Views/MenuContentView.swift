@@ -5,20 +5,12 @@ import AppKit
 struct MenuContentView: View {
     @Environment(AppModel.self) private var model
 
-    /// Local draft of the running timer's note, synced from the server when the
-    /// active timer changes (not on every poll, so it won't clobber typing).
-    @State private var noteDraft = ""
-
-    /// Whether the running timer's tags are being edited in place, and a local
-    /// draft of them. Seeded on entering edit mode so a background poll can't
-    /// clobber edits; discarded when the active timer changes.
-    @State private var editingTags = false
+    /// Which running timespan is being edited in place (tags + note), plus
+    /// local drafts. Seeded on entering edit mode so a background poll can't
+    /// clobber edits; dropped if the timespan stops from elsewhere.
+    @State private var editingTimerID: TimeSpan.ID?
     @State private var tagDrafts: [TagRow] = []
-
-    /// Set when starting a blank timer so that, once the new timer lands, we
-    /// open the tag editor instead of resetting it — "start → describe" as one
-    /// gesture. Consumed by the `activeTimer` change handler.
-    @State private var editTagsOnNextTimer = false
+    @State private var noteDraft = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -33,16 +25,12 @@ struct MenuContentView: View {
         // web UI without waiting for the 30s poll.
         .task {
             await model.refresh()
-            noteDraft = model.activeTimer?.note ?? ""
         }
-        .onChange(of: model.activeTimer?.id) {
-            noteDraft = model.activeTimer?.note ?? ""
-            if editTagsOnNextTimer, model.activeTimer != nil {
-                editTagsOnNextTimer = false
-                tagDrafts = [TagRow()]   // one empty row, ready to type into
-                editingTags = true
-            } else {
-                editingTags = false
+        .onChange(of: model.activeTimers.map(\.id)) {
+            // Drop the in-place editor if its timespan stopped elsewhere.
+            if let id = editingTimerID,
+               !model.activeTimers.contains(where: { $0.id == id }) {
+                editingTimerID = nil
             }
         }
     }
@@ -62,27 +50,25 @@ struct MenuContentView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         } else {
+            // Sets whose tags are running right now are hidden (they reappear
+            // on stop). The cap (0 = all) applies to what's left, so a hidden
+            // set doesn't consume one of the N slots; the rest hide behind a
+            // "more…" row so the popover stays glanceable.
+            let candidates = model.tagSets.filter { !model.isRunning($0) }
+            let limit = model.menuTagSetLimit
+            let visibleSets = limit > 0 ? Array(candidates.prefix(limit)) : candidates
             VStack(alignment: .leading, spacing: 2) {
-                ForEach(model.tagSets) { set in
+                ForEach(visibleSets) { set in
+                    quickStartRow(set)
+                }
+                if candidates.count > visibleSets.count {
                     Button {
-                        Task { await model.start(tagSet: set) }
+                        openSettings(tab: .tagSets)
                     } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(set.name.isEmpty ? "Untitled" : set.name)
-                            let tags = set.tags.filter { !$0.key.isEmpty }
-                            if !tags.isEmpty {
-                                FlowLayout(spacing: 4) {
-                                    ForEach(tags) { tag in
-                                        TagPill(key: tag.key, value: tag.value,
-                                                color: model.tagColor(for: tag.key, value: tag.value))
-                                    }
-                                }
-                            }
-                        }
+                        Text("\(candidates.count - visibleSets.count) more…")
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(MenuRowButtonStyle())
-                    // Enforce one active timer at a time: must stop before starting.
-                    .disabled(model.activeTimer != nil || model.isBusy)
                 }
             }
         }
@@ -123,7 +109,7 @@ struct MenuContentView: View {
             Divider()
 
             Button {
-                openSettings(tab: .connection)
+                openSettings(tab: .settings)
             } label: {
                 Label("Settings…", systemImage: "gear")
             }
@@ -143,85 +129,125 @@ struct MenuContentView: View {
         SettingsWindowManager.shared.show(model: model, tab: tab)
     }
 
+    /// One quick-start row. The row itself starts the set and stays greyed out
+    /// while a timer runs (stop before starting); in that state a trailing ＋
+    /// starts the set *alongside* the running timer instead.
+    private func quickStartRow(_ set: TagSet) -> some View {
+        HStack(spacing: 0) {
+            Button {
+                Task { await model.start(tagSet: set) }
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(set.name.isEmpty ? "Untitled" : set.name)
+                    let tags = set.tags.filter { !$0.key.isEmpty }
+                    if !tags.isEmpty {
+                        FlowLayout(spacing: 4) {
+                            ForEach(tags) { tag in
+                                TagPill(key: tag.key, value: tag.value,
+                                        color: model.tagColor(for: tag.key, value: tag.value))
+                            }
+                        }
+                    }
+                }
+            }
+            .buttonStyle(MenuRowButtonStyle())
+            .disabled(model.activeTimer != nil || model.isBusy)
+
+            if model.activeTimer != nil {
+                Button {
+                    Task { await model.start(tagSet: set) }
+                } label: {
+                    Image(systemName: "plus.circle")
+                }
+                .buttonStyle(.borderless)
+                .disabled(model.isBusy)
+                .help("Start alongside the running timer")
+            }
+        }
+    }
+
     @ViewBuilder
     private var activeTimerSection: some View {
-        if let active = model.activeTimer {
+        if !model.activeTimers.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Running")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(model.elapsedString(since: active.start.date))
-                    .font(.system(.title2, design: .monospaced))
-                    .monospacedDigit()
-                if editingTags {
-                    tagEditor
-                } else {
-                    activeTagsDisplay(active.tags ?? [])
+                ForEach(model.activeTimers) { timer in
+                    runningRow(timer)
                 }
-                HStack {
-                    TextField("Add a note…", text: $noteDraft)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit { saveNote() }
-                    if noteDraft != active.note {
-                        Button("Save") { saveNote() }
-                            .disabled(model.isBusy)
-                    }
-                }
-                Button("Stop", role: .destructive) {
-                    Task { await model.stop() }
-                }
-                .disabled(model.isBusy)
             }
-        } else {
-            // In place of a "no active timer" placeholder: an ad-hoc start with
-            // no tags — capture time first, classify it in the tag editor while
-            // the clock runs.
-            Button {
-                editTagsOnNextTimer = true
-                Task {
-                    await model.start(tags: [])
-                    if model.errorMessage != nil { editTagsOnNextTimer = false }
-                }
-            } label: {
-                Label("Start blank timer", systemImage: "circle.dashed")
-            }
-            .buttonStyle(MenuRowButtonStyle())
-            .disabled(model.isBusy)
         }
+
+        // Ad-hoc start with no tags — capture time first, classify it in the
+        // row editor while the clock runs. Available even while timers run:
+        // the blank timespan starts alongside them.
+        Button {
+            Task {
+                if let created = await model.start(tags: []) {
+                    beginEditing(created)
+                }
+            }
+        } label: {
+            Label("Start blank timer", systemImage: "circle.dashed")
+        }
+        .buttonStyle(MenuRowButtonStyle())
+        .disabled(model.isBusy)
     }
 
-    /// Read-only tag pills for the running timer, with a pencil to edit them.
-    /// The pencil shows even with no tags so the user can add the first one.
+    /// One running timespan, uniform however many run: elapsed + tags, with
+    /// edit (pencil) and stop (square) folded into the row. The pencil toggles
+    /// an in-place editor for the row's tags and note.
     @ViewBuilder
-    private func activeTagsDisplay(_ tags: [TimeSpanTag]) -> some View {
-        HStack(alignment: .top, spacing: 4) {
+    private func runningRow(_ timer: TimeSpan) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(model.elapsedString(since: timer.start.date))
+                .font(.system(.body, design: .monospaced))
+                .monospacedDigit()
+            let tags = timer.tags ?? []
             if tags.isEmpty {
                 Text("No tags")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
                 FlowLayout(spacing: 4) {
-                    ForEach(tags.indices, id: \.self) { i in
-                        TagPill(key: tags[i].key, value: tags[i].value,
-                                color: model.tagColor(for: tags[i].key, value: tags[i].value))
+                    ForEach(tags, id: \.self) { tag in
+                        TagPill(key: tag.key, value: tag.value,
+                                color: model.tagColor(for: tag.key, value: tag.value))
                     }
                 }
             }
             Spacer(minLength: 0)
             Button {
-                beginEditingTags()
+                if editingTimerID == timer.id {
+                    editingTimerID = nil
+                } else {
+                    beginEditing(timer)
+                }
             } label: {
                 Image(systemName: "pencil")
             }
             .buttonStyle(.borderless)
-            .help("Edit tags")
+            .help("Edit tags and note")
+            Button {
+                Task { await model.stop(id: timer.id) }
+            } label: {
+                Image(systemName: "stop.fill")
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.red)
+            .disabled(model.isBusy)
+            .help("Stop")
+        }
+        if editingTimerID == timer.id {
+            timerEditor
         }
     }
 
-    /// Inline row editor for the running timer's tags — one row per tag (colour
-    /// swatch, key, value, remove), plus Add / Cancel / Save. Save commits the
-    /// draft to the server via `updateActiveTags`.
-    private var tagEditor: some View {
+    /// In-place editor for a running row — one line per tag (colour swatch,
+    /// key, value, remove) plus the note, with Add / Cancel / Save. Save
+    /// commits tags and note together via `updateRunning`.
+    private var timerEditor: some View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach($tagDrafts) { $tag in
                 HStack(spacing: 4) {
@@ -240,6 +266,9 @@ struct MenuContentView: View {
                     .buttonStyle(.borderless)
                 }
             }
+            TextField("Add a note…", text: $noteDraft)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { saveEdits() }
             HStack {
                 Button {
                     tagDrafts.append(TagRow())
@@ -248,29 +277,27 @@ struct MenuContentView: View {
                 }
                 .buttonStyle(.borderless)
                 Spacer()
-                Button("Cancel") { editingTags = false }
+                Button("Cancel") { editingTimerID = nil }
                     .buttonStyle(.borderless)
-                Button("Save") { saveTags() }
+                Button("Save") { saveEdits() }
                     .disabled(model.isBusy)
             }
         }
     }
 
-    private func beginEditingTags() {
-        tagDrafts = (model.activeTimer?.tags ?? [])
-            .map { TagRow(key: $0.key, value: $0.value) }
-        editingTags = true
+    private func beginEditing(_ timer: TimeSpan) {
+        let rows = (timer.tags ?? []).map { TagRow(key: $0.key, value: $0.value) }
+        tagDrafts = rows.isEmpty ? [TagRow()] : rows  // an empty row, ready to type
+        noteDraft = timer.note
+        editingTimerID = timer.id
     }
 
-    private func saveTags() {
+    private func saveEdits() {
+        guard let id = editingTimerID else { return }
         let wire = tagDrafts.wireTags
         Task {
-            await model.updateActiveTags(wire)
-            if model.errorMessage == nil { editingTags = false }
+            await model.updateRunning(id: id, tags: wire, note: noteDraft)
+            if model.errorMessage == nil { editingTimerID = nil }
         }
-    }
-
-    private func saveNote() {
-        Task { await model.updateNote(noteDraft) }
     }
 }

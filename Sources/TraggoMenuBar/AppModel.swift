@@ -38,11 +38,27 @@ final class AppModel {
         didSet { UserDefaults.standard.set(valueColors, forKey: Keys.valueColors) }
     }
 
+    /// How many tag sets the popover's Quick start list shows, in tag-set
+    /// order; 0 means all. Keeps the popover a quick-glance surface when many
+    /// sets are saved.
+    var menuTagSetLimit: Int {
+        didSet { UserDefaults.standard.set(menuTagSetLimit, forKey: Keys.menuTagSetLimit) }
+    }
+
     // MARK: Runtime state (observed by the UI)
 
     var user: User?
-    var activeTimer: TimeSpan?
+    /// Every running timespan, oldest first — the first-started timer stays at
+    /// the top of the popover and new ones join below. Traggo allows
+    /// overlapping timespans, and the menu can start one alongside another
+    /// (the ＋ on a quick-start row, the blank-timer row), so this is a list
+    /// rather than a single timer.
+    var activeTimers: [TimeSpan] = []
     var tagDefinitions: [TagDefinition] = []
+
+    /// The first-started running timespan — the popover's top row and the one
+    /// the menu-bar label counts up for.
+    var activeTimer: TimeSpan? { activeTimers.first }
     var errorMessage: String?
     var isBusy = false
     /// Updated once per second while a timer runs so elapsed labels tick.
@@ -75,6 +91,7 @@ final class AppModel {
         static let tagSets = "presets"
         static let colorTagsByValue = "colorTagsByValue"
         static let valueColors = "valueColors"
+        static let menuTagSetLimit = "menuTagSetLimit"
     }
 
     // MARK: Lifecycle
@@ -87,6 +104,8 @@ final class AppModel {
         tagSets = AppModel.loadTagSets()
         colorTagsByValue = defaults.bool(forKey: Keys.colorTagsByValue)
         valueColors = defaults.dictionary(forKey: Keys.valueColors) as? [String: String] ?? [:]
+        menuTagSetLimit = defaults.object(forKey: Keys.menuTagSetLimit) == nil
+            ? 5 : defaults.integer(forKey: Keys.menuTagSetLimit)  // 0 = all
         token = Keychain.get(account: "token")
 
         rebuildClient()
@@ -152,7 +171,7 @@ final class AppModel {
         token = nil
         Keychain.delete(account: "token")
         user = nil
-        activeTimer = nil
+        activeTimers = []
         tagDefinitions = []
         rebuildClient()
     }
@@ -165,7 +184,7 @@ final class AppModel {
             async let timers = client.timers()
             async let tags = client.tags()
             let (runningTimers, definitions) = try await (timers, tags)
-            activeTimer = runningTimers.first  // newest running timespan
+            activeTimers = runningTimers.sorted { $0.start.date < $1.start.date }
             tagDefinitions = definitions
             errorMessage = nil
         } catch {
@@ -178,9 +197,11 @@ final class AppModel {
     }
 
     /// Start a timespan with the given tags — empty for an ad-hoc timer that
-    /// gets classified while it runs.
-    func start(tags: [TimeSpanTag]) async {
-        guard let client else { return }
+    /// gets classified while it runs. Returns the created timespan so the
+    /// caller can e.g. open it for editing right away.
+    @discardableResult
+    func start(tags: [TimeSpanTag]) async -> TimeSpan? {
+        guard let client else { return nil }
         isBusy = true
         defer { isBusy = false }
         do {
@@ -189,12 +210,14 @@ final class AppModel {
             let created = try await client.startTimeSpan(start: Date(),
                                                          tags: tags,
                                                          note: "")
-            activeTimer = created
+            activeTimers.append(created)   // newest last, until refresh re-sorts
             errorMessage = nil
             await refresh()
             await history.reloadIfLoaded()
+            return created
         } catch {
             errorMessage = error.localizedDescription
+            return nil
         }
     }
 
@@ -208,35 +231,20 @@ final class AppModel {
         }
     }
 
-    /// Update the note on the running timespan, preserving its start and tags.
-    func updateNote(_ note: String) async {
-        guard let client, let active = activeTimer else { return }
-        isBusy = true
-        defer { isBusy = false }
-        do {
-            let updated = try await client.updateTimeSpan(
-                id: active.id, start: active.start.date, end: active.end?.date,
-                tags: active.tags ?? [], note: note)
-            activeTimer = updated
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    /// Replace the tags on the running timespan, preserving its start and note.
-    /// Missing tag definitions are created first (traggo rejects unknown keys),
-    /// the same guard `start(tagSet:)` uses.
-    func updateActiveTags(_ tags: [TimeSpanTag]) async {
-        guard let client, let active = activeTimer else { return }
+    /// Update the tags and note on a running timespan, preserving its start.
+    /// Missing tag definitions are created first (traggo rejects unknown
+    /// keys), the same guard `start(tags:)` uses.
+    func updateRunning(id: Int, tags: [TimeSpanTag], note: String) async {
+        guard let client,
+              let span = activeTimers.first(where: { $0.id == id }) else { return }
         isBusy = true
         defer { isBusy = false }
         do {
             try await ensureTagDefinitions(for: tags)
             let updated = try await client.updateTimeSpan(
-                id: active.id, start: active.start.date, end: active.end?.date,
-                tags: tags, note: active.note)
-            activeTimer = updated
+                id: span.id, start: span.start.date, end: span.end?.date,
+                tags: tags, note: note)
+            replaceActiveTimer(with: updated)
             errorMessage = nil
             await history.reloadIfLoaded()
         } catch {
@@ -244,19 +252,35 @@ final class AppModel {
         }
     }
 
-    func stop() async {
-        guard let client, let active = activeTimer else { return }
+    /// Stop a running timespan — a specific one, or the top row's by default.
+    func stop(id: Int? = nil) async {
+        guard let client, let target = id ?? activeTimer?.id else { return }
         isBusy = true
         defer { isBusy = false }
         do {
-            _ = try await client.stopTimeSpan(id: active.id, end: Date())
-            activeTimer = nil
+            _ = try await client.stopTimeSpan(id: target, end: Date())
+            activeTimers.removeAll { $0.id == target }
             errorMessage = nil
             await refresh()
             await history.reloadIfLoaded()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func replaceActiveTimer(with updated: TimeSpan) {
+        if let index = activeTimers.firstIndex(where: { $0.id == updated.id }) {
+            activeTimers[index] = updated
+        }
+    }
+
+    /// Whether some running timespan carries exactly this set's tags — used to
+    /// hide a quick-start set while "it" runs. Matching by tags (not by which
+    /// row was clicked) also catches a matching timespan started from the web
+    /// UI, and the set reappears naturally when the timespan stops.
+    func isRunning(_ set: TagSet) -> Bool {
+        let want = Set(set.wireTags)
+        return activeTimers.contains { Set($0.tags ?? []) == want }
     }
 
     // MARK: Tag colours (stored server-side, per key)

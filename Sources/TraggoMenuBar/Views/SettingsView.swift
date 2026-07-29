@@ -3,9 +3,9 @@ import SwiftUI
 // The settings window itself (a toolbar-style NSTabViewController) is built in
 // SettingsWindowManager. These are the individual section panes it hosts.
 
-// MARK: - Connection
+// MARK: - Settings (connection + behaviour)
 
-struct ConnectionSettingsView: View {
+struct GeneralSettingsView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -34,6 +34,31 @@ struct ConnectionSettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            Section("Menu") {
+                // A plain numeric field with its own stepper, like the log
+                // editor's time fields. Typed values are clamped on commit.
+                let limit = Binding(
+                    get: { model.menuTagSetLimit },
+                    set: { model.menuTagSetLimit = max(0, min(99, $0)) })
+                LabeledContent("Quick-start tag sets") {
+                    HStack(spacing: 2) {
+                        TextField("", value: limit, format: .number)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 40)
+                        Stepper("", value: limit, in: 0...99)
+                            .labelsHidden()
+                    }
+                }
+                Text("How many tag sets the popover lists (0 shows all), in the order from the Tag Sets tab — drag to reorder there. The rest stay a click away behind a “more…” row.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Tags") {
+                Toggle("Colour tags by value", isOn: $model.colorTagsByValue)
+                Text("Pick a colour per key: value pair (stored on this Mac), so e.g. repo: foo and repo: bar look different. Pairs without an override keep their key colour.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
     }
@@ -46,23 +71,11 @@ struct TagSetsSettingsView: View {
     @State private var selection: TagSet.ID?
 
     var body: some View {
-        @Bindable var model = model
-        VStack(spacing: 0) {
-            splitView
-            Divider()
-            VStack(alignment: .leading, spacing: 3) {
-                Toggle("Colour tags by value", isOn: $model.colorTagsByValue)
-                Text("Pick a colour per key: value pair (stored on this Mac), so e.g. repo: foo and repo: bar look different. Pairs without an override keep their key colour.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        splitView
+            // Pre-select the first set so the editor is populated on open.
+            .onAppear {
+                if selection == nil { selection = model.tagSets.first?.id }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(10)
-        }
-        // Pre-select the first set so the editor is populated on open.
-        .onAppear {
-            if selection == nil { selection = model.tagSets.first?.id }
-        }
     }
 
     private var splitView: some View {
@@ -75,6 +88,8 @@ struct TagSetsSettingsView: View {
                             .tag(set.id)
                     }
                     .onDelete { model.tagSets.remove(atOffsets: $0) }
+                    // Order matters: the popover shows the first N sets.
+                    .onMove { model.tagSets.move(fromOffsets: $0, toOffset: $1) }
                 }
                 Divider()
                 HStack {

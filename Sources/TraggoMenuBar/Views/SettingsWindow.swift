@@ -2,8 +2,9 @@ import SwiftUI
 import AppKit
 
 /// The sections of the settings window, in toolbar order. Raw value = tab index.
+/// Content tabs first, then the one preferences tab (connection + behaviour).
 enum SettingsTab: Int, CaseIterable {
-    case connection, tagSets, log, calendar, history
+    case tagSets, log, calendar, history, settings
 }
 
 /// Owns the settings window and reuses a single instance. Modelled on
@@ -17,7 +18,7 @@ final class SettingsWindowManager {
 
     private init() {}
 
-    func show(model: AppModel, tab: SettingsTab = .connection) {
+    func show(model: AppModel, tab: SettingsTab = .settings) {
         if windowController == nil {
             windowController = makeWindowController(model: model)
         }
@@ -37,8 +38,6 @@ final class SettingsWindowManager {
         // regardless of which menu shortcut was used and never clips a tab.
         let size = NSSize(width: 780, height: 560)
 
-        tabController.addTabViewItem(item("Connection", symbol: "person.crop.circle",
-                                          content: ConnectionSettingsView(), model: model, size: size))
         tabController.addTabViewItem(item("Tag Sets", symbol: "tag",
                                           content: TagSetsSettingsView(), model: model, size: size))
         tabController.addTabViewItem(item("Log", symbol: "list.bullet.rectangle",
@@ -47,6 +46,8 @@ final class SettingsWindowManager {
                                           content: CalendarView(), model: model, size: size))
         tabController.addTabViewItem(item("History", symbol: "chart.pie",
                                           content: HistoryChartsView(), model: model, size: size))
+        tabController.addTabViewItem(item("Settings", symbol: "gear",
+                                          content: GeneralSettingsView(), model: model, size: size))
 
         let window = NSWindow(contentViewController: tabController)
         window.styleMask = [.titled, .closable, .miniaturizable]
