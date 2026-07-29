@@ -376,6 +376,37 @@ final class LocalBackend: Backend {
         }
     }
 
+    // MARK: Demo seeding (see DemoMode.swift)
+    //
+    // Synchronous like the tag-set/value-colour surface, and for the same
+    // reason: the seeder runs inside the (main-actor) backend activation.
+    // These live here rather than with the seeder because they need the
+    // file-private row types.
+
+    /// Replace every label definition in one transaction.
+    func replaceLabelDefinitions(_ definitions: [LabelDefinition]) throws {
+        try dbQueue.write { db in
+            try LabelDefinition.deleteAll(db)
+            for definition in definitions {
+                try definition.insert(db)
+            }
+        }
+    }
+
+    /// Replace every timespan (labels cascade) with the given seed rows, in
+    /// one transaction.
+    func replaceTimeSpans(with spans: [DemoSeed.SeedSpan]) throws {
+        try dbQueue.write { db in
+            try TimeSpanRow.deleteAll(db)
+            for span in spans {
+                var row = TimeSpanRow(id: nil, start: span.start, end: span.end,
+                                      note: span.note)
+                try row.insert(db)
+                try Self.insert(labels: span.labels, spanId: row.id!, db)
+            }
+        }
+    }
+
     // MARK: Shared row plumbing
 
     private static func insert(tagSets sets: [TagSet], _ db: Database) throws {

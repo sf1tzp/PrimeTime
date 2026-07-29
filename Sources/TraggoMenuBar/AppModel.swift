@@ -15,6 +15,18 @@ enum BackendKind: String, CaseIterable {
 @MainActor
 @Observable
 final class AppModel {
+    /// True when launched in demo mode (#39). The whole session is then
+    /// sandboxed: the local store is a regenerated `demo.sqlite`, `defaults`
+    /// is a wiped scratch suite, the keychain token is ignored, and Settings
+    /// hides the storage picker — so nothing done in a demo can touch real
+    /// data or preferences.
+    let isDemo: Bool
+
+    /// Where every settings read/write goes: the standard domain normally, a
+    /// scratch suite in demo mode. One indirection instead of guards at each
+    /// call site.
+    @ObservationIgnored private let defaults: UserDefaults
+
     // MARK: Persisted configuration
 
     /// The active backend choice. Switching tears down the old backend's
@@ -23,20 +35,20 @@ final class AppModel {
     var backendKind: BackendKind {
         didSet {
             guard backendKind != oldValue else { return }
-            UserDefaults.standard.set(backendKind.rawValue, forKey: Keys.backendKind)
+            defaults.set(backendKind.rawValue, forKey: Keys.backendKind)
             switchBackend()
         }
     }
 
     var serverURL: String {
         didSet {
-            UserDefaults.standard.set(serverURL, forKey: Keys.serverURL)
+            defaults.set(serverURL, forKey: Keys.serverURL)
             rebuildClient()
         }
     }
 
     var deviceName: String {
-        didSet { UserDefaults.standard.set(deviceName, forKey: Keys.deviceName) }
+        didSet { defaults.set(deviceName, forKey: Keys.deviceName) }
     }
 
     /// The saved tag sets. In-memory shape is the same whichever backend is
@@ -55,7 +67,7 @@ final class AppModel {
     /// remaining useful for navigating Tag Review; an explicitly stored false
     /// (a user who turned it off) is respected.
     var colorTagsByValue: Bool {
-        didSet { UserDefaults.standard.set(colorTagsByValue, forKey: Keys.colorTagsByValue) }
+        didSet { defaults.set(colorTagsByValue, forKey: Keys.colorTagsByValue) }
     }
 
     /// Per-`key: value` colour overrides (hex strings), keyed by
@@ -70,7 +82,7 @@ final class AppModel {
     /// order; 0 means all. Keeps the popover a quick-glance surface when many
     /// sets are saved.
     var menuTagSetLimit: Int {
-        didSet { UserDefaults.standard.set(menuTagSetLimit, forKey: Keys.menuTagSetLimit) }
+        didSet { defaults.set(menuTagSetLimit, forKey: Keys.menuTagSetLimit) }
     }
 
     // MARK: Runtime state (observed by the UI)
@@ -151,8 +163,10 @@ final class AppModel {
 
     // MARK: Lifecycle
 
-    init() {
-        let defaults = UserDefaults.standard
+    init(demo: Bool = DemoMode.isActive) {
+        isDemo = demo
+        let defaults = Self.makeDefaults(demo: demo)
+        self.defaults = defaults
         serverURL = defaults.string(forKey: Keys.serverURL) ?? "https://traggo.lofi"
         deviceName = defaults.string(forKey: Keys.deviceName)
             ?? "Menu Bar (\(Host.current().localizedName ?? "Mac"))"
@@ -160,16 +174,22 @@ final class AppModel {
             ? true : defaults.bool(forKey: Keys.colorTagsByValue)  // default on
         menuTagSetLimit = defaults.object(forKey: Keys.menuTagSetLimit) == nil
             ? 5 : defaults.integer(forKey: Keys.menuTagSetLimit)  // 0 = all
-        token = Keychain.get(account: "token")
+        // A demo never reads the real token: local mode is forced below, and
+        // the token could otherwise flow into a traggo session.
+        token = demo ? nil : Keychain.get(account: "token")
         tagSets = []          // loaded per-backend by activateBackend()
         valueColors = [:]
 
-        // Local is the default for fresh installs. An install that predates
-        // the choice (no stored kind) but has a traggo token keeps its traggo
-        // behaviour — and the inference is persisted so a later logout can't
-        // silently flip the mode.
-        if let raw = defaults.string(forKey: Keys.backendKind),
-           let kind = BackendKind(rawValue: raw) {
+        if demo {
+            // Forced local against the demo store, never persisted; Settings
+            // hides the storage picker so a demo can't reach traggo at all.
+            backendKind = .local
+        } else if let raw = defaults.string(forKey: Keys.backendKind),
+                  let kind = BackendKind(rawValue: raw) {
+            // Local is the default for fresh installs. An install that
+            // predates the choice (no stored kind) but has a traggo token
+            // keeps its traggo behaviour — and the inference is persisted so
+            // a later logout can't silently flip the mode.
             backendKind = kind
         } else {
             backendKind = token != nil ? .traggo : .local
@@ -180,6 +200,17 @@ final class AppModel {
         activateBackend()
         startTicking()
         Task { await bootstrap() }
+    }
+
+    /// Demo sessions read and write a scratch suite, wiped on each launch, so
+    /// they start from stock settings and a toggle flipped for a screenshot
+    /// never lands in the real preferences.
+    private static func makeDefaults(demo: Bool) -> UserDefaults {
+        guard demo else { return .standard }
+        let suite = "PrimeTimeDemo"
+        let defaults = UserDefaults(suiteName: suite)!   // constant, valid name
+        defaults.removePersistentDomain(forName: suite)
+        return defaults
     }
 
     private func rebuildClient() {
@@ -201,7 +232,9 @@ final class AppModel {
         case .local:
             if localStore == nil {
                 do {
-                    localStore = try LocalBackend()
+                    // Demo mode rebuilds and reseeds demo.sqlite instead —
+                    // the real database is never even opened.
+                    localStore = isDemo ? try LocalBackend.demo() : try LocalBackend()
                 } catch {
                     errorMessage = "Could not open the local database: \(error.localizedDescription)"
                 }
@@ -212,8 +245,8 @@ final class AppModel {
                 user = LocalBackend.localUser   // no login; ready immediately
             }
         case .traggo:
-            tagSets = AppModel.loadLegacyTagSets()
-            valueColors = UserDefaults.standard
+            tagSets = loadLegacyTagSets()
+            valueColors = defaults
                 .dictionary(forKey: Keys.valueColors) as? [String: String] ?? [:]
             user = nil                          // until the session validates
         }
@@ -534,8 +567,8 @@ final class AppModel {
 
     // MARK: Tag-set + value-colour persistence (routed per backend)
 
-    private static func loadLegacyTagSets() -> [TagSet] {
-        guard let data = UserDefaults.standard.data(forKey: Keys.tagSets),
+    private func loadLegacyTagSets() -> [TagSet] {
+        guard let data = defaults.data(forKey: Keys.tagSets),
               let sets = try? JSONDecoder().decode([TagSet].self, from: data) else {
             return TagSet.samples
         }
@@ -550,7 +583,7 @@ final class AppModel {
             catch { errorMessage = error.localizedDescription }
         case .traggo:
             if let data = try? JSONEncoder().encode(tagSets) {
-                UserDefaults.standard.set(data, forKey: Keys.tagSets)
+                defaults.set(data, forKey: Keys.tagSets)
             }
         }
     }
@@ -562,7 +595,7 @@ final class AppModel {
             do { try localStore?.saveValueColors(valueColors) }
             catch { errorMessage = error.localizedDescription }
         case .traggo:
-            UserDefaults.standard.set(valueColors, forKey: Keys.valueColors)
+            defaults.set(valueColors, forKey: Keys.valueColors)
         }
     }
 }

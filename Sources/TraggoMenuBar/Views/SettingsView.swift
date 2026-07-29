@@ -14,13 +14,13 @@ struct GeneralSettingsView: View {
         @Bindable var model = model
         Form {
             Section("Storage") {
-                Picker("Keep data", selection: $model.backendKind) {
-                    Text("On this Mac").tag(BackendKind.local)
-                    Text("On a Traggo server").tag(BackendKind.traggo)
-                }
-                .pickerStyle(.segmented)
-                if model.backendKind == .local {
-                    Text("Everything lives in a local database — no server, no account. Connect to a Traggo server here if you have one; each choice keeps its own data.")
+                // In demo mode the picker disappears entirely: the session is
+                // pinned to the demo store, and this note is the mode's one
+                // visible indicator (kept out of the popover so screenshots
+                // include it only deliberately).
+                if model.isDemo {
+                    Label("Demo mode", systemImage: "sparkles")
+                    Text("Seeded sample data, regenerated on every demo launch. Your real database and settings are untouched — quit and relaunch without PRIMETIME_DEMO to get back to them.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     if let path = model.localDatabasePath {
@@ -30,78 +30,113 @@ struct GeneralSettingsView: View {
                             .textSelection(.enabled)
                     }
                 } else {
-                    Text("Timespans and tag colours live on the server; tag sets and value colours stay on this Mac. Switching back to local storage keeps both sets of data intact.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    storagePicker
                 }
             }
             if model.backendKind == .traggo {
-                Section("Server") {
-                    TextField("Server URL", text: $model.serverURL)
-                    TextField("Device name", text: $model.deviceName)
-                        .help("Shows up under Devices in Traggo, so you can revoke this app.")
-                }
-                Section("Account") {
-                    if let user = model.user {
-                        LabeledContent("Status") {
-                            Label("Connected", systemImage: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
-                        }
-                        LabeledContent("Signed in as", value: user.name)
-                        Button("Log out", role: .destructive) { model.logout() }
-                    } else {
-                        // The sign-in form, demoted here from the popover. The
-                        // password lives only in local @State and is cleared
-                        // as soon as a login attempt finishes.
-                        TextField("Username", text: $username)
-                            .autocorrectionDisabled()
-                        SecureField("Password", text: $password)
-                            .onSubmit(submit)
-                        HStack {
-                            if model.isBusy {
-                                ProgressView().controlSize(.small)
-                            }
-                            Spacer()
-                            Button("Sign in", action: submit)
-                                .keyboardShortcut(.defaultAction)
-                                .disabled(username.isEmpty || password.isEmpty || model.isBusy)
-                        }
-                        if let error = model.errorMessage {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                                .lineLimit(3)
-                        }
-                    }
-                }
+                serverSections
             }
-            Section("Menu") {
-                // A plain numeric field with its own stepper, like the log
-                // editor's time fields. Typed values are clamped on commit.
-                let limit = Binding(
-                    get: { model.menuTagSetLimit },
-                    set: { model.menuTagSetLimit = max(0, min(99, $0)) })
-                LabeledContent("Quick-start tag sets") {
-                    HStack(spacing: 2) {
-                        TextField("", value: limit, format: .number)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 40)
-                        Stepper("", value: limit, in: 0...99)
-                            .labelsHidden()
-                    }
-                }
-                Text("How many tag sets the popover lists (0 shows all), in the order from the Tag Sets tab — drag to reorder there. The rest stay a click away behind a “more…” row.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Section("Tags") {
-                Toggle("Colour tags by value", isOn: $model.colorTagsByValue)
-                Text("Pick a colour per key: value pair, so e.g. repo: foo and repo: bar look different. Pairs without an override keep their key colour.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            menuAndTagSections
         }
         .formStyle(.grouped)
+    }
+
+    @ViewBuilder
+    private var storagePicker: some View {
+        @Bindable var model = model
+        Picker("Keep data", selection: $model.backendKind) {
+            Text("On this Mac").tag(BackendKind.local)
+            Text("On a Traggo server").tag(BackendKind.traggo)
+        }
+        .pickerStyle(.segmented)
+        if model.backendKind == .local {
+            Text("Everything lives in a local database — no server, no account. Connect to a Traggo server here if you have one; each choice keeps its own data.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if let path = model.localDatabasePath {
+                Text(path)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+        } else {
+            Text("Timespans and tag colours live on the server; tag sets and value colours stay on this Mac. Switching back to local storage keeps both sets of data intact.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var serverSections: some View {
+        @Bindable var model = model
+        Section("Server") {
+            TextField("Server URL", text: $model.serverURL)
+            TextField("Device name", text: $model.deviceName)
+                .help("Shows up under Devices in Traggo, so you can revoke this app.")
+        }
+        Section("Account") {
+            if let user = model.user {
+                LabeledContent("Status") {
+                    Label("Connected", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                }
+                LabeledContent("Signed in as", value: user.name)
+                Button("Log out", role: .destructive) { model.logout() }
+            } else {
+                // The sign-in form, demoted here from the popover. The
+                // password lives only in local @State and is cleared
+                // as soon as a login attempt finishes.
+                TextField("Username", text: $username)
+                    .autocorrectionDisabled()
+                SecureField("Password", text: $password)
+                    .onSubmit(submit)
+                HStack {
+                    if model.isBusy {
+                        ProgressView().controlSize(.small)
+                    }
+                    Spacer()
+                    Button("Sign in", action: submit)
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(username.isEmpty || password.isEmpty || model.isBusy)
+                }
+                if let error = model.errorMessage {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .lineLimit(3)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var menuAndTagSections: some View {
+        @Bindable var model = model
+        Section("Menu") {
+            // A plain numeric field with its own stepper, like the log
+            // editor's time fields. Typed values are clamped on commit.
+            let limit = Binding(
+                get: { model.menuTagSetLimit },
+                set: { model.menuTagSetLimit = max(0, min(99, $0)) })
+            LabeledContent("Quick-start tag sets") {
+                HStack(spacing: 2) {
+                    TextField("", value: limit, format: .number)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 40)
+                    Stepper("", value: limit, in: 0...99)
+                        .labelsHidden()
+                }
+            }
+            Text("How many tag sets the popover lists (0 shows all), in the order from the Tag Sets tab — drag to reorder there. The rest stay a click away behind a “more…” row.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        Section("Tags") {
+            Toggle("Colour tags by value", isOn: $model.colorTagsByValue)
+            Text("Pick a colour per key: value pair, so e.g. repo: foo and repo: bar look different. Pairs without an override keep their key colour.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private func submit() {
