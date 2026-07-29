@@ -4,3 +4,6 @@ build:
 
 run-dev: build
   ./.build/debug/TraggoMenuBar
+
+run:
+  ./.build/debug/TraggoMenuBar
