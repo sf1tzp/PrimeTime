@@ -23,8 +23,9 @@ struct SpanLabel: Hashable {
 
 /// A label key's definition: the key itself plus its display colour (a hex
 /// string like "#2196f3"). Colours are stored per *key*; per-value colours are
-/// a client-side overlay (see `AppModel.valueColors`).
-struct LabelDefinition: Hashable {
+/// a client-side overlay (see `AppModel.valueColors`). Codable so the local
+/// store can persist it directly as a GRDB record — the type is its own row.
+struct LabelDefinition: Hashable, Codable {
     let key: String
     let color: String
 }

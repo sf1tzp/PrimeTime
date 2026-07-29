@@ -1,0 +1,337 @@
+import Foundation
+import GRDB
+import Testing
+@testable import TraggoMenuBar
+
+/// The local store, exercised end to end over real (in-memory or temp-file)
+/// databases: every `Backend` operation, the date-range and paging behaviour,
+/// tag set / value colour persistence, and the one-time UserDefaults import.
+@Suite struct LocalBackendTests {
+
+    /// A fresh in-memory store. No legacy defaults unless a test passes some,
+    /// so the import migration seeds `TagSet.samples` (the fresh-install path).
+    private func makeBackend(defaults: UserDefaults? = nil,
+                             pageSize: Int = 200) throws -> LocalBackend {
+        let backend = try LocalBackend(DatabaseQueue(), legacyDefaults: defaults)
+        backend.pageSize = pageSize
+        return backend
+    }
+
+    /// An isolated UserDefaults suite, torn down by `withDefaults`' caller
+    /// scope ending; never touches the standard domain.
+    private func withDefaults<T>(_ populate: (UserDefaults) -> Void,
+                                 _ body: (UserDefaults) throws -> T) rethrows -> T {
+        let name = "LocalBackendTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        populate(defaults)
+        return try body(defaults)
+    }
+
+    /// Whole-second dates so values survive the store's millisecond precision
+    /// and compare with `==`.
+    private func date(_ epochSeconds: Int) -> Date {
+        Date(timeIntervalSince1970: TimeInterval(epochSeconds))
+    }
+
+    // MARK: Session
+
+    @Test func currentUserIsAlwaysPresent() async throws {
+        let backend = try makeBackend()
+        let user = try await backend.currentUser()
+        #expect(user != nil)   // the readiness probe: local mode has no login
+    }
+
+    // MARK: Timespan lifecycle
+
+    @Test func startStopRoundTrip() async throws {
+        let backend = try makeBackend()
+        let labels = [SpanLabel(key: "repo", value: "primetime"),
+                      SpanLabel(key: "work-type", value: "review")]
+        let started = try await backend.startTimeSpan(start: date(1_000_000),
+                                                      labels: labels, note: "")
+        #expect(started.isRunning)
+        #expect(started.labels == labels)
+
+        // Running spans show up in timers(), and only there.
+        let timers = try await backend.timers()
+        #expect(timers.map(\.id) == [started.id])
+        let beforeStop = try await backend.timeSpans(from: .distantPast, to: .distantFuture, page: nil)
+        #expect(beforeStop.timeSpans.isEmpty)
+
+        let stopped = try await backend.stopTimeSpan(id: started.id, end: date(1_003_600))
+        #expect(stopped.end == date(1_003_600))
+        #expect(stopped.labels == labels)   // labels survive the stop
+
+        #expect(try await backend.timers().isEmpty)
+        let afterStop = try await backend.timeSpans(from: .distantPast, to: .distantFuture, page: nil)
+        #expect(afterStop.timeSpans.map(\.id) == [started.id])
+    }
+
+    @Test func updateRewritesEveryField() async throws {
+        let backend = try makeBackend()
+        let span = try await backend.startTimeSpan(
+            start: date(1_000_000),
+            labels: [SpanLabel(key: "old", value: "x")], note: "")
+
+        let newLabels = [SpanLabel(key: "b", value: "2"), SpanLabel(key: "a", value: "1")]
+        let updated = try await backend.updateTimeSpan(
+            id: span.id, start: date(999_000), end: date(1_005_000),
+            labels: newLabels, note: "edited")
+        #expect(updated.start == date(999_000))
+        #expect(updated.end == date(1_005_000))
+        #expect(updated.note == "edited")
+        // Replaced wholesale, preserving the order they were passed in.
+        #expect(updated.labels == newLabels)
+
+        // And that's what a re-fetch sees, not just the returned value.
+        let fetched = try await backend.timeSpans(from: .distantPast, to: .distantFuture, page: nil)
+        #expect(fetched.timeSpans.first?.labels == newLabels)
+        #expect(fetched.timeSpans.first?.note == "edited")
+    }
+
+    @Test func removeDeletesSpanAndItsLabels() async throws {
+        let backend = try makeBackend()
+        let span = try await backend.startTimeSpan(
+            start: date(1_000_000),
+            labels: [SpanLabel(key: "repo", value: "primetime")], note: "")
+        try await backend.removeTimeSpan(id: span.id)
+
+        #expect(try await backend.timers().isEmpty)
+        // The child rows went with it (ON DELETE CASCADE).
+        let orphans = try await backend.dbQueue.read { db in
+            try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM time_span_label")!
+        }
+        #expect(orphans == 0)
+    }
+
+    @Test func mutationsOnUnknownIdsThrow() async throws {
+        let backend = try makeBackend()
+        await #expect(throws: (any Error).self) {
+            _ = try await backend.updateTimeSpan(id: 99, start: self.date(0), end: nil,
+                                                 labels: [], note: "")
+        }
+        await #expect(throws: (any Error).self) {
+            _ = try await backend.stopTimeSpan(id: 99, end: self.date(0))
+        }
+        await #expect(throws: (any Error).self) {
+            try await backend.removeTimeSpan(id: 99)
+        }
+    }
+
+    // MARK: Label definitions
+
+    @Test func labelDefinitionLifecycle() async throws {
+        let backend = try makeBackend()
+        try await backend.createLabelDefinition(key: "repo", color: "#112233")
+        try await backend.createLabelDefinition(key: "area", color: "#445566")
+
+        // Listed alphabetically by key.
+        var definitions = try await backend.labelDefinitions()
+        #expect(definitions == [LabelDefinition(key: "area", color: "#445566"),
+                                LabelDefinition(key: "repo", color: "#112233")])
+
+        try await backend.updateLabelDefinition(key: "repo", color: "#aabbcc")
+        definitions = try await backend.labelDefinitions()
+        #expect(definitions.first(where: { $0.key == "repo" })?.color == "#aabbcc")
+
+        // The create/update split matches traggo: create rejects an existing
+        // key, update rejects a missing one — callers already navigate this.
+        await #expect(throws: (any Error).self) {
+            try await backend.createLabelDefinition(key: "repo", color: "#000000")
+        }
+        await #expect(throws: (any Error).self) {
+            try await backend.updateLabelDefinition(key: "missing", color: "#000000")
+        }
+    }
+
+    // MARK: Date ranges
+
+    @Test func timeSpansReturnsOverlapsOnly() async throws {
+        let backend = try makeBackend()
+        // A window of [2000, 3000] against spans placed around it.
+        func finished(_ start: Int, _ end: Int) async throws -> TimeSpan {
+            let span = try await backend.startTimeSpan(start: date(start), labels: [], note: "")
+            return try await backend.stopTimeSpan(id: span.id, end: date(end))
+        }
+        _ = try await finished(500, 1_500)          // entirely before
+        let straddlesFrom = try await finished(1_500, 2_500)
+        let inside = try await finished(2_100, 2_200)
+        let straddlesTo = try await finished(2_900, 3_500)
+        let covers = try await finished(1_000, 4_000)
+        _ = try await finished(3_500, 4_000)        // entirely after
+
+        let page = try await backend.timeSpans(from: date(2_000), to: date(3_000), page: nil)
+        // Overlap semantics (inclusive bounds), newest start first.
+        #expect(page.timeSpans.map(\.id) ==
+                [straddlesTo.id, inside.id, straddlesFrom.id, covers.id])
+        #expect(page.nextPage == nil)
+    }
+
+    // MARK: Paging
+
+    @Test func pageWalkIsExhaustiveNewestFirst() async throws {
+        let backend = try makeBackend(pageSize: 2)
+        var expected: [Int] = []
+        for i in 0..<5 {
+            let span = try await backend.startTimeSpan(start: date(1_000 + i * 100),
+                                                       labels: [], note: "")
+            _ = try await backend.stopTimeSpan(id: span.id, end: date(1_050 + i * 100))
+            expected.append(span.id)
+        }
+
+        var walked: [Int] = []
+        var token: PageToken?
+        var pages = 0
+        repeat {
+            let page = try await backend.timeSpans(from: .distantPast, to: .distantFuture, page: token)
+            walked += page.timeSpans.map(\.id)
+            token = page.nextPage
+            pages += 1
+        } while token != nil
+        #expect(pages == 3)                          // 2 + 2 + 1
+        #expect(walked == expected.reversed())       // newest first, no dups
+    }
+
+    @Test func exactMultiplePageWalkMintsNoDeadToken() async throws {
+        // 4 spans at page size 2: the second page is full AND final, and the
+        // extra-row probe means it must not hand out a token to an empty page.
+        let backend = try makeBackend(pageSize: 2)
+        for i in 0..<4 {
+            let span = try await backend.startTimeSpan(start: date(1_000 + i * 100),
+                                                       labels: [], note: "")
+            _ = try await backend.stopTimeSpan(id: span.id, end: date(1_050 + i * 100))
+        }
+        let first = try await backend.timeSpans(from: .distantPast, to: .distantFuture, page: nil)
+        let second = try await backend.timeSpans(from: .distantPast, to: .distantFuture,
+                                                 page: first.nextPage)
+        #expect(second.timeSpans.count == 2)
+        #expect(second.nextPage == nil)
+    }
+
+    @Test func pageWalkIsStableUnderConcurrentInserts() async throws {
+        // Keyset pagination: rows created after the walk begins sort ahead of
+        // the cursor (newer start) and must not shift or duplicate later pages.
+        let backend = try makeBackend(pageSize: 2)
+        for i in 0..<4 {
+            let span = try await backend.startTimeSpan(start: date(1_000 + i * 100),
+                                                       labels: [], note: "")
+            _ = try await backend.stopTimeSpan(id: span.id, end: date(1_050 + i * 100))
+        }
+        let first = try await backend.timeSpans(from: .distantPast, to: .distantFuture, page: nil)
+
+        // A brand-new span lands mid-walk, newer than everything.
+        let late = try await backend.startTimeSpan(start: date(9_000), labels: [], note: "")
+        _ = try await backend.stopTimeSpan(id: late.id, end: date(9_100))
+
+        let second = try await backend.timeSpans(from: .distantPast, to: .distantFuture,
+                                                 page: first.nextPage)
+        let walked = (first.timeSpans + second.timeSpans).map(\.id)
+        #expect(!walked.contains(late.id))
+        #expect(Set(walked).count == walked.count)   // no duplicates either
+    }
+
+    @Test func foreignPageTokenActsAsFirstPage() async throws {
+        let backend = try makeBackend()
+        let span = try await backend.startTimeSpan(start: date(1_000), labels: [], note: "")
+        _ = try await backend.stopTimeSpan(id: span.id, end: date(2_000))
+        let page = try await backend.timeSpans(from: .distantPast, to: .distantFuture,
+                                               page: PageToken(rawValue: "not ours"))
+        #expect(page.timeSpans.map(\.id) == [span.id])
+    }
+
+    // MARK: Tag sets + value colours
+
+    @Test func tagSetsSaveIsReplaceAll() async throws {
+        let backend = try makeBackend()
+        let a = TagSet(name: "A", tags: [TagRow(key: "k", value: "1"),
+                                         TagRow(key: "k2", value: "2")])
+        let b = TagSet(name: "B", tags: [TagRow(key: "x", value: "y")], symbolName: "hammer")
+        try backend.saveTagSets([a, b])
+
+        var loaded = try backend.loadTagSets()
+        #expect(loaded.map(\.id) == [a.id, b.id])           // identity survives
+        #expect(loaded[0].tags.map(\.key) == ["k", "k2"])   // member order too
+        #expect(loaded[1].symbolName == "hammer")
+
+        // Reorder and drop one: the snapshot fully replaces the old state...
+        try backend.saveTagSets([b])
+        loaded = try backend.loadTagSets()
+        #expect(loaded.map(\.id) == [b.id])
+        // ...including cascading away the removed set's member rows.
+        let members = try await backend.dbQueue.read { db in
+            try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM label_set_member")!
+        }
+        #expect(members == 1)
+    }
+
+    @Test func valueColorsRoundTripThroughRealColumns() throws {
+        let backend = try makeBackend()
+        // Values may contain ":" — the composite key's whole reason to exist.
+        let colors = [ValueColorKey.join("repo", "traggo:menu"): "#112233",
+                      ValueColorKey.join("area", "ui"): "#445566"]
+        try backend.saveValueColors(colors)
+        #expect(try backend.loadValueColors() == colors)
+
+        // A malformed composite (no separator) is skipped, not corrupted.
+        try backend.saveValueColors(["no-separator": "#000000"])
+        #expect(try backend.loadValueColors().isEmpty)
+    }
+
+    // MARK: UserDefaults import
+
+    @Test func importsLegacyPresetsAndValueColors() throws {
+        let sets = [TagSet(name: "Deep Work", tags: [TagRow(key: "type", value: "programming")],
+                           symbolName: "brain"),
+                    TagSet(name: "Email", tags: [TagRow(key: "type", value: "email")])]
+        let colors = [ValueColorKey.join("type", "a:b"): "#123456"]
+
+        try withDefaults { defaults in
+            defaults.set(try! JSONEncoder().encode(sets), forKey: "presets")
+            defaults.set(colors, forKey: "valueColors")
+        } _: { defaults in
+            let backend = try makeBackend(defaults: defaults)
+            let loaded = try backend.loadTagSets()
+            #expect(loaded.map(\.id) == sets.map(\.id))
+            #expect(loaded.map(\.name) == ["Deep Work", "Email"])
+            #expect(loaded[0].symbolName == "brain")
+            #expect(loaded[0].tags.map(\.value) == ["programming"])
+            #expect(try backend.loadValueColors() == colors)
+            // Copied, not moved: traggo mode still reads the legacy keys.
+            #expect(defaults.data(forKey: "presets") != nil)
+        }
+    }
+
+    @Test func freshDatabaseSeedsSampleTagSets() throws {
+        // No legacy presets at all: the import migration seeds the same
+        // samples a first run has always shown.
+        let backend = try makeBackend()
+        let loaded = try backend.loadTagSets()
+        #expect(loaded.map(\.name) == TagSet.samples.map(\.name))
+        #expect(try backend.loadValueColors().isEmpty)
+    }
+
+    @Test func importRunsExactlyOncePerDatabase() throws {
+        let path = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LocalBackendTests-\(UUID().uuidString).sqlite").path
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let original = [TagSet(name: "Original", tags: [TagRow(key: "k", value: "v")])]
+        try withDefaults { defaults in
+            defaults.set(try! JSONEncoder().encode(original), forKey: "presets")
+        } _: { defaults in
+            _ = try LocalBackend(DatabaseQueue(path: path), legacyDefaults: defaults)
+        }
+
+        // Reopening the same file with *different* legacy data must not
+        // re-import (the migration already ran for this database).
+        try withDefaults { defaults in
+            let other = [TagSet(name: "Other", tags: [])]
+            defaults.set(try! JSONEncoder().encode(other), forKey: "presets")
+        } _: { defaults in
+            let reopened = try LocalBackend(DatabaseQueue(path: path), legacyDefaults: defaults)
+            let loaded = try reopened.loadTagSets()
+            #expect(loaded.map(\.name) == ["Original"])
+        }
+    }
+}

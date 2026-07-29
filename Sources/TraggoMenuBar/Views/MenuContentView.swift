@@ -14,10 +14,10 @@ struct MenuContentView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if model.isAuthenticated {
-                authenticatedBody
+            if model.isReady {
+                readyBody
             } else {
-                LoginView()
+                notReadyBody
             }
         }
         .padding(12)
@@ -35,8 +35,49 @@ struct MenuContentView: View {
         }
     }
 
+    /// Local mode is ready the moment its store opens, so this shows only in
+    /// traggo mode before a session validates (or if the local database failed
+    /// to open). Sign-in itself lives in Settings now — the popover just
+    /// points there.
     @ViewBuilder
-    private var authenticatedBody: some View {
+    private var notReadyBody: some View {
+        Text(model.backendKind == .traggo ? "Not signed in" : "Local database unavailable")
+            .font(.headline)
+        Text(model.backendKind == .traggo
+             ? "Sign in to \(model.serverURL) in Settings — or switch there to keeping data on this Mac, no server needed."
+             : "Check the error below, then relaunch the app.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+        if let error = model.errorMessage {
+            Text(error)
+                .font(.caption)
+                .foregroundStyle(.red)
+                .lineLimit(3)
+        }
+
+        Divider()
+
+        VStack(spacing: 2) {
+            Button {
+                openSettings(tab: .settings)
+            } label: {
+                Label("Settings…", systemImage: "gear")
+            }
+            .buttonStyle(MenuRowButtonStyle())
+
+            Button {
+                NSApplication.shared.terminate(nil)
+            } label: {
+                Label("Quit", systemImage: "power")
+            }
+            .buttonStyle(MenuRowButtonStyle())
+        }
+        .font(.callout)
+    }
+
+    @ViewBuilder
+    private var readyBody: some View {
         activeTimerSection
 
         Divider()

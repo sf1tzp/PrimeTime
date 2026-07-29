@@ -109,8 +109,21 @@ final class HistoryModel {
 
     // MARK: Loading
 
+    /// Forget everything loaded — called when the active backend switches,
+    /// since spans (and their ids) from one store mean nothing in the other.
+    /// The next look at a history tab reloads from the new backend.
+    func reset() {
+        loadGeneration += 1     // invalidates any in-flight load
+        spans = []
+        hasLoaded = false
+        isLoading = false
+        errorMessage = nil
+        chartGrouping = nil     // re-derived from the new backend's data
+        chartGrouping2 = nil
+    }
+
     func reload() async {
-        guard let backend = app.api, app.isAuthenticated else { return }
+        guard let backend = app.api, app.isReady else { return }
         loadGeneration += 1
         let generation = loadGeneration
         isLoading = true

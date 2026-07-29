@@ -41,6 +41,24 @@ func normalizeKey(_ key: String) -> String {
     key.lowercased().replacingOccurrences(of: " ", with: "-")
 }
 
+/// The composite dictionary key for per-`key: value` colour overrides — a unit
+/// separator rather than ":" because tag values may themselves contain ":".
+/// Shared between `AppModel` (which keys its in-memory dictionary this way,
+/// and the legacy UserDefaults store with it) and `LocalBackend` (which splits
+/// the composite back into real columns).
+enum ValueColorKey {
+    static let separator: Character = "\u{1F}"
+
+    static func join(_ key: String, _ value: String) -> String {
+        "\(key)\(separator)\(value)"
+    }
+
+    static func split(_ raw: String) -> (key: String, value: String)? {
+        guard let index = raw.firstIndex(of: separator) else { return nil }
+        return (String(raw[..<index]), String(raw[raw.index(after: index)...]))
+    }
+}
+
 extension [TagRow] {
     /// Drop empty rows and normalise keys — the domain form for any mutation.
     var labels: [SpanLabel] {

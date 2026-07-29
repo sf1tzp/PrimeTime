@@ -49,10 +49,13 @@ private struct HelpSection: Identifiable {
             A tag is a **key: value** pair on a timespan, like `project: traggo`. Values \
             are free text; keys are lower-cased with spaces turned into “-”.
 
-            Tag **keys** live on the Traggo server, each with a colour — recolouring a \
-            key changes it everywhere the key appears, including the web UI. With \
-            *Colour tags by value* on (see Settings), you can additionally pick a colour \
-            per key: value pair; those overrides are stored on this Mac only.
+            Tag **keys** each carry a colour, stored with your timespans — in the local \
+            database when data is kept on this Mac, or on the Traggo server when \
+            connected to one (where recolouring a key also changes the web UI). Either \
+            way, recolouring a key changes it everywhere the key appears. *Colour tags \
+            by value* (on by default; see Settings) additionally lets you pick a colour \
+            per key: value pair, so spans differ by what they're about rather than only \
+            by key; those overrides always stay on this Mac.
 
             **Tag sets** are named bundles of tags used to start timespans with one \
             click, with a name and an icon. They're a convenience stored on this Mac, \
@@ -141,10 +144,15 @@ private struct HelpSection: Identifiable {
             title: "Settings",
             symbol: "gear",
             body: """
-            Server URL, device name (how this Mac appears under Traggo's devices), and \
-            the signed-in account. **Quick-start tag sets** caps how many sets the \
-            popover lists (0 shows all). **Colour tags by value** enables the per-Mac \
-            key: value colour overrides described above.
+            **Storage** picks where your data lives: on this Mac (a local database — \
+            the default; no server, no account) or on a Traggo server, with the server \
+            URL, device name (how this Mac appears under Traggo's devices), and \
+            sign-in. Each choice keeps its own data; switching doesn't move timespans \
+            between them.
+
+            **Quick-start tag sets** caps how many sets the popover lists (0 shows \
+            all). **Colour tags by value** (on by default) enables the per-pair colour \
+            overrides described above; turn it off to colour strictly by key.
             """),
     ]
 }

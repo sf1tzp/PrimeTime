@@ -3,12 +3,30 @@ import Observation
 import SwiftUI
 import AppKit
 
+/// Where the app's data lives: the local SQLite store (the default — no
+/// server, no login) or a traggo server. Settings switches between them; each
+/// keeps its own data, nothing syncs (that's phase 6).
+enum BackendKind: String, CaseIterable {
+    case local, traggo
+}
+
 /// The whole app's state and behaviour. `@MainActor` because everything here
 /// drives the UI; `@Observable` so SwiftUI views re-render when it changes.
 @MainActor
 @Observable
 final class AppModel {
     // MARK: Persisted configuration
+
+    /// The active backend choice. Switching tears down the old backend's
+    /// runtime state (timers, history, scans — span ids from one store are
+    /// meaningless in the other) and boots the new one.
+    var backendKind: BackendKind {
+        didSet {
+            guard backendKind != oldValue else { return }
+            UserDefaults.standard.set(backendKind.rawValue, forKey: Keys.backendKind)
+            switchBackend()
+        }
+    }
 
     var serverURL: String {
         didSet {
@@ -21,21 +39,31 @@ final class AppModel {
         didSet { UserDefaults.standard.set(deviceName, forKey: Keys.deviceName) }
     }
 
+    /// The saved tag sets. In-memory shape is the same whichever backend is
+    /// active; persistence routes per backend — the local store's database in
+    /// local mode, the legacy UserDefaults JSON in traggo mode (unchanged, so
+    /// nothing regresses for server users). Switching backends reloads from
+    /// the newly active store.
     var tagSets: [TagSet] {
-        didSet { saveTagSets() }
+        didSet { persistTagSets() }
     }
 
     /// When on, tags are coloured by their `key: value` pair (using the local
     /// overrides below) instead of only by key, so `repo: foo` and `repo: bar`
-    /// can look different.
+    /// can look different. On by default — differentiating spans by value is
+    /// PrimeTime's headline improvement over vanilla traggo, with key colours
+    /// remaining useful for navigating Tag Review; an explicitly stored false
+    /// (a user who turned it off) is respected.
     var colorTagsByValue: Bool {
         didSet { UserDefaults.standard.set(colorTagsByValue, forKey: Keys.colorTagsByValue) }
     }
 
-    /// Per-`key: value` colour overrides (hex strings). Traggo only stores
-    /// colours per key, so these are a client-side convenience like tag sets.
+    /// Per-`key: value` colour overrides (hex strings), keyed by
+    /// `ValueColorKey.join`. Traggo only stores colours per key, so in traggo
+    /// mode these are a client-side convenience (UserDefaults); in local mode
+    /// they're first-class rows in the same database as everything else.
     var valueColors: [String: String] {
-        didSet { UserDefaults.standard.set(valueColors, forKey: Keys.valueColors) }
+        didSet { persistValueColors() }
     }
 
     /// How many tag sets the popover's Quick start list shows, in tag-set
@@ -64,9 +92,10 @@ final class AppModel {
     /// Updated once per second while a timer runs so elapsed labels tick.
     var currentDate = Date()
 
-    /// Whether the backend is ready to serve data. For the traggo backend
-    /// that means a validated login; a future local store is always ready.
-    var isAuthenticated: Bool { user != nil }
+    /// Whether the active backend is ready to serve data. The local store is
+    /// ready as soon as it opens (its `user` is set synchronously); the traggo
+    /// backend needs a validated login.
+    var isReady: Bool { user != nil }
 
     /// History (log / calendar / charts) state, split out so this class stays
     /// focused on live-timer concerns.
@@ -81,11 +110,28 @@ final class AppModel {
     /// The concrete client, kept for the session operations (login) that the
     /// `Backend` protocol deliberately leaves out. Data paths go through `api`.
     @ObservationIgnored private var client: TraggoClient?
+    /// The local store, opened lazily on first local-mode activation and kept
+    /// open for the app's lifetime (switching to traggo doesn't close it — a
+    /// switch back is instant and the file is single-user anyway).
+    @ObservationIgnored private var localStore: LocalBackend?
+    /// Suppresses the tagSets/valueColors persistence observers while they're
+    /// being *loaded* from a store, so restoring state never echoes a write.
+    @ObservationIgnored private var isRestoringState = false
 
     /// The current backend, for this model and its siblings (see
-    /// `HistoryModel`). Rebuilt when the server URL or token changes, hence
-    /// exposed as a computed property.
-    var api: (any Backend)? { client }
+    /// `HistoryModel`). Computed so a backend switch (or a traggo client
+    /// rebuild on URL/token change) is picked up everywhere at once.
+    var api: (any Backend)? {
+        switch backendKind {
+        case .local: localStore
+        case .traggo: client
+        }
+    }
+
+    /// Where the local database lives, for display in Settings.
+    var localDatabasePath: String? {
+        localStore?.databaseURL?.path
+    }
     @ObservationIgnored private var pollTask: Task<Void, Never>?
     @ObservationIgnored private var tickTimer: Timer?
     /// Debounce timers for per-key colour writes, so dragging in the colour
@@ -93,6 +139,7 @@ final class AppModel {
     @ObservationIgnored private var colorTasks: [String: Task<Void, Never>] = [:]
 
     private enum Keys {
+        static let backendKind = "backendKind"
         static let serverURL = "serverURL"
         static let deviceName = "deviceName"
         // Stored under the legacy "presets" key so existing saved sets survive.
@@ -109,14 +156,28 @@ final class AppModel {
         serverURL = defaults.string(forKey: Keys.serverURL) ?? "https://traggo.lofi"
         deviceName = defaults.string(forKey: Keys.deviceName)
             ?? "Menu Bar (\(Host.current().localizedName ?? "Mac"))"
-        tagSets = AppModel.loadTagSets()
-        colorTagsByValue = defaults.bool(forKey: Keys.colorTagsByValue)
-        valueColors = defaults.dictionary(forKey: Keys.valueColors) as? [String: String] ?? [:]
+        colorTagsByValue = defaults.object(forKey: Keys.colorTagsByValue) == nil
+            ? true : defaults.bool(forKey: Keys.colorTagsByValue)  // default on
         menuTagSetLimit = defaults.object(forKey: Keys.menuTagSetLimit) == nil
             ? 5 : defaults.integer(forKey: Keys.menuTagSetLimit)  // 0 = all
         token = Keychain.get(account: "token")
+        tagSets = []          // loaded per-backend by activateBackend()
+        valueColors = [:]
+
+        // Local is the default for fresh installs. An install that predates
+        // the choice (no stored kind) but has a traggo token keeps its traggo
+        // behaviour — and the inference is persisted so a later logout can't
+        // silently flip the mode.
+        if let raw = defaults.string(forKey: Keys.backendKind),
+           let kind = BackendKind(rawValue: raw) {
+            backendKind = kind
+        } else {
+            backendKind = token != nil ? .traggo : .local
+            defaults.set(backendKind.rawValue, forKey: Keys.backendKind)
+        }
 
         rebuildClient()
+        activateBackend()
         startTicking()
         Task { await bootstrap() }
     }
@@ -129,9 +190,60 @@ final class AppModel {
         client = TraggoClient(baseURL: url, token: token)
     }
 
+    /// Point the model at the active backend's stores: open the local database
+    /// (running its migrations, including the one-time UserDefaults import) or
+    /// fall back to the legacy UserDefaults data for traggo mode, and set the
+    /// synchronous parts of readiness.
+    private func activateBackend() {
+        isRestoringState = true
+        defer { isRestoringState = false }
+        switch backendKind {
+        case .local:
+            if localStore == nil {
+                do {
+                    localStore = try LocalBackend()
+                } catch {
+                    errorMessage = "Could not open the local database: \(error.localizedDescription)"
+                }
+            }
+            if let store = localStore {
+                tagSets = (try? store.loadTagSets()) ?? []
+                valueColors = (try? store.loadValueColors()) ?? [:]
+                user = LocalBackend.localUser   // no login; ready immediately
+            }
+        case .traggo:
+            tagSets = AppModel.loadLegacyTagSets()
+            valueColors = UserDefaults.standard
+                .dictionary(forKey: Keys.valueColors) as? [String: String] ?? [:]
+            user = nil                          // until the session validates
+        }
+    }
+
+    /// Runtime part of a backend switch (the persisted choice is written by
+    /// `backendKind.didSet`): drop everything owned by the old backend, then
+    /// activate and boot the new one.
+    private func switchBackend() {
+        pollTask?.cancel()
+        pollTask = nil
+        user = nil
+        activeTimers = []
+        tagDefinitions = []
+        errorMessage = nil
+        history.reset()
+        review.reset()
+        activateBackend()
+        Task { await bootstrap() }
+    }
+
     private func bootstrap() async {
-        guard token != nil else { return }
-        await validateSession()
+        switch backendKind {
+        case .local:
+            guard localStore != nil else { return }
+            await refresh()
+        case .traggo:
+            guard token != nil else { return }
+            await validateSession()
+        }
     }
 
     // MARK: Auth
@@ -187,7 +299,7 @@ final class AppModel {
     // MARK: Data
 
     func refresh() async {
-        guard let backend = api, isAuthenticated else { return }
+        guard let backend = api, isReady else { return }
         do {
             async let timers = backend.timers()
             async let definitions = backend.labelDefinitions()
@@ -317,11 +429,11 @@ final class AppModel {
         return set
     }
 
-    // MARK: Tag colours (stored server-side, per key)
+    // MARK: Tag colours (stored per key by the backend)
 
-    /// The colour to render a tag with. With "colour by value" on, a local
-    /// per-value override wins; otherwise the colour Traggo has on record for
-    /// the tag key, or a sensible default.
+    /// The colour to render a tag with. With "colour by value" on, a
+    /// per-value override wins; otherwise the colour the backend has on
+    /// record for the tag key, or a sensible default.
     func tagColor(for rawKey: String, value: String? = nil) -> Color {
         if colorTagsByValue, let value,
            let color = valueColor(key: rawKey, value: value) {
@@ -335,28 +447,22 @@ final class AppModel {
         return Color(hex: "#2196f3") ?? .blue
     }
 
-    // MARK: Per-value colour overrides (stored locally)
-
-    /// Composite dictionary key — a unit separator rather than ":" because tag
-    /// values may themselves contain ":".
-    private static func valueColorKey(_ key: String, _ value: String) -> String {
-        "\(key)\u{1F}\(value)"
-    }
+    // MARK: Per-value colour overrides
 
     /// The override picked for a `key: value` pair, if any.
     func valueColor(key rawKey: String, value: String) -> Color? {
         guard !value.isEmpty else { return nil }
-        return valueColors[Self.valueColorKey(normalizeKey(rawKey), value)]
+        return valueColors[ValueColorKey.join(normalizeKey(rawKey), value)]
             .flatMap { Color(hex: $0) }
     }
 
     func setValueColor(key rawKey: String, value: String, color: Color) {
         guard let hex = color.hexString, !value.isEmpty else { return }
-        valueColors[Self.valueColorKey(normalizeKey(rawKey), value)] = hex
+        valueColors[ValueColorKey.join(normalizeKey(rawKey), value)] = hex
     }
 
     func clearValueColor(key rawKey: String, value: String) {
-        valueColors.removeValue(forKey: Self.valueColorKey(normalizeKey(rawKey), value))
+        valueColors.removeValue(forKey: ValueColorKey.join(normalizeKey(rawKey), value))
     }
 
     /// Persist a new colour for a tag key, debounced so a colour-wheel drag
@@ -426,9 +532,9 @@ final class AppModel {
         }
     }
 
-    // MARK: Tag-set persistence
+    // MARK: Tag-set + value-colour persistence (routed per backend)
 
-    private static func loadTagSets() -> [TagSet] {
+    private static func loadLegacyTagSets() -> [TagSet] {
         guard let data = UserDefaults.standard.data(forKey: Keys.tagSets),
               let sets = try? JSONDecoder().decode([TagSet].self, from: data) else {
             return TagSet.samples
@@ -436,9 +542,27 @@ final class AppModel {
         return sets
     }
 
-    private func saveTagSets() {
-        if let data = try? JSONEncoder().encode(tagSets) {
-            UserDefaults.standard.set(data, forKey: Keys.tagSets)
+    private func persistTagSets() {
+        guard !isRestoringState else { return }
+        switch backendKind {
+        case .local:
+            do { try localStore?.saveTagSets(tagSets) }
+            catch { errorMessage = error.localizedDescription }
+        case .traggo:
+            if let data = try? JSONEncoder().encode(tagSets) {
+                UserDefaults.standard.set(data, forKey: Keys.tagSets)
+            }
+        }
+    }
+
+    private func persistValueColors() {
+        guard !isRestoringState else { return }
+        switch backendKind {
+        case .local:
+            do { try localStore?.saveValueColors(valueColors) }
+            catch { errorMessage = error.localizedDescription }
+        case .traggo:
+            UserDefaults.standard.set(valueColors, forKey: Keys.valueColors)
         }
     }
 }

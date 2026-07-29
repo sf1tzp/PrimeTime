@@ -7,31 +7,72 @@ import SwiftUI
 
 struct GeneralSettingsView: View {
     @Environment(AppModel.self) private var model
+    @State private var username = ""
+    @State private var password = ""
 
     var body: some View {
         @Bindable var model = model
         Form {
-            Section("Server") {
-                TextField("Server URL", text: $model.serverURL)
-                TextField("Device name", text: $model.deviceName)
-                    .help("Shows up under Devices in Traggo, so you can revoke this app.")
-            }
-            Section("Account") {
-                if let user = model.user {
-                    LabeledContent("Status") {
-                        Label("Connected", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                    }
-                    LabeledContent("Signed in as", value: user.name)
-                    Button("Log out", role: .destructive) { model.logout() }
-                } else {
-                    LabeledContent("Status") {
-                        Label("Not signed in", systemImage: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    Text("Open the menu-bar popover to log in.")
+            Section("Storage") {
+                Picker("Keep data", selection: $model.backendKind) {
+                    Text("On this Mac").tag(BackendKind.local)
+                    Text("On a Traggo server").tag(BackendKind.traggo)
+                }
+                .pickerStyle(.segmented)
+                if model.backendKind == .local {
+                    Text("Everything lives in a local database — no server, no account. Connect to a Traggo server here if you have one; each choice keeps its own data.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if let path = model.localDatabasePath {
+                        Text(path)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+                } else {
+                    Text("Timespans and tag colours live on the server; tag sets and value colours stay on this Mac. Switching back to local storage keeps both sets of data intact.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if model.backendKind == .traggo {
+                Section("Server") {
+                    TextField("Server URL", text: $model.serverURL)
+                    TextField("Device name", text: $model.deviceName)
+                        .help("Shows up under Devices in Traggo, so you can revoke this app.")
+                }
+                Section("Account") {
+                    if let user = model.user {
+                        LabeledContent("Status") {
+                            Label("Connected", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                        }
+                        LabeledContent("Signed in as", value: user.name)
+                        Button("Log out", role: .destructive) { model.logout() }
+                    } else {
+                        // The sign-in form, demoted here from the popover. The
+                        // password lives only in local @State and is cleared
+                        // as soon as a login attempt finishes.
+                        TextField("Username", text: $username)
+                            .autocorrectionDisabled()
+                        SecureField("Password", text: $password)
+                            .onSubmit(submit)
+                        HStack {
+                            if model.isBusy {
+                                ProgressView().controlSize(.small)
+                            }
+                            Spacer()
+                            Button("Sign in", action: submit)
+                                .keyboardShortcut(.defaultAction)
+                                .disabled(username.isEmpty || password.isEmpty || model.isBusy)
+                        }
+                        if let error = model.errorMessage {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .lineLimit(3)
+                        }
+                    }
                 }
             }
             Section("Menu") {
@@ -55,12 +96,20 @@ struct GeneralSettingsView: View {
             }
             Section("Tags") {
                 Toggle("Colour tags by value", isOn: $model.colorTagsByValue)
-                Text("Pick a colour per key: value pair (stored on this Mac), so e.g. repo: foo and repo: bar look different. Pairs without an override keep their key colour.")
+                Text("Pick a colour per key: value pair, so e.g. repo: foo and repo: bar look different. Pairs without an override keep their key colour.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
+    }
+
+    private func submit() {
+        guard !username.isEmpty, !password.isEmpty else { return }
+        Task {
+            await model.login(username: username, password: password)
+            password = ""   // never keep the password around
+        }
     }
 }
 
@@ -174,14 +223,28 @@ struct TagSetDetailView: View {
                 Text("Keys are lower-cased with spaces turned into “-”. Missing keys are created automatically.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(model.colorTagsByValue
-                     ? "Colours are saved per key: value pair on this Mac and override the key’s server colour. Right-click a swatch to go back to the key colour."
-                     : "Colours are saved per tag key on the server, so recolouring a key here also changes it in every other tag set that uses it.")
+                Text(colorCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// In traggo mode the key/value colour split doubles as a server/local
+    /// split, which is worth calling out; in local mode both live in the same
+    /// database and the story is just "per pair" vs "per key".
+    private var colorCaption: String {
+        switch (model.colorTagsByValue, model.backendKind) {
+        case (true, .traggo):
+            "Colours are saved per key: value pair on this Mac and override the key’s server colour. Right-click a swatch to go back to the key colour."
+        case (true, .local):
+            "Colours are saved per key: value pair and override the key’s colour. Right-click a swatch to go back to the key colour."
+        case (false, .traggo):
+            "Colours are saved per tag key on the server, so recolouring a key here also changes it in every other tag set that uses it."
+        case (false, .local):
+            "Colours are saved per tag key, so recolouring a key here also changes it in every other tag set that uses it."
+        }
     }
 }
 

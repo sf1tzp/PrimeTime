@@ -100,10 +100,23 @@ final class TagReviewModel {
         self.app = app
     }
 
+    /// Forget the scan and anything staged — called when the active backend
+    /// switches, since scanned spans and staged rewrites reference ids that
+    /// mean nothing in the other store.
+    func reset() {
+        scanGeneration += 1     // invalidates any in-flight scan
+        spans = []
+        hasScanned = false
+        isScanning = false
+        scannedCount = 0
+        staged = []
+        errorMessage = nil
+    }
+
     // MARK: Scanning
 
     func scan() async {
-        guard let backend = app.api, app.isAuthenticated else { return }
+        guard let backend = app.api, app.isReady else { return }
         scanGeneration += 1
         let generation = scanGeneration
         isScanning = true
