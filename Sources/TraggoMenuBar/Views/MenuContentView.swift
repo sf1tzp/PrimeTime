@@ -56,7 +56,7 @@ struct MenuContentView: View {
                                 FlowLayout(spacing: 4) {
                                     ForEach(tags) { tag in
                                         TagPill(key: tag.key, value: tag.value,
-                                                color: model.tagColor(for: tag.key))
+                                                color: model.tagColor(for: tag.key, value: tag.value))
                                     }
                                 }
                             }
@@ -139,7 +139,7 @@ struct MenuContentView: View {
                     FlowLayout(spacing: 4) {
                         ForEach(tags.indices, id: \.self) { i in
                             TagPill(key: tags[i].key, value: tags[i].value,
-                                    color: model.tagColor(for: tags[i].key))
+                                    color: model.tagColor(for: tags[i].key, value: tags[i].value))
                         }
                     }
                 }

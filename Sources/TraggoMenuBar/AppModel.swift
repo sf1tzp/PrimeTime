@@ -25,6 +25,19 @@ final class AppModel {
         didSet { saveTagSets() }
     }
 
+    /// When on, tags are coloured by their `key: value` pair (using the local
+    /// overrides below) instead of only by key, so `repo: foo` and `repo: bar`
+    /// can look different.
+    var colorTagsByValue: Bool {
+        didSet { UserDefaults.standard.set(colorTagsByValue, forKey: Keys.colorTagsByValue) }
+    }
+
+    /// Per-`key: value` colour overrides (hex strings). Traggo only stores
+    /// colours per key, so these are a client-side convenience like tag sets.
+    var valueColors: [String: String] {
+        didSet { UserDefaults.standard.set(valueColors, forKey: Keys.valueColors) }
+    }
+
     // MARK: Runtime state (observed by the UI)
 
     var user: User?
@@ -60,6 +73,8 @@ final class AppModel {
         static let deviceName = "deviceName"
         // Stored under the legacy "presets" key so existing saved sets survive.
         static let tagSets = "presets"
+        static let colorTagsByValue = "colorTagsByValue"
+        static let valueColors = "valueColors"
     }
 
     // MARK: Lifecycle
@@ -70,6 +85,8 @@ final class AppModel {
         deviceName = defaults.string(forKey: Keys.deviceName)
             ?? "Menu Bar (\(Host.current().localizedName ?? "Mac"))"
         tagSets = AppModel.loadTagSets()
+        colorTagsByValue = defaults.bool(forKey: Keys.colorTagsByValue)
+        valueColors = defaults.dictionary(forKey: Keys.valueColors) as? [String: String] ?? [:]
         token = Keychain.get(account: "token")
 
         rebuildClient()
@@ -219,14 +236,44 @@ final class AppModel {
 
     // MARK: Tag colours (stored server-side, per key)
 
-    /// The colour Traggo has on record for a tag key, or a sensible default.
-    func tagColor(for rawKey: String) -> Color {
+    /// The colour to render a tag with. With "colour by value" on, a local
+    /// per-value override wins; otherwise the colour Traggo has on record for
+    /// the tag key, or a sensible default.
+    func tagColor(for rawKey: String, value: String? = nil) -> Color {
+        if colorTagsByValue, let value,
+           let color = valueColor(key: rawKey, value: value) {
+            return color
+        }
         let key = normalizeKey(rawKey)
         if let hex = tagDefinitions.first(where: { $0.key == key })?.color,
            let color = Color(hex: hex) {
             return color
         }
         return Color(hex: "#2196f3") ?? .blue
+    }
+
+    // MARK: Per-value colour overrides (stored locally)
+
+    /// Composite dictionary key — a unit separator rather than ":" because tag
+    /// values may themselves contain ":".
+    private static func valueColorKey(_ key: String, _ value: String) -> String {
+        "\(key)\u{1F}\(value)"
+    }
+
+    /// The override picked for a `key: value` pair, if any.
+    func valueColor(key rawKey: String, value: String) -> Color? {
+        guard !value.isEmpty else { return nil }
+        return valueColors[Self.valueColorKey(normalizeKey(rawKey), value)]
+            .flatMap { Color(hex: $0) }
+    }
+
+    func setValueColor(key rawKey: String, value: String, color: Color) {
+        guard let hex = color.hexString, !value.isEmpty else { return }
+        valueColors[Self.valueColorKey(normalizeKey(rawKey), value)] = hex
+    }
+
+    func clearValueColor(key rawKey: String, value: String) {
+        valueColors.removeValue(forKey: Self.valueColorKey(normalizeKey(rawKey), value))
     }
 
     /// Persist a new colour for a tag key, debounced so a colour-wheel drag

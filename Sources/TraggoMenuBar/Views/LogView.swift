@@ -95,7 +95,7 @@ struct LogView: View {
                             FlowLayout(spacing: 4) {
                                 ForEach(tags, id: \.self) { tag in
                                     TagPill(key: tag.key, value: tag.value,
-                                            color: model.tagColor(for: tag.key))
+                                            color: model.tagColor(for: tag.key, value: tag.value))
                                 }
                             }
                         }

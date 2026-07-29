@@ -80,7 +80,7 @@ struct HistoryChartsView: View {
     // MARK: Charts
 
     private func charts(grouping: ChartGrouping, totals: [SeriesTotal]) -> some View {
-        let colors = colorMap(for: totals)
+        let colors = colorMap(for: totals, grouping: grouping)
         let daily = foldedDaily(model.history.dailyTotals(for: grouping),
                                 keeping: Set(totals.map(\.label)))
         let grand = totals.reduce(0) { $0 + $1.seconds }
@@ -214,13 +214,37 @@ struct HistoryChartsView: View {
         return hexes.compactMap { Color(hex: $0) }
     }
 
-    private func colorMap(for totals: [SeriesTotal]) -> [String: Color] {
+    private func colorMap(for totals: [SeriesTotal], grouping: ChartGrouping) -> [String: Color] {
         let labels = totals.map(\.label).filter { $0 != Self.otherLabel }.sorted()
         var map: [String: Color] = [Self.otherLabel: .gray]
         for (index, label) in labels.enumerated() {
             map[label] = palette[index % palette.count]
         }
+        // With "colour by value" on, user-picked overrides beat palette slots
+        // so the charts match the tag pills elsewhere in the app.
+        if model.colorTagsByValue {
+            for label in labels {
+                if let override = overrideColor(for: label, grouping: grouping) {
+                    map[label] = override
+                }
+            }
+        }
         return map
+    }
+
+    /// The user's per-value colour for a series label, if one is set. Labels
+    /// are values when grouping by key, "key: value" for tag-set members.
+    private func overrideColor(for label: String, grouping: ChartGrouping) -> Color? {
+        switch grouping {
+        case .key(let key):
+            return model.valueColor(key: key, value: label)
+        case .tagSet(let id):
+            guard let set = model.tagSets.first(where: { $0.id == id }),
+                  let tag = set.wireTags.first(where: {
+                      ($0.value.isEmpty ? $0.key : "\($0.key): \($0.value)") == label
+                  }) else { return nil }
+            return model.valueColor(key: tag.key, value: tag.value)
+        }
     }
 
     // MARK: Folding (cap series count, never cycle hues)

@@ -179,11 +179,11 @@ struct CalendarView: View {
             .joined(separator: " ")
     }
 
-    /// Blocks take the colour of their first tag's key (the web UI similarly
+    /// Blocks take the colour of their first tag (the web UI similarly
     /// derives block colour from tags).
     private func blockColor(_ span: TimeSpan) -> Color {
         if let first = span.tags?.first {
-            return model.tagColor(for: first.key)
+            return model.tagColor(for: first.key, value: first.value)
         }
         return .gray
     }

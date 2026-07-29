@@ -47,7 +47,27 @@ struct TagSetsSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        HSplitView {
+        VStack(spacing: 0) {
+            splitView
+            Divider()
+            VStack(alignment: .leading, spacing: 3) {
+                Toggle("Colour tags by value", isOn: $model.colorTagsByValue)
+                Text("Pick a colour per key: value pair (stored on this Mac), so e.g. repo: foo and repo: bar look different. Pairs without an override keep their key colour.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+        }
+        // Pre-select the first set so the editor is populated on open.
+        .onAppear {
+            if selection == nil { selection = model.tagSets.first?.id }
+        }
+    }
+
+    private var splitView: some View {
+        @Bindable var model = model
+        return HSplitView {
             VStack(spacing: 0) {
                 List(selection: $selection) {
                     ForEach(model.tagSets) { set in
@@ -89,10 +109,6 @@ struct TagSetsSettingsView: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        // Pre-select the first set so the editor is populated on open.
-        .onAppear {
-            if selection == nil { selection = model.tagSets.first?.id }
-        }
     }
 }
 
@@ -108,12 +124,7 @@ struct TagSetDetailView: View {
             Section("Tags") {
                 ForEach($tagSet.tags) { $tag in
                     HStack {
-                        ColorPicker("", selection: Binding(
-                            get: { model.tagColor(for: tag.key) },
-                            set: { model.scheduleTagColor(for: tag.key, color: $0) }
-                        ), supportsOpacity: false)
-                        .labelsHidden()
-                        .disabled(tag.key.trimmingCharacters(in: .whitespaces).isEmpty)
+                        colorPicker(for: tag)
                         TextField("key", text: $tag.key)
                             .autocorrectionDisabled()
                         Text(":").foregroundStyle(.secondary)
@@ -135,11 +146,42 @@ struct TagSetDetailView: View {
                 Text("Keys are lower-cased with spaces turned into “-”. Missing keys are created automatically.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("Colours are saved per tag key on the server, so recolouring a key here also changes it in every other tag set that uses it.")
+                Text(model.colorTagsByValue
+                     ? "Colours are saved per key: value pair on this Mac and override the key’s server colour. Right-click a swatch to go back to the key colour."
+                     : "Colours are saved per tag key on the server, so recolouring a key here also changes it in every other tag set that uses it.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// With "colour by value" off (or the value empty) this edits the tag key's
+    /// server-side colour, as before. With it on, it edits the local override
+    /// for this exact key: value pair instead.
+    @ViewBuilder
+    private func colorPicker(for tag: TagRow) -> some View {
+        let keyEmpty = tag.key.trimmingCharacters(in: .whitespaces).isEmpty
+        if model.colorTagsByValue && !tag.value.isEmpty {
+            ColorPicker("", selection: Binding(
+                get: { model.tagColor(for: tag.key, value: tag.value) },
+                set: { model.setValueColor(key: tag.key, value: tag.value, color: $0) }
+            ), supportsOpacity: false)
+            .labelsHidden()
+            .disabled(keyEmpty)
+            .contextMenu {
+                Button("Use key colour") {
+                    model.clearValueColor(key: tag.key, value: tag.value)
+                }
+                .disabled(model.valueColor(key: tag.key, value: tag.value) == nil)
+            }
+        } else {
+            ColorPicker("", selection: Binding(
+                get: { model.tagColor(for: tag.key) },
+                set: { model.scheduleTagColor(for: tag.key, color: $0) }
+            ), supportsOpacity: false)
+            .labelsHidden()
+            .disabled(keyEmpty)
+        }
     }
 }
