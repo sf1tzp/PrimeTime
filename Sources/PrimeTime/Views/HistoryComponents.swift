@@ -1,4 +1,5 @@
 import SwiftUI
+import PrimeTimeCore
 
 // Shared pieces for the three history tabs (Log, Calendar, History/charts).
 

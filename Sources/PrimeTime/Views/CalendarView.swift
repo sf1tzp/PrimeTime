@@ -1,4 +1,5 @@
 import SwiftUI
+import PrimeTimeCore
 
 /// The Calendar tab: a 7-day week grid with a vertical time axis, timespans as
 /// coloured blocks (like the web UI's calendar). Overlapping spans share the

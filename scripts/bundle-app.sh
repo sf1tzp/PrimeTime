@@ -24,6 +24,12 @@ BIN="$ROOT/.build/release/PrimeTime"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/$APP_NAME"
+# The scriptable CLI (#80) rides in the bundle under its user-facing name —
+# the SwiftPM product is primetime-cli only to dodge the case-insensitive
+# .build collision with the app binary. Users get it on PATH via the cask's
+# binary stanza (or a manual symlink to Contents/Helpers/primetime).
+mkdir -p "$APP/Contents/Helpers"
+cp "$ROOT/.build/release/primetime-cli" "$APP/Contents/Helpers/primetime"
 # Sparkle rides along for auto-update (#46) — SwiftPM drops the framework next
 # to the binary; the bundled binary reaches this copy via the
 # @executable_path/../Frameworks rpath set in Package.swift.

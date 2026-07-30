@@ -1,4 +1,5 @@
 import Foundation
+import PrimeTimeCore
 
 /// What one import run did — the Settings summary line reports these.
 struct ImportSummary: Equatable {

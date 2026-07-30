@@ -1,4 +1,5 @@
 import SwiftUI
+import PrimeTimeCore
 
 /// The "see everything" surface complementing the popover's capped Quick start
 /// list (#7): every tag set as a clickable card in a grid. Clicking a card

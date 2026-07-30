@@ -41,6 +41,9 @@ sign "$SPARKLE/Versions/B/XPCServices/Installer.xpc"
 sign ${EXEC_FLAGS[@]+"${EXEC_FLAGS[@]}"} "$SPARKLE/Versions/B/Autoupdate"
 sign ${EXEC_FLAGS[@]+"${EXEC_FLAGS[@]}"} "$SPARKLE/Versions/B/Updater.app"
 sign "$SPARKLE"
+# The bundled CLI (#80): nested code, signed before the outer bundle. It
+# links everything statically — library validation stays strict.
+sign "$APP/Contents/Helpers/primetime"
 sign ${EXEC_FLAGS[@]+"${EXEC_FLAGS[@]}"} "$APP"
 
 codesign --verify --strict --verbose=2 "$APP"

@@ -8,58 +8,110 @@ import Foundation
 // `PrimeTimeClient` maps GraphQL payloads into them at its boundary, and the
 // engine's tests implement the same protocol with an in-memory fake.
 
-struct RemoteTimeSpan: Equatable {
-    let id: Int
-    let start: Date
-    let end: Date?         // nil == running
-    let note: String
-    let labels: [SpanLabel]
-    let updatedAt: Date
+package struct RemoteTimeSpan: Equatable {
+    package let id: Int
+    package let start: Date
+    package let end: Date?         // nil == running
+    package let note: String
+    package let labels: [SpanLabel]
+    package let updatedAt: Date
+
+    package init(id: Int, start: Date, end: Date?, note: String,
+                 labels: [SpanLabel], updatedAt: Date) {
+        self.id = id
+        self.start = start
+        self.end = end
+        self.note = note
+        self.labels = labels
+        self.updatedAt = updatedAt
+    }
 }
 
 /// A timespan deletion the server remembers (a tombstone).
-struct RemoteDeletion: Equatable {
-    let id: Int
-    let deletedAt: Date
+package struct RemoteDeletion: Equatable {
+    package let id: Int
+    package let deletedAt: Date
+
+    package init(id: Int, deletedAt: Date) {
+        self.id = id
+        self.deletedAt = deletedAt
+    }
 }
 
 /// One page of the timespan delta feed.
-struct RemoteTimeSpanChanges {
-    let timeSpans: [RemoteTimeSpan]
-    let deleted: [RemoteDeletion]
-    let hasMore: Bool
-    let now: Date
+package struct RemoteTimeSpanChanges {
+    package let timeSpans: [RemoteTimeSpan]
+    package let deleted: [RemoteDeletion]
+    package let hasMore: Bool
+    package let now: Date
+
+    package init(timeSpans: [RemoteTimeSpan], deleted: [RemoteDeletion],
+                 hasMore: Bool, now: Date) {
+        self.timeSpans = timeSpans
+        self.deleted = deleted
+        self.hasMore = hasMore
+        self.now = now
+    }
 }
 
-struct RemoteValueColor: Equatable {
-    let value: String
-    let color: String
-    let updatedAt: Date
+package struct RemoteValueColor: Equatable {
+    package let value: String
+    package let color: String
+    package let updatedAt: Date
+
+    package init(value: String, color: String, updatedAt: Date) {
+        self.value = value
+        self.color = color
+        self.updatedAt = updatedAt
+    }
 }
 
-struct RemoteLabelDefinition: Equatable {
-    let key: String
-    let color: String
-    let valueColors: [RemoteValueColor]
-    let updatedAt: Date
+package struct RemoteLabelDefinition: Equatable {
+    package let key: String
+    package let color: String
+    package let valueColors: [RemoteValueColor]
+    package let updatedAt: Date
+
+    package init(key: String, color: String, valueColors: [RemoteValueColor],
+                 updatedAt: Date) {
+        self.key = key
+        self.color = color
+        self.valueColors = valueColors
+        self.updatedAt = updatedAt
+    }
 }
 
 /// A label set as the server holds it; `labels` are the ordered members.
 /// Position on the server is the index in the `labelSets()` array.
-struct RemoteLabelSet: Equatable {
-    let id: Int
-    let name: String
-    let symbolName: String
-    let labels: [SpanLabel]
-    let updatedAt: Date
+package struct RemoteLabelSet: Equatable {
+    package let id: Int
+    package let name: String
+    package let symbolName: String
+    package let labels: [SpanLabel]
+    package let updatedAt: Date
+
+    package init(id: Int, name: String, symbolName: String,
+                 labels: [SpanLabel], updatedAt: Date) {
+        self.id = id
+        self.name = name
+        self.symbolName = symbolName
+        self.labels = labels
+        self.updatedAt = updatedAt
+    }
 }
 
-struct RemotePreferences: Equatable {
-    let colorByValue: Bool
-    let menuLabelSetLimit: Int
+package struct RemotePreferences: Equatable {
+    package let colorByValue: Bool
+    package let menuLabelSetLimit: Int
     /// Zero-adjacent (`.distantPast` after mapping) when never set — any
     /// device's real edit wins over never-written defaults.
-    let updatedAt: Date
+    package let updatedAt: Date
+
+    package init(colorByValue: Bool, menuLabelSetLimit: Int, updatedAt: Date) {
+        self.colorByValue = colorByValue
+        self.menuLabelSetLimit = menuLabelSetLimit
+        self.updatedAt = updatedAt
+    }
 }
 
 /// Marks an error as a server-side *rejection* (a GraphQL error: "does not
@@ -68,14 +120,14 @@ struct RemotePreferences: Equatable {
 /// already-absent record) and falls back where they mean a race (creating a
 /// key another device just created); transport failures abort the run and
 /// everything stays queued.
-protocol ServerRejection: Error {}
+package protocol ServerRejection: Error {}
 
 // MARK: - The server surface the engine syncs against
 
 /// The v1 operations reconciliation needs — implemented for real by
 /// `PrimeTimeClient` and in-process by the tests' fake server. Timespans
 /// sync by delta feed; everything else by snapshot.
-protocol SyncServerAPI {
+package protocol SyncServerAPI {
     /// Session probe: the signed-in user, or nil when the token is dead.
     func currentUser() async throws -> User?
 

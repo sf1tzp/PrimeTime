@@ -30,6 +30,24 @@ Requires macOS 14 (Sonoma) or later on Apple silicon.
 - **Visualize your workday** — see where the day actually went in calendar and chart views built from your own labels.
 - **Own your data** — everything lives in a local SQLite store on your Mac. Sync is optional and goes through a server you host.
 
+## Scriptable from the terminal
+
+The app bundles a `primetime` CLI (at `PrimeTime.app/Contents/Helpers/primetime`)
+that works on the same local store:
+
+```sh
+primetime start -l repo=app -l type=review   # errors if a timer is running
+primetime status --json                      # exit 0 running / 1 idle
+primetime stop
+
+primetime export > backup.json               # the full schema-versioned document
+primetime export --from 2026-07-01 --to 2026-07-31 --include repo:app | jq
+```
+
+Data goes to stdout so it pipes; logs go to stderr. A running app picks up
+CLI-started timers immediately. Filtered exports record their filter, so a
+partial export can't pass for a full backup.
+
 ## A look inside
 
 ### Launcher

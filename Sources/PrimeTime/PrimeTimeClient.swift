@@ -1,4 +1,5 @@
 import Foundation
+import PrimeTimeCore
 
 /// A thin GraphQL client for the PrimeTime v1 API (server/docs/api-v1.md),
 /// hand-rolled over URLSession in the style of `TraggoClient` — typed

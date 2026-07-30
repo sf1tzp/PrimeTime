@@ -1,5 +1,6 @@
 import Foundation
 @testable import PrimeTime
+@testable import PrimeTimeCore
 
 /// An in-process v1 sync server: the same `SyncServerAPI` surface
 /// `PrimeTimeClient` implements over GraphQL, backed by dictionaries — the

@@ -2,6 +2,7 @@ import Foundation
 import GRDB
 import Testing
 @testable import PrimeTime
+@testable import PrimeTimeCore
 
 /// End-to-end against a *live* PrimeTime server: two in-memory local stores
 /// ("two Macs"), each with its own device token and `SyncEngine` over the

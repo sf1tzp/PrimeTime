@@ -2,6 +2,7 @@ import Foundation
 import GRDB
 import Testing
 @testable import PrimeTime
+@testable import PrimeTimeCore
 
 /// The local store, exercised end to end over real (in-memory or temp-file)
 /// databases: every `Backend` operation, the date-range and paging behaviour,

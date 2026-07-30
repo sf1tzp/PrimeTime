@@ -1,4 +1,5 @@
 import Foundation
+import PrimeTimeCore
 import Observation
 import SwiftUI
 import AppKit
@@ -136,6 +137,8 @@ final class AppModel {
         localStore?.databaseURL?.path
     }
     @ObservationIgnored private var tickTimer: Timer?
+    /// Registration for the CLI's cross-process store-changed notification.
+    @ObservationIgnored private var storeChangeObserver: NSObjectProtocol?
     /// Debounce timers for per-key colour writes, so dragging in the colour
     /// picker doesn't fire an `updateTag` on every intermediate value.
     @ObservationIgnored private var colorTasks: [String: Task<Void, Never>] = [:]
@@ -179,6 +182,7 @@ final class AppModel {
         activateStore()
         startSyncIfConfigured()
         startTicking()
+        startObservingStoreChanges()
         Task { await refresh() }
     }
 
@@ -643,6 +647,26 @@ final class AppModel {
             Task { @MainActor in
                 guard let self, self.activeTimer != nil else { return }
                 self.currentDate = Date()
+            }
+        }
+    }
+
+    /// The primetime CLI (#80) writes the store from another process and
+    /// posts a distributed notification (see StoreChangeNotification.swift in
+    /// PrimeTimeCore) — there is no cross-process store observation, so this
+    /// is how those writes reach a running app. Re-read the live surfaces and
+    /// give sync a kick: a CLI-started span is dirty local data like any
+    /// other. Not in demo mode — a demo session runs on its own throwaway
+    /// store, not the one the CLI targets.
+    private func startObservingStoreChanges() {
+        guard !isDemo else { return }
+        storeChangeObserver = DistributedNotificationCenter.default().addObserver(
+            forName: .primeTimeStoreDidChange, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                await self.refresh()
+                await self.history.reloadIfLoaded()
+                self.syncSoon()
             }
         }
     }

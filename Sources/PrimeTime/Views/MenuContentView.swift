@@ -1,4 +1,5 @@
 import SwiftUI
+import PrimeTimeCore
 import AppKit
 
 /// The contents of the menu-bar popover.

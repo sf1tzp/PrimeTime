@@ -1,4 +1,5 @@
 import SwiftUI
+import PrimeTimeCore
 
 /// The Log tab: a day-sectioned, scrollable list of the week's timespans.
 /// Clicking a row expands it into an inline `TimeSpanEditorView`.

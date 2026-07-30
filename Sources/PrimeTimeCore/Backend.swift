@@ -9,36 +9,60 @@ import Foundation
 
 /// The signed-in account a backend serves data for. Decodable because its wire
 /// shape already is the domain shape — no separate DTO needed.
-struct User: Decodable, Equatable {
-    let id: Int
-    let name: String
-    let admin: Bool
+package struct User: Decodable, Equatable {
+    package let id: Int
+    package let name: String
+    package let admin: Bool
+
+    package init(id: Int, name: String, admin: Bool) {
+        self.id = id
+        self.name = name
+        self.admin = admin
+    }
 }
 
 /// A key/value pair attached to a timespan — e.g. `repo: primetime`.
-struct SpanLabel: Hashable {
-    let key: String
-    let value: String
+package struct SpanLabel: Hashable {
+    package let key: String
+    package let value: String
+
+    package init(key: String, value: String) {
+        self.key = key
+        self.value = value
+    }
 }
 
 /// A label key's definition: the key itself plus its display colour (a hex
 /// string like "#2196f3"). Colours are stored per *key*; per-value colours are
 /// a client-side overlay (see `AppModel.valueColors`). Codable so the local
 /// store can persist it directly as a GRDB record — the type is its own row.
-struct LabelDefinition: Hashable, Codable {
-    let key: String
-    let color: String
+package struct LabelDefinition: Hashable, Codable {
+    package let key: String
+    package let color: String
+
+    package init(key: String, color: String) {
+        self.key = key
+        self.color = color
+    }
 }
 
 /// A tracked interval of time, possibly still running, with its labels.
-struct TimeSpan: Identifiable, Equatable {
-    let id: Int
-    let start: Date
-    let end: Date?      // nil == currently running
-    let note: String
-    let labels: [SpanLabel]
+package struct TimeSpan: Identifiable, Equatable {
+    package let id: Int
+    package let start: Date
+    package let end: Date?      // nil == currently running
+    package let note: String
+    package let labels: [SpanLabel]
 
-    var isRunning: Bool { end == nil }
+    package var isRunning: Bool { end == nil }
+
+    package init(id: Int, start: Date, end: Date?, note: String, labels: [SpanLabel]) {
+        self.id = id
+        self.start = start
+        self.end = end
+        self.note = note
+        self.labels = labels
+    }
 }
 
 // MARK: - Paging
@@ -46,15 +70,24 @@ struct TimeSpan: Identifiable, Equatable {
 /// An opaque paging token. Backends serialise whatever state their own page
 /// walk needs into `rawValue` (traggo: its stable-cursor JSON); callers only
 /// hand a token back to the backend that minted it.
-struct PageToken: Equatable {
-    let rawValue: String
+package struct PageToken: Equatable {
+    package let rawValue: String
+
+    package init(rawValue: String) {
+        self.rawValue = rawValue
+    }
 }
 
 /// One page of finished timespans, plus the token for the next page — nil when
 /// the walk is complete.
-struct TimeSpanPage {
-    let timeSpans: [TimeSpan]
-    let nextPage: PageToken?
+package struct TimeSpanPage {
+    package let timeSpans: [TimeSpan]
+    package let nextPage: PageToken?
+
+    package init(timeSpans: [TimeSpan], nextPage: PageToken?) {
+        self.timeSpans = timeSpans
+        self.nextPage = nextPage
+    }
 }
 
 // MARK: - Backend
@@ -67,7 +100,7 @@ struct TimeSpanPage {
 /// Deliberately data-only: session lifecycle (login, logout, tokens) is a
 /// per-backend concern owned by whoever constructs the backend — a local store
 /// has no notion of logging in.
-protocol Backend {
+package protocol Backend {
     /// The user this backend serves, or nil when it isn't ready to (e.g. an
     /// expired token). Doubles as the readiness probe.
     func currentUser() async throws -> User?

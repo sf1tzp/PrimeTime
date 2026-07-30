@@ -15,8 +15,8 @@ import GRDB
 /// database (rebuilt from scratch on every demo launch, dated relative to
 /// now so "the past week" always looks current), and settings reads/writes
 /// go to a scratch UserDefaults suite instead of the standard domain.
-enum DemoMode {
-    static var isActive: Bool {
+package enum DemoMode {
+    package static var isActive: Bool {
         isActive(environment: ProcessInfo.processInfo.environment,
                  arguments: ProcessInfo.processInfo.arguments)
     }
@@ -24,7 +24,7 @@ enum DemoMode {
     /// Split out so tests can probe the parsing without touching the process.
     /// Any non-empty value except "0" activates, so `PRIMETIME_DEMO=true`
     /// also works; the documented spelling is `=1`.
-    static func isActive(environment: [String: String], arguments: [String]) -> Bool {
+    package static func isActive(environment: [String: String], arguments: [String]) -> Bool {
         if let value = environment["PRIMETIME_DEMO"], !value.isEmpty, value != "0" {
             return true
         }
@@ -34,7 +34,7 @@ enum DemoMode {
 
 // MARK: - Demo store
 
-extension LocalBackend {
+package extension LocalBackend {
     /// `demo.sqlite`, beside the real database — easy to find (and delete)
     /// but impossible to mistake for it.
     static func demoDatabaseURL() throws -> URL {

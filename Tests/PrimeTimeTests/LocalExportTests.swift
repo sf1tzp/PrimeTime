@@ -2,6 +2,7 @@ import Foundation
 import GRDB
 import Testing
 @testable import PrimeTime
+@testable import PrimeTimeCore
 
 /// The JSON export (#57): document contents, ordering, the schema version,
 /// and the ISO 8601 wire format a future import will rely on.

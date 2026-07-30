@@ -1,4 +1,5 @@
 import Foundation
+import PrimeTimeCore
 import Observation
 
 /// What the History (charts) tab groups time by: either every value of one tag

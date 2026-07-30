@@ -1,4 +1,5 @@
 import Foundation
+import PrimeTimeCore
 
 /// A thin GraphQL client for Traggo, and the `Backend` implementation the app
 /// ships with. There are only ~10 operations, so a hand-rolled client over

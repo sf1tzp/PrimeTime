@@ -1,4 +1,5 @@
 import Foundation
+import PrimeTimeCore
 
 // Wire DTOs for the traggo GraphQL API, mirroring schema.graphql — which is
 // why this layer says "tag" while the domain (Backend.swift) says "label".

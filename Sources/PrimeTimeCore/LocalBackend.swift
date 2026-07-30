@@ -11,7 +11,7 @@ import GRDB
 // store surface (SyncStore.swift) shares them.
 
 extension LabelDefinition: FetchableRecord, PersistableRecord {
-    static var databaseTableName: String { "label_definition" }
+    package static var databaseTableName: String { "label_definition" }
 }
 
 /// One `time_span` row — the span without its labels. `dirty`/`modifiedAt`
@@ -118,35 +118,39 @@ struct LabelSetMemberRow: Codable, FetchableRecord, PersistableRecord {
 /// plus the things that were only ever local (tag sets, value colours), which
 /// move out of UserDefaults and into the same file so local mode has one
 /// backup-able artifact.
-final class LocalBackend: Backend {
-    struct Error: LocalizedError {
-        let message: String
-        var errorDescription: String? { message }
+package final class LocalBackend: Backend {
+    package struct Error: LocalizedError {
+        package let message: String
+        package var errorDescription: String? { message }
+
+        package init(message: String) {
+            self.message = message
+        }
     }
 
     let dbQueue: DatabaseQueue
     /// Where the store lives on disk; nil for in-memory (tests).
-    let databaseURL: URL?
+    package let databaseURL: URL?
     /// Spans per page of `timeSpans(from:to:page:)`. Internal so tests can
     /// shrink it to exercise the page walk with few rows.
     var pageSize = 200
 
     /// The store has no login — the "account" is whoever owns the Mac.
     /// A stable id keeps `TimeSpan`/`User` shapes identical across backends.
-    static let localUser = User(
+    package static let localUser = User(
         id: 1,
         name: NSFullUserName().isEmpty ? NSUserName() : NSFullUserName(),
         admin: true)
 
     /// Opens (creating on first run) the default on-disk store.
-    convenience init(legacyDefaults: UserDefaults = .standard) throws {
+    package convenience init(legacyDefaults: UserDefaults = .standard) throws {
         let url = try Self.defaultDatabaseURL()
         try self.init(DatabaseQueue(path: url.path), databaseURL: url,
                       legacyDefaults: legacyDefaults)
     }
 
     /// Designated initialiser; tests pass an in-memory `DatabaseQueue()`.
-    init(_ dbQueue: DatabaseQueue, databaseURL: URL? = nil,
+    package init(_ dbQueue: DatabaseQueue, databaseURL: URL? = nil,
          legacyDefaults: UserDefaults? = nil) throws {
         self.dbQueue = dbQueue
         self.databaseURL = databaseURL
@@ -157,7 +161,7 @@ final class LocalBackend: Backend {
     /// executable has no bundle identifier until the app is bundled, so fall
     /// back to the target name; the *file* name is already the product's so a
     /// later rename doesn't have to move data.
-    static func defaultDatabaseURL() throws -> URL {
+    package static func defaultDatabaseURL() throws -> URL {
         let support = try FileManager.default.url(for: .applicationSupportDirectory,
                                                   in: .userDomainMask,
                                                   appropriateFor: nil, create: true)
@@ -329,17 +333,17 @@ final class LocalBackend: Backend {
 
     // MARK: Backend — session
 
-    func currentUser() async throws -> User? { Self.localUser }
+    package func currentUser() async throws -> User? { Self.localUser }
 
     // MARK: Backend — label definitions
 
-    func labelDefinitions() async throws -> [LabelDefinition] {
+    package func labelDefinitions() async throws -> [LabelDefinition] {
         try await dbQueue.read { db in
             try LabelDefinition.order(Column("key")).fetchAll(db)
         }
     }
 
-    func createLabelDefinition(key: String, color: String) async throws {
+    package func createLabelDefinition(key: String, color: String) async throws {
         try await dbQueue.write { db in
             // A duplicate insert throws (unique key), matching traggo's
             // create-vs-update split that callers already navigate. The
@@ -351,7 +355,7 @@ final class LocalBackend: Backend {
         }
     }
 
-    func updateLabelDefinition(key: String, color: String) async throws {
+    package func updateLabelDefinition(key: String, color: String) async throws {
         try await dbQueue.write { db in
             try db.execute(sql: "UPDATE label_definition SET color = ?, dirty = 1, modified_at = ? WHERE key = ?",
                            arguments: [color, Date(), key])
@@ -363,7 +367,7 @@ final class LocalBackend: Backend {
 
     // MARK: Backend — timespans
 
-    func timers() async throws -> [TimeSpan] {
+    package func timers() async throws -> [TimeSpan] {
         try await dbQueue.read { db in
             let rows = try TimeSpanRow
                 .filter(Column("end") == nil)
@@ -373,7 +377,7 @@ final class LocalBackend: Backend {
         }
     }
 
-    func startTimeSpan(start: Date, labels: [SpanLabel], note: String) async throws -> TimeSpan {
+    package func startTimeSpan(start: Date, labels: [SpanLabel], note: String) async throws -> TimeSpan {
         try await dbQueue.write { db in
             var row = TimeSpanRow(id: nil, start: start, end: nil, note: note,
                                   dirty: true, modifiedAt: Date())
@@ -383,7 +387,7 @@ final class LocalBackend: Backend {
         }
     }
 
-    func updateTimeSpan(id: Int, start: Date, end: Date?, labels: [SpanLabel], note: String) async throws -> TimeSpan {
+    package func updateTimeSpan(id: Int, start: Date, end: Date?, labels: [SpanLabel], note: String) async throws -> TimeSpan {
         try await dbQueue.write { db in
             guard var row = try TimeSpanRow.fetchOne(db, key: Int64(id)) else {
                 throw Error(message: "No such timespan: \(id)")
@@ -402,7 +406,7 @@ final class LocalBackend: Backend {
         }
     }
 
-    func stopTimeSpan(id: Int, end: Date) async throws -> TimeSpan {
+    package func stopTimeSpan(id: Int, end: Date) async throws -> TimeSpan {
         try await dbQueue.write { db in
             guard var row = try TimeSpanRow.fetchOne(db, key: Int64(id)) else {
                 throw Error(message: "No such timespan: \(id)")
@@ -415,7 +419,7 @@ final class LocalBackend: Backend {
         }
     }
 
-    func removeTimeSpan(id: Int) async throws {
+    package func removeTimeSpan(id: Int) async throws {
         try await dbQueue.write { db in
             guard try TimeSpanRow.exists(db, key: Int64(id)) else {
                 throw Error(message: "No such timespan: \(id)")
@@ -433,7 +437,7 @@ final class LocalBackend: Backend {
     /// resumes strictly after it. Unlike offsets, this stays stable when spans
     /// are inserted or deleted mid-walk — the Tag Review scan mutates nothing,
     /// but Approve Changes could interleave with a running History load.
-    func timeSpans(from: Date, to: Date, page: PageToken?) async throws -> TimeSpanPage {
+    package func timeSpans(from: Date, to: Date, page: PageToken?) async throws -> TimeSpanPage {
         let cursor = page.flatMap(LocalCursor.init)
         let pageSize = pageSize
         return try await dbQueue.read { db in
@@ -466,7 +470,7 @@ final class LocalBackend: Backend {
     // the main actor, exactly like the UserDefaults writes they replace, and
     // the tables are a few dozen rows at most.
 
-    func loadTagSets() throws -> [TagSet] {
+    package func loadTagSets() throws -> [TagSet] {
         try dbQueue.read { db in
             let sets = try LabelSetRow.order(Column("position")).fetchAll(db)
             let members = try LabelSetMemberRow.order(Column("position")).fetchAll(db)
@@ -486,7 +490,7 @@ final class LocalBackend: Backend {
     /// actually changed go dirty, and a set that disappears leaves a
     /// tombstone if the sync server knows it. Members are rewritten
     /// wholesale (they carry no metadata of their own).
-    func saveTagSets(_ sets: [TagSet]) throws {
+    package func saveTagSets(_ sets: [TagSet]) throws {
         try dbQueue.write { db in
             let now = Date()
             let existing = try LabelSetRow.fetchAll(db)
@@ -539,7 +543,7 @@ final class LocalBackend: Backend {
 
     /// In AppModel's composite-key dictionary form (`key␟value` → hex), so the
     /// in-memory representation is identical whichever store backs it.
-    func loadValueColors() throws -> [String: String] {
+    package func loadValueColors() throws -> [String: String] {
         try dbQueue.read { db in
             var colors: [String: String] = [:]
             for row in try ValueColorRow.fetchAll(db) {
@@ -553,7 +557,7 @@ final class LocalBackend: Backend {
     /// overrides keep their sync metadata, removed ones leave a tombstone
     /// when a sync server is connected (value colours have no id mapping —
     /// their key␟value pair *is* the identity on both sides).
-    func saveValueColors(_ colors: [String: String]) throws {
+    package func saveValueColors(_ colors: [String: String]) throws {
         try dbQueue.write { db in
             let now = Date()
             let existing = try ValueColorRow.fetchAll(db)
@@ -627,7 +631,7 @@ final class LocalBackend: Backend {
     /// one: the source has been the store of record for these keys, and the
     /// colours already local are mostly the auto-created default blue — see
     /// the importer's doc comment for the full policy rationale.
-    func importLabelDefinitions(_ definitions: [LabelDefinition]) async throws
+    package func importLabelDefinitions(_ definitions: [LabelDefinition]) async throws
         -> (created: Int, recolored: Int) {
         try await dbQueue.write { db in
             var created = 0, recolored = 0
@@ -657,7 +661,7 @@ final class LocalBackend: Backend {
     /// `span_origin` mapping decides whether the span updates the local row a
     /// previous run created or inserts (and maps) a fresh one. A nil `end`
     /// imports the span as still running.
-    func importSpans(_ spans: [TimeSpan], origin: String) async throws
+    package func importSpans(_ spans: [TimeSpan], origin: String) async throws
         -> (inserted: Int, updated: Int) {
         try await dbQueue.write { db in
             var inserted = 0, updated = 0

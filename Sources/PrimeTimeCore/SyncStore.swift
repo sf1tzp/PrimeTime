@@ -6,7 +6,7 @@ import GRDB
 /// Which sync-tracked entity a `sync_map` / `sync_tombstone` row concerns.
 /// Label definitions need neither: their key is their identity on both
 /// sides, and the app never deletes one locally.
-enum SyncEntity: String {
+package enum SyncEntity: String {
     case span
     case labelSet = "label_set"
     case valueColor = "value_color"
@@ -42,18 +42,18 @@ struct SyncTombstoneRow: Codable, FetchableRecord, PersistableRecord {
 /// The single row that *is* the sync connection: server, account, timespan
 /// pull checkpoint, and the preference sync metadata (the preference values
 /// themselves live in UserDefaults). The device token lives in the Keychain.
-struct SyncServerRow: Codable, FetchableRecord, PersistableRecord {
-    static let databaseTableName = "sync_server"
-    var id: Int64 = 1
-    var url: String
-    var userId: Int
-    var userName: String
-    var active = true
-    var checkpoint: Date?
-    var checkpointAfterId = 0
-    var prefsDirty = true
-    var prefsModifiedAt: Date?
-    var lastSyncedAt: Date?
+package struct SyncServerRow: Codable, FetchableRecord, PersistableRecord {
+    package static let databaseTableName = "sync_server"
+    package var id: Int64 = 1
+    package var url: String
+    package var userId: Int
+    package var userName: String
+    package var active = true
+    package var checkpoint: Date?
+    package var checkpointAfterId = 0
+    package var prefsDirty = true
+    package var prefsModifiedAt: Date?
+    package var lastSyncedAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id, url, active
@@ -72,43 +72,43 @@ struct SyncServerRow: Codable, FetchableRecord, PersistableRecord {
 // reports back via the record*Pushed methods, which clear dirty only if the
 // row wasn't edited again mid-push.
 
-struct SpanPush {
-    let localId: Int64
-    let serverId: Int?      // nil: create on the server, then map
-    let start: Date
-    let end: Date?
-    let note: String
-    let labels: [SpanLabel]
-    let modifiedAt: Date?
+package struct SpanPush {
+    package let localId: Int64
+    package let serverId: Int?      // nil: create on the server, then map
+    package let start: Date
+    package let end: Date?
+    package let note: String
+    package let labels: [SpanLabel]
+    package let modifiedAt: Date?
 }
 
-struct LabelDefinitionPush {
-    let key: String
-    let color: String
-    let existsOnServer: Bool
-    let modifiedAt: Date?
+package struct LabelDefinitionPush {
+    package let key: String
+    package let color: String
+    package let existsOnServer: Bool
+    package let modifiedAt: Date?
 }
 
-struct ValueColorPush {
-    let key: String
-    let value: String
-    let color: String
-    let modifiedAt: Date?
+package struct ValueColorPush {
+    package let key: String
+    package let value: String
+    package let color: String
+    package let modifiedAt: Date?
 }
 
-struct LabelSetPush {
-    let localId: String
-    let serverId: Int?      // nil: create on the server, then map
-    let name: String
-    let symbolName: String
-    let labels: [SpanLabel]
-    let position: Int
-    let modifiedAt: Date?
+package struct LabelSetPush {
+    package let localId: String
+    package let serverId: Int?      // nil: create on the server, then map
+    package let name: String
+    package let symbolName: String
+    package let labels: [SpanLabel]
+    package let position: Int
+    package let modifiedAt: Date?
 }
 
 /// What applying one pulled timespan did — the engine aggregates these for
 /// its summary, and tests assert the merge semantics through them.
-enum RemoteApplyOutcome: Equatable {
+package enum RemoteApplyOutcome: Equatable {
     case inserted        // new from the server
     case updated         // server version overwrote the local row
     case localWins       // local dirty edit is newer; it will push instead
@@ -120,7 +120,7 @@ enum RemoteApplyOutcome: Equatable {
 
 // MARK: - The sync surface of the local store
 
-extension LocalBackend {
+package extension LocalBackend {
 
     // MARK: Connection lifecycle
 
@@ -659,13 +659,13 @@ extension LocalBackend {
             arguments: [entity.rawValue, target, date])
     }
 
-    static func map(_ entity: SyncEntity, serverId: Int, _ db: Database) throws -> SyncMapRow? {
+    internal static func map(_ entity: SyncEntity, serverId: Int, _ db: Database) throws -> SyncMapRow? {
         try SyncMapRow
             .filter(Column("entity") == entity.rawValue && Column("server_id") == serverId)
             .fetchOne(db)
     }
 
-    static func map(_ entity: SyncEntity, localId: String, _ db: Database) throws -> SyncMapRow? {
+    internal static func map(_ entity: SyncEntity, localId: String, _ db: Database) throws -> SyncMapRow? {
         try SyncMapRow
             .filter(Column("entity") == entity.rawValue && Column("local_id") == localId)
             .fetchOne(db)
@@ -686,7 +686,7 @@ extension LocalBackend {
             .deleteAll(db)
     }
 
-    static func tombstones(_ entity: SyncEntity, _ db: Database) throws -> [SyncTombstoneRow] {
+    internal static func tombstones(_ entity: SyncEntity, _ db: Database) throws -> [SyncTombstoneRow] {
         try SyncTombstoneRow
             .filter(Column("entity") == entity.rawValue)
             .order(Column("deleted_at"))

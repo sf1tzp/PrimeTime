@@ -2,6 +2,7 @@ import Foundation
 import GRDB
 import Testing
 @testable import PrimeTime
+@testable import PrimeTimeCore
 
 /// The sync engine against the in-process `FakeSyncServer`: push of dirty
 /// records, pull-merge, last-writer-wins in both directions, tombstone

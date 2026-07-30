@@ -9,47 +9,58 @@ import GRDB
 /// import can validate what it's reading; sync bookkeeping (dirty flags,
 /// server mappings, tombstones) stays out — it describes a connection, not
 /// the user's data.
-struct LocalExport: Codable, Equatable {
+package struct LocalExport: Codable, Equatable {
     /// Bump when the document shape changes, so an import can tell exactly
     /// what it has been handed.
-    static let currentSchemaVersion = 1
+    package static let currentSchemaVersion = 1
 
-    var schemaVersion = Self.currentSchemaVersion
-    var exportedAt: Date
-    var timeSpans: [Span]
-    var labelDefinitions: [LabelDefinition]
-    var valueColors: [ValueColor]
-    var labelSets: [LabelSet]
+    package var schemaVersion = Self.currentSchemaVersion
+    package var exportedAt: Date
+    package var timeSpans: [Span]
+    package var labelDefinitions: [LabelDefinition]
+    package var valueColors: [ValueColor]
+    package var labelSets: [LabelSet]
+    /// Present only on partial (filtered) exports — see `Filter` in
+    /// ExportFilter.swift. Nil (and omitted from the JSON) on full exports,
+    /// which therefore encode exactly as they did before the field existed.
+    package var filter: Filter?
 
     /// One timespan with its labels inline, in display order. `id` is the
     /// local rowid — exported so spans can be cross-referenced, not promised
     /// stable across databases. A nil `end` is a still-running span.
-    struct Span: Codable, Equatable {
-        var id: Int64
-        var start: Date
-        var end: Date?
-        var note: String
-        var labels: [Label]
+    package struct Span: Codable, Equatable {
+        package var id: Int64
+        package var start: Date
+        package var end: Date?
+        package var note: String
+        package var labels: [Label]
     }
 
-    struct Label: Codable, Equatable {
-        var key: String
-        var value: String
+    package struct Label: Codable, Equatable {
+        package var key: String
+        package var value: String
+
+        // The compiler-generated memberwise init is capped at internal, so
+        // cross-module callers (the CLI) need this spelled out.
+        package init(key: String, value: String) {
+            self.key = key
+            self.value = value
+        }
     }
 
-    struct ValueColor: Codable, Equatable {
-        var key: String
-        var value: String
-        var color: String
+    package struct ValueColor: Codable, Equatable {
+        package var key: String
+        package var value: String
+        package var color: String
     }
 
     /// A label set and its member labels. Array order carries the launcher
     /// and member positions, the way the UI shows them.
-    struct LabelSet: Codable, Equatable {
-        var id: String
-        var name: String
-        var symbol: String?
-        var labels: [Label]
+    package struct LabelSet: Codable, Equatable {
+        package var id: String
+        package var name: String
+        package var symbol: String?
+        package var labels: [Label]
     }
 
     // MARK: Wire format
@@ -57,14 +68,14 @@ struct LocalExport: Codable, Equatable {
     /// Dates are ISO 8601 with the exporting machine's UTC offset and
     /// millisecond precision — unambiguous across timezones, and exactly the
     /// precision GRDB stores.
-    static func dateFormatter() -> ISO8601DateFormatter {
+    package static func dateFormatter() -> ISO8601DateFormatter {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         formatter.timeZone = .current
         return formatter
     }
 
-    static func encoder() -> JSONEncoder {
+    package static func encoder() -> JSONEncoder {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         let formatter = dateFormatter()
@@ -77,7 +88,7 @@ struct LocalExport: Codable, Equatable {
 
     /// The import counterpart's decoder, here so tests prove the round trip
     /// the schema-versioned format is designed for.
-    static func decoder() -> JSONDecoder {
+    package static func decoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         let formatter = dateFormatter()
         decoder.dateDecodingStrategy = .custom { decoder in
@@ -96,7 +107,7 @@ struct LocalExport: Codable, Equatable {
 
 // MARK: - LocalBackend surface
 
-extension LocalBackend {
+package extension LocalBackend {
     /// Snapshot the whole store as an export document, in one read
     /// transaction so the result is a consistent point in time. Synchronous
     /// like the tag-set surface: Settings calls it from a button press and
