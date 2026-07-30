@@ -23,11 +23,24 @@ struct HelpView: View {
                         Divider()
                     }
                 }
+                Divider()
+                Text("PrimeTime \(Self.versionString)")
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
             }
             .frame(maxWidth: 620, alignment: .leading)
             .frame(maxWidth: .infinity)
             .padding(20)
         }
+    }
+
+    /// "1.2.0 (347)" from the bundle's Info.plist; a bare SwiftPM binary
+    /// (`just run-dev`) has no bundle metadata and reads "dev".
+    private static var versionString: String {
+        guard let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+        else { return "dev" }
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+        return build.map { "\(version) (\($0))" } ?? version
     }
 }
 
