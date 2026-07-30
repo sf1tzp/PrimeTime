@@ -1,0 +1,13 @@
+PrimeTime — licensing structure
+===============================
+
+PrimeTime is licensed under the GNU Affero General Public License
+v3.0 or (at your option) any later version — see LICENSE.
+
+    SPDX-License-Identifier: AGPL-3.0-or-later
+    Copyright (C) 2026 Steven Fitzpatrick
+
+One tree carries an exception: server/ is derived from traggo/server
+and combines GPL-3.0 code (the traggo-derived files) with
+AGPL-3.0-or-later additions. See server/NOTICE for the per-file rules
+and for how the two licenses interact in the combined server.

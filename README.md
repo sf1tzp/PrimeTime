@@ -101,3 +101,7 @@ rm -rf ~/Library/Application\ Support/PrimeTime && defaults delete PrimeTime
 ## Naming & status
 
 PrimeTime is mostly through its spin-out from its previous life as *TraggoMenuApp*: the target and executable are now `PrimeTime`, but a few "tag" strings linger in smaller UI copy while the vocabulary finishes moving to "label". Public distribution and JSON export land with phase 7 (#34). The server tree's provenance and licensing are documented in [server/README.md](server/README.md).
+
+## License
+
+[AGPL-3.0-or-later](LICENSE). The `server/` tree is derived from [traggo/server](https://github.com/traggo/server) and combines GPL-3.0 code with AGPL-3.0-or-later additions — see [NOTICE](NOTICE) and [server/NOTICE](server/NOTICE) for the structure.

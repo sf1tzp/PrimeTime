@@ -24,5 +24,9 @@ This directory tree combines code under two licenses:
 
 Section 13 of the GPL-3.0 explicitly permits combining a GPLv3-covered
 work with a work licensed under the AGPL-3.0 into a single combined
-program; the AGPL's remote-network-interaction terms (AGPL-3.0
-section 13) apply to the combination's AGPL-covered parts.
+program. Each part remains under its own license, but the AGPL's
+remote-network-interaction terms (AGPL-3.0 section 13) apply to the
+combination as such: anyone who runs a modified version of the
+combined server for users over a network must offer those users the
+complete corresponding source of the entire combination — the
+traggo-derived GPL-3.0 parts included, still under their own license.
