@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The "see everything" surface complementing the popover's capped Quick start
 /// list (#7): every tag set as a clickable card in a grid. Clicking a card
-/// starts the set, same as a Quick start row.
+/// starts the set, same as a Quick start row; a running set's card stops it.
 struct LauncherView: View {
     @Environment(AppModel.self) private var model
 
@@ -57,9 +57,9 @@ private struct NewTagSetCard: View {
 
 /// One launcher card: the set's icon and name on a tile tinted with the first
 /// tag's colour (accent when the set has no tags). Clicking starts the set —
-/// alongside any running timers (overlapping timespans are supported); only a
-/// set that is itself running deactivates, matching how the Quick start list
-/// hides running sets.
+/// alongside any running timers (overlapping timespans are supported). A set
+/// that is itself running dims instead; hovering it reveals a stop square,
+/// and clicking stops that timer.
 private struct TagSetCard: View {
     @Environment(AppModel.self) private var model
     let set: TagSet
@@ -73,11 +73,16 @@ private struct TagSetCard: View {
     }
 
     private var isRunning: Bool { model.isRunning(set) }
-    private var startable: Bool { !isRunning && !model.isBusy }
 
     var body: some View {
         Button {
-            Task { await model.start(tagSet: set) }
+            Task {
+                if let running = model.runningTimer(for: set) {
+                    await model.stop(id: running.id)
+                } else {
+                    await model.start(tagSet: set)
+                }
+            }
         } label: {
             VStack(spacing: 8) {
                 Image(systemName: set.symbol)
@@ -89,18 +94,27 @@ private struct TagSetCard: View {
             .frame(maxWidth: .infinity, minHeight: 96)
             .foregroundStyle(tint.contrastingTextColor)
             .background(RoundedRectangle(cornerRadius: 10).fill(tint))
+            .overlay {
+                if isRunning && hovering {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(.black.opacity(0.35))
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.white)
+                }
+            }
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(.white.opacity(hovering && startable ? 0.6 : 0),
+                    .strokeBorder(.white.opacity(hovering && !model.isBusy ? 0.6 : 0),
                                   lineWidth: 2)
             )
         }
         .buttonStyle(.plain)
-        .disabled(!startable)
-        .opacity(startable ? 1 : 0.5)
+        .disabled(model.isBusy)
+        .opacity(model.isBusy || (isRunning && !hovering) ? 0.5 : 1)
         .onHover { hovering = $0 }
         .help(isRunning
-              ? "Already running — stop it from the menu bar"
+              ? "Stop the running timer"
               : set.labels.isEmpty
               ? "Start with no tags"
               : "Start " + set.labels.map {

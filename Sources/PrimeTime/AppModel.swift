@@ -516,8 +516,15 @@ final class AppModel {
     /// row was clicked) also catches a matching timespan started from the web
     /// UI, and the set reappears naturally when the timespan stops.
     func isRunning(_ set: TagSet) -> Bool {
+        runningTimer(for: set) != nil
+    }
+
+    /// The running timespan carrying exactly this set's tags, if any — same
+    /// tag-equality rule as `isRunning(_:)`. Lets a surface that shows sets
+    /// (the Launcher) stop "the set's" timer by id.
+    func runningTimer(for set: TagSet) -> TimeSpan? {
         let want = Set(set.labels)
-        return activeTimers.contains { Set($0.labels) == want }
+        return activeTimers.first { Set($0.labels) == want }
     }
 
     // MARK: Creating tag sets from existing tags
