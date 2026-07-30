@@ -1,8 +1,23 @@
-# PrimeTime
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="readme-images/lockup-dark.svg">
+    <img src="readme-images/lockup-light.svg" alt="PrimeTime" width="298" height="72">
+  </picture>
+</p>
 
-**Your time, dimensioned.**
+<p align="center"><strong>Your time, dimensioned.</strong></p>
 
 PrimeTime is a macOS menu-bar time tracker that marks and divides your time exactly how you want. Attach `key: value` labels to every span — inspired by Prometheus metrics — and your time becomes queryable data, not entries filed into one rigid hierarchy. Start a timer in one keystroke, run several at once, then see where the day actually went. Offline-first: no account, no server, no network required.
+
+## Install
+
+```sh
+brew install --cask sf1tzp/tap/primetime
+```
+
+Or download the latest notarized build from [GitHub releases](https://github.com/sf1tzp/PrimeTime/releases): unzip and drag `PrimeTime.app` into Applications. Either way the app keeps itself current — updates arrive in-app via Sparkle.
+
+Requires macOS 14 (Sonoma) or later on Apple silicon.
 
 <p align="center">
   <img src="readme-images/drop-down.png" alt="PrimeTime menu-bar popover with two running timers and quick-start label sets" width="400">
@@ -66,12 +81,6 @@ swift build
 
 Look for the timer in the menu bar. Launch without `--demo` to start tracking for real.
 
-## Install
-
-- macOS 14 (Sonoma) or later
-
-There is no signed release build yet — signing, notarization, and a Homebrew cask are on the roadmap (#34). Until then, install is clone-and-build, as above. The app stores sync credentials in the macOS Keychain, so when you connect a server the unsigned binary will ask for Keychain access.
-
 ## Sync with PrimeTime Server — optional
 
 PrimeTime is local-first: the app is fully functional offline, and the local store stays the source of truth. When you want your history on more than one Mac — or shared across a team — run [PrimeTime Server](server/): a headless GraphQL backend, derived from [traggo/server](https://github.com/traggo/server) and evolved into the PrimeTime v1 API (label vocabulary, per-value colors, server-side label sets). It ships as a single container; SQLite is perfect for a personal server, Postgres for teams.
@@ -98,9 +107,9 @@ To remove local data and get a fresh install:
 rm -rf ~/Library/Application\ Support/PrimeTime && defaults delete PrimeTime
 ```
 
-## Naming & status
+## Provenance
 
-PrimeTime is mostly through its spin-out from its previous life as *TraggoMenuApp*: the target and executable are now `PrimeTime`, but a few "tag" strings linger in smaller UI copy while the vocabulary finishes moving to "label". Public distribution and JSON export land with phase 7 (#34). The server tree's provenance and licensing are documented in [server/README.md](server/README.md).
+The `server/` tree is derived from [traggo/server](https://github.com/traggo/server); its provenance and licensing are documented in [server/README.md](server/README.md).
 
 ## License
 

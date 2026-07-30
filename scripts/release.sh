@@ -15,6 +15,7 @@
 #              releases/latest/download/appcast.xml redirect, so publishing
 #              the appcast as a release asset *is* the feed update
 #   publish    GitHub release on the public mirror: artifact, appcast, notes
+#   cask bump  point sf1tzp/homebrew-tap's primetime cask at the new release
 #
 # Versioning: semver git tags (vX.Y.Z) are the source of truth. bundle-app.sh
 # stamps the tag into CFBundleShortVersionString and the commit count into
@@ -127,3 +128,20 @@ gh release create "$TAG" "$ARTIFACT" "$APPCAST_DIR/appcast.xml" \
     --notes-file "$NOTES" \
     --verify-tag
 echo "==> published https://github.com/$MIRROR/releases/tag/$TAG"
+
+# --- cask bump (#47) -----------------------------------------------------------
+# Point the tap's cask at the release just published. Sparkle keeps installed
+# apps current either way, so a failed bump is an inconvenience, not an
+# outage — rerun these steps by hand if the push races another update.
+TAP="sf1tzp/homebrew-tap"
+SHA256="$(shasum -a 256 "$ARTIFACT" | cut -d' ' -f1)"
+TAP_DIR="$(mktemp -d)"
+gh repo clone "$TAP" "$TAP_DIR" -- --depth 1 --quiet
+sed -i '' \
+    -e "s/^  version .*/  version \"$VERSION\"/" \
+    -e "s/^  sha256 .*/  sha256 \"$SHA256\"/" \
+    "$TAP_DIR/Casks/primetime.rb"
+git -C "$TAP_DIR" commit -aqm "primetime $VERSION"
+git -C "$TAP_DIR" push -q
+rm -rf "$TAP_DIR"
+echo "==> cask bumped to $VERSION on $TAP"

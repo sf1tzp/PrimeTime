@@ -37,7 +37,8 @@ assess:
 # --- Release (#45) ---
 
 # Full pipeline from an exact vX.Y.Z tag on HEAD: build → sign → notarize →
-# staple → package dist/PrimeTime-<version>.zip → GitHub release on the
-# public mirror. Pass --no-publish to stop after packaging.
+# staple → package dist/PrimeTime-<version>.zip → appcast → GitHub release on
+# the public mirror → cask bump on sf1tzp/homebrew-tap. Pass --no-publish to
+# stop after the appcast.
 release *flags:
   scripts/release.sh {{flags}}
