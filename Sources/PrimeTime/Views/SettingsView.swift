@@ -430,8 +430,9 @@ struct TagSetDetailView: View {
 }
 
 /// A curated SF Symbols grid for the launcher-card icon — deliberately not a
-/// full symbol browser. `nil` selection renders (and highlights) the default
-/// "tag" symbol.
+/// full symbol browser — plus a free-text field for any other SF Symbols name
+/// (issue #65). `nil` selection renders (and highlights) the default "tag"
+/// symbol.
 private struct SymbolPicker: View {
     @Binding var selection: String?
 
@@ -445,26 +446,63 @@ private struct SymbolPicker: View {
     ]
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 32), spacing: 4)],
-                  spacing: 4) {
-            ForEach(Self.choices, id: \.self) { symbol in
-                let selected = symbol == (selection ?? "tag")
-                Button {
-                    selection = symbol
-                } label: {
-                    Image(systemName: symbol)
-                        .frame(width: 28, height: 28)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(selected ? Color.accentColor.opacity(0.25) : .clear))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .strokeBorder(selected ? Color.accentColor : .clear))
+        VStack(alignment: .leading, spacing: 6) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 32), spacing: 4)],
+                      spacing: 4) {
+                ForEach(Self.choices, id: \.self) { symbol in
+                    let selected = symbol == (selection ?? "tag")
+                    Button {
+                        selection = symbol
+                    } label: {
+                        Image(systemName: symbol)
+                            .frame(width: 28, height: 28)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(selected ? Color.accentColor.opacity(0.25) : .clear))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .strokeBorder(selected ? Color.accentColor : .clear))
+                    }
+                    .buttonStyle(.borderless)
+                    .help(symbol)
                 }
-                .buttonStyle(.borderless)
-                .help(symbol)
+            }
+            HStack(spacing: 4) {
+                TextField("Symbol name", text: typedName, prompt: Text("tag"))
+                    .autocorrectionDisabled()
+                if !selectionResolves {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.yellow)
+                        .help("No SF Symbol with this name")
+                }
+            }
+            if !selectionResolves {
+                Text("Not a known SF Symbols name — the launcher card will show no icon until it is corrected.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 2)
+    }
+
+    /// Mirrors `selection` so a click on a grid tile fills the field and a
+    /// typed name drives the same binding a click does (an exact match of a
+    /// curated symbol therefore highlights its tile). Empty means "use the
+    /// default", i.e. `nil`.
+    private var typedName: Binding<String> {
+        Binding(
+            get: { selection ?? "" },
+            set: {
+                let trimmed = $0.trimmingCharacters(in: .whitespaces)
+                selection = trimmed.isEmpty ? nil : trimmed
+            })
+    }
+
+    /// SF Symbols names are easy to mistype, so resolve the current one and
+    /// flag it inline when it isn't real (also covers bad names that synced
+    /// in from elsewhere). `nil` falls back to "tag", which always resolves.
+    private var selectionResolves: Bool {
+        guard let name = selection else { return true }
+        return NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil
     }
 }
