@@ -399,6 +399,17 @@ final class AppModel {
         }
     }
 
+    // MARK: Export (#57)
+
+    /// The store's JSON snapshot, for the Settings export button. Works in
+    /// demo mode too — it just snapshots the demo store.
+    func exportJSON() throws -> Data {
+        guard let store = localStore else {
+            throw LocalBackend.Error(message: "The local database isn't open.")
+        }
+        return try store.exportJSON()
+    }
+
     // MARK: Data
 
     func refresh() async {

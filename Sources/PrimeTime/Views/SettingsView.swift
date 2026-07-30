@@ -1,4 +1,6 @@
 import SwiftUI
+import AppKit
+import UniformTypeIdentifiers
 
 // The settings window itself (a toolbar-style NSTabViewController) is built in
 // SettingsWindowManager. These are the individual section panes it hosts.
@@ -12,6 +14,8 @@ struct GeneralSettingsView: View {
     @State private var syncURL = ""
     @State private var syncUsername = ""
     @State private var syncPassword = ""
+    @State private var exportError: String?
+    @State private var exportedTo: String?
 
     var body: some View {
         @Bindable var model = model
@@ -35,6 +39,24 @@ struct GeneralSettingsView: View {
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
+                }
+                HStack {
+                    Text("Save every timespan, tag, colour, and tag set as a JSON file — an archive of the database above.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Export as JSON…", action: runExport)
+                }
+                if let exportedTo {
+                    Label("Exported to \(exportedTo)", systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
+                if let exportError {
+                    Text(exportError)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .lineLimit(3)
                 }
             }
             // A demo must never reach a real server: no sync, no import.
@@ -247,6 +269,36 @@ struct GeneralSettingsView: View {
             password = ""   // never keep the password around
         }
     }
+
+    // MARK: Export to JSON (#57)
+
+    /// Ask where to save, then write the store's snapshot there. The panel
+    /// runs modal: the settings window is a plain AppKit window and the
+    /// export itself is a synchronous single-file read.
+    private func runExport() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.canCreateDirectories = true
+        panel.isExtensionHidden = false
+        panel.nameFieldStringValue = "PrimeTime Export \(Self.filenameDate.string(from: Date())).json"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        exportedTo = nil
+        exportError = nil
+        do {
+            try model.exportJSON().write(to: url)
+            exportedTo = url.lastPathComponent
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+
+    /// The default filename's date stamp — the user's calendar day, safe in a
+    /// filename (no colons or slashes).
+    private static let filenameDate: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 }
 
 // MARK: - Tag Sets
