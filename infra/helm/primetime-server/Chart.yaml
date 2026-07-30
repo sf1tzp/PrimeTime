@@ -1,0 +1,22 @@
+apiVersion: v2
+name: primetime-server
+description: PrimeTime sync server — headless GraphQL time-tracking backend (SQLite).
+type: application
+# Chart version tracks the app release; appVersion is the server image tag
+# (prefixed with 'v' — see templates/_helpers.tpl). Keep both aligned to the
+# vX.Y.Z release per issue #48.
+version: 0.2.0
+appVersion: "0.2.0"
+home: https://primetime.tools
+sources:
+  - https://github.com/sf1tzp/PrimeTime
+keywords:
+  - time-tracking
+  - graphql
+maintainers:
+  - name: Steven Fitzpatrick
+# Licensing: the server is a GPL-3.0 §13 combination with PrimeTime's
+# AGPL-3.0 additions. Notices ship in the chart (LICENSE, LICENSE.AGPL-3.0,
+# NOTICE) and in the image under /opt/primetime.
+annotations:
+  licenses: AGPL-3.0-or-later AND GPL-3.0-only

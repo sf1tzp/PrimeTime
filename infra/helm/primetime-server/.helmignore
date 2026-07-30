@@ -1,0 +1,8 @@
+# Patterns to ignore when packaging. LICENSE/LICENSE.AGPL-3.0/NOTICE are
+# deliberately NOT ignored — they must ship in the packaged chart.
+.DS_Store
+.git/
+.gitignore
+*.tmp
+*.bak
+*.swp

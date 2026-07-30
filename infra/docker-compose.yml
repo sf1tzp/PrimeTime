@@ -1,8 +1,17 @@
 services:
   primetime-server:
+    # Builds the image from source so any clean host can `docker compose up
+    # --build` without a Go toolchain. To run a published image instead,
+    # override with `image:` (e.g. gitea.zen.lofi/sfi/primetime-server:v0.2.0).
     build:
       context: ..
       dockerfile: infra/Dockerfile
+      # Stamp the release version into a compose-built binary when the caller
+      # exports these; a plain `up --build` reports 'develop', which is honest.
+      args:
+        VERSION: ${PRIMETIME_VERSION:-develop}
+        COMMIT: ${PRIMETIME_COMMIT:--}
+        DATE: ${PRIMETIME_DATE:-unknown}
     environment:
       # A default admin user is created only when the database is empty.
       # Change the password afterwards, or manage users with the admin CLI:

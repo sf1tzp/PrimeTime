@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "primetime-server.fullname" . }}
+  labels:
+    {{- include "primetime-server.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  # SQLite is a single writer sharing one PVC — never run two pods at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "primetime-server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        # Roll the pod when the admin credentials change.
+        checksum/admin-secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "primetime-server.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: primetime-server
+          image: "{{ .Values.image.repository }}:{{ include "primetime-server.imageTag" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 3030
+              protocol: TCP
+          env:
+            - name: TRAGGO_PORT
+              value: "3030"
+            - name: TRAGGO_LOG_LEVEL
+              value: {{ .Values.config.logLevel | quote }}
+            - name: TRAGGO_PASS_STRENGTH
+              value: {{ .Values.config.passStrength | quote }}
+            - name: TRAGGO_DATABASE_DIALECT
+              value: sqlite3
+            - name: TRAGGO_DATABASE_CONNECTION
+              value: {{ .Values.config.databaseConnection | quote }}
+            - name: TRAGGO_DEFAULT_USER_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "primetime-server.adminSecretName" . }}
+                  key: username
+            - name: TRAGGO_DEFAULT_USER_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "primetime-server.adminSecretName" . }}
+                  key: password
+          # No dedicated health endpoint; a listening socket means ready.
+          startupProbe:
+            tcpSocket:
+              port: http
+            failureThreshold: 30
+            periodSeconds: 2
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 15
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /opt/primetime/data
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: data
+        {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "primetime-server.pvcName" . }}
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
