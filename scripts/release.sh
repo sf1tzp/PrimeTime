@@ -10,7 +10,11 @@
 #   assess     Gatekeeper's verdict on the stapled bundle
 #   package    dist/PrimeTime-<version>.zip of the stapled bundle
 #              (zip over DMG — Sparkle appcasts consume zips directly)
-#   publish    GitHub release on the public mirror, artifact + notes attached
+#   appcast    EdDSA-sign the zip and generate dist/appcast/appcast.xml (#46);
+#              the app's SUFeedURL is the mirror's stable
+#              releases/latest/download/appcast.xml redirect, so publishing
+#              the appcast as a release asset *is* the feed update
+#   publish    GitHub release on the public mirror: artifact, appcast, notes
 #
 # Versioning: semver git tags (vX.Y.Z) are the source of truth. bundle-app.sh
 # stamps the tag into CFBundleShortVersionString and the commit count into
@@ -72,7 +76,8 @@ echo "==> packaged $ARTIFACT"
 
 # --- release notes -------------------------------------------------------------
 # Commit subjects since the previous tag; edit dist/RELEASE_NOTES.md between
-# `just release --no-publish` and a manual publish for hand-written notes.
+# `just release --no-publish` and a manual publish for hand-written notes
+# (then re-run the appcast step too — it embeds these notes).
 NOTES="$ROOT/dist/RELEASE_NOTES.md"
 PREV="$(git -C "$ROOT" describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)"
 {
@@ -80,6 +85,26 @@ PREV="$(git -C "$ROOT" describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)"
     echo
     git -C "$ROOT" log --format='- %s' "${PREV:+$PREV..}$TAG"
 } > "$NOTES"
+
+# --- appcast (#46) -------------------------------------------------------------
+# A staging dir with only this release's zip: generate_appcast signs every
+# archive it finds, and dist/ also holds the unsigned notarize-upload.zip.
+# One entry per appcast is enough — the feed URL always points at the latest
+# release's copy, and Sparkle only ever offers the newest version anyway.
+# The EdDSA private key comes from the login keychain (generate_keys; #45's
+# secrets decision), the tools from scripts/sparkle-tools.sh.
+SPARKLE_BIN="$("$ROOT/scripts/sparkle-tools.sh")"
+APPCAST_DIR="$ROOT/dist/appcast"
+rm -rf "$APPCAST_DIR" && mkdir -p "$APPCAST_DIR"
+cp "$ARTIFACT" "$APPCAST_DIR/"
+cp "$NOTES" "$APPCAST_DIR/PrimeTime-$VERSION.md"   # embedded as the entry's notes
+"$SPARKLE_BIN/generate_appcast" \
+    --download-url-prefix "https://github.com/$MIRROR/releases/download/$TAG/" \
+    --link "https://github.com/$MIRROR" \
+    --embed-release-notes \
+    -o "$APPCAST_DIR/appcast.xml" \
+    "$APPCAST_DIR"
+echo "==> appcast at $APPCAST_DIR/appcast.xml"
 
 # --- publish -------------------------------------------------------------------
 if (( !PUBLISH )); then
@@ -96,7 +121,7 @@ MIRROR_SHA="$(gh api "repos/$MIRROR/git/ref/tags/$TAG" --jq .object.sha 2>/dev/n
 [[ "$MIRROR_SHA" == "$LOCAL_SHA" ]] \
     || { echo "publish: $TAG on $MIRROR points at $MIRROR_SHA, local is $LOCAL_SHA" >&2; exit 1; }
 
-gh release create "$TAG" "$ARTIFACT" \
+gh release create "$TAG" "$ARTIFACT" "$APPCAST_DIR/appcast.xml" \
     --repo "$MIRROR" \
     --title "PrimeTime $VERSION" \
     --notes-file "$NOTES" \

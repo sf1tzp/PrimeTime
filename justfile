@@ -14,12 +14,12 @@ run:
 bundle:
   scripts/bundle-app.sh
 
-# Sign the bundle for distribution: hardened runtime + secure timestamp.
-# Pass identity="TraggoMenuApp Dev" for a local pipeline check without the
-# Developer ID cert (spctl will reject it, codesign --verify still passes).
+# Sign the bundle for distribution: hardened runtime + secure timestamp, with
+# Sparkle's nested executables signed first (see scripts/sign-app.sh).
+# Run `just sign-dist "TraggoMenuApp Dev"` for a local pipeline check without
+# the Developer ID cert (spctl will reject it, codesign --verify still passes).
 sign-dist identity="Developer ID Application: Steven Fitzpatrick (2GY54R95TD)": bundle
-  codesign --force --options runtime --timestamp --sign "{{identity}}" dist/PrimeTime.app
-  codesign --verify --strict --verbose=2 dist/PrimeTime.app
+  scripts/sign-app.sh dist/PrimeTime.app "{{identity}}"
 
 # Submit the signed bundle for notarization and staple the ticket. The zip is
 # only the submission vehicle; the distributable is repacked post-staple by

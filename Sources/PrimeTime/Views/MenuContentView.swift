@@ -160,6 +160,17 @@ struct MenuContentView: View {
             }
             .buttonStyle(MenuRowButtonStyle())
 
+            // Only in installed builds — dev builds and demos have no updater.
+            if model.updater.isAvailable {
+                Button {
+                    model.updater.checkForUpdates()
+                } label: {
+                    Label("Check for Updates…", systemImage: "arrow.down.circle")
+                }
+                .buttonStyle(MenuRowButtonStyle())
+                .disabled(!model.updater.canCheckForUpdates)
+            }
+
             Button {
                 NSApplication.shared.terminate(nil)
             } label: {

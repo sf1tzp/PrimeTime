@@ -28,5 +28,18 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Steven Fitzpatrick</string>
+	<!-- Sparkle auto-update (#46). The feed URL is GitHub's stable
+	     "latest release asset" redirect, so the appcast rides the same
+	     release-publish step as the app archive itself. -->
+	<key>SUFeedURL</key>
+	<string>https://github.com/sf1tzp/PrimeTime/releases/latest/download/appcast.xml</string>
+	<!-- Public half of the EdDSA pair; the private half signs release
+	     archives from the login keychain (generate_keys, see #45). -->
+	<key>SUPublicEDKey</key>
+	<string>scfyPgkFSQwklPlvpmhUAuGsRQ7O91RlZy/MDI7l/8c=</string>
+	<!-- Background checks default on without Sparkle's second-launch
+	     permission prompt; the Settings toggle is the opt-out. -->
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
 </dict>
 </plist>

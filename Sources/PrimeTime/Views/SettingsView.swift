@@ -168,6 +168,18 @@ struct GeneralSettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        // Sparkle (#46). Absent from dev builds and demos, where there is no
+        // updater to configure.
+        if model.updater.isAvailable {
+            @Bindable var updater = model.updater
+            Section("Updates") {
+                Toggle("Check for updates in the background",
+                       isOn: $updater.automaticallyChecksForUpdates)
+                Text("Checks about once a day and offers new versions when they appear. Off means updates only come from “Check for Updates…” in the menu.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 
     // MARK: Import from traggo (#30)

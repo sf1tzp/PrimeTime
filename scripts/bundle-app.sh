@@ -24,6 +24,11 @@ BIN="$ROOT/.build/release/PrimeTime"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/$APP_NAME"
+# Sparkle rides along for auto-update (#46) — SwiftPM drops the framework next
+# to the binary; the bundled binary reaches this copy via the
+# @executable_path/../Frameworks rpath set in Package.swift.
+mkdir -p "$APP/Contents/Frameworks"
+ditto "$ROOT/.build/release/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 sed -e "s/@VERSION@/$VERSION/" -e "s/@BUILD@/$BUILD/" \
     "$ROOT/scripts/Info.plist.in" > "$APP/Contents/Info.plist"

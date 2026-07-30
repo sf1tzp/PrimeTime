@@ -69,3 +69,14 @@ means a dialog is waiting; only the user can dismiss it.
   "%{http_code}" https://traggo.lofi/`). Mutations hit real user data — create
   your own test timespan (quick-start a tag set, stop it) and delete it when
   done.
+- **Never drive AX with two PrimeTime instances running** (learned 2026-07-29
+  testing Sparkle): the user's installed copy + a test build are two processes
+  with the same name, and even `first process whose unix id is <pid>` sessions
+  ended up enumerating the *other* app's popover. Both instances also share
+  the real database and defaults — a `HOME=` env override does NOT isolate
+  anything (`NSHomeDirectory()`, UserDefaults, and Application Support all
+  resolve the real home). Ask the user to quit the installed app (or note
+  you're doing it) before any popover/settings driving of a test build.
+- The status-item click *toggles* the popover, and it stays open across
+  osascript runs — guard with `if not (exists window "" of p)` before
+  clicking again, or a fresh script closes what the last one opened.

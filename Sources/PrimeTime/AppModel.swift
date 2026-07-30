@@ -28,6 +28,10 @@ final class AppModel {
     /// call site.
     @ObservationIgnored private let defaults: UserDefaults
 
+    /// Sparkle auto-update (#46). Inert (nil controller) in dev builds, tests
+    /// and demo mode — see UpdaterModel.
+    let updater: UpdaterModel
+
     // MARK: Persisted configuration
 
     /// The traggo server URL — import-only now: the one-shot importer's
@@ -154,6 +158,7 @@ final class AppModel {
 
     init(demo: Bool = DemoMode.isActive) {
         isDemo = demo
+        updater = UpdaterModel(demo: demo)
         let defaults = Self.makeDefaults(demo: demo)
         self.defaults = defaults
         serverURL = defaults.string(forKey: Keys.serverURL) ?? "https://traggo.lofi"
