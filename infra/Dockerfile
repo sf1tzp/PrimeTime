@@ -17,12 +17,6 @@ ARG VERSION=develop
 ARG COMMIT=-
 ARG DATE=unknown
 
-# The vendored tree pins mattn/go-sqlite3 v1.10.0 (2018), which predates its
-# fix for musl dropping the implicit LFS64 aliases (off64_t/pread64/pwrite64).
-# Modern musl only exposes them under _LARGEFILE64_SOURCE, so define it for the
-# cgo C compile. Remove once go-sqlite3 is bumped past v1.14.16.
-ENV CGO_CFLAGS="-D_LARGEFILE64_SOURCE"
-
 COPY server/go.mod server/go.sum ./
 RUN go mod download
 RUN go install github.com/99designs/gqlgen@v0.17.85

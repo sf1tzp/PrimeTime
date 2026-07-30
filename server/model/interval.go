@@ -14,13 +14,17 @@ func (t Interval) Value() (driver.Value, error) {
 	return string(t), nil
 }
 
-// Scan for db
+// Scan for db. sqlite text columns arrive as []byte on older go-sqlite3 and
+// as string on newer releases, so accept either.
 func (t *Interval) Scan(value interface{}) error {
-	s, ok := value.([]byte)
-	if !ok {
-		return fmt.Errorf("expected string but was %#v", value)
+	switch s := value.(type) {
+	case []byte:
+		*t = Interval(s)
+	case string:
+		*t = Interval(s)
+	default:
+		return fmt.Errorf("expected string or []byte but was %#v", value)
 	}
-	*t = Interval(s)
 	return nil
 }
 

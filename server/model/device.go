@@ -26,13 +26,17 @@ func (t DeviceType) Value() (driver.Value, error) {
 	return string(t), nil
 }
 
-// Scan for db
+// Scan for db. sqlite text columns arrive as []byte on older go-sqlite3 and
+// as string on newer releases, so accept either.
 func (t *DeviceType) Scan(value interface{}) error {
-	s, ok := value.([]byte)
-	if !ok {
-		return fmt.Errorf("expected []byte but was %#v", value)
+	switch s := value.(type) {
+	case []byte:
+		*t = DeviceType(s)
+	case string:
+		*t = DeviceType(s)
+	default:
+		return fmt.Errorf("expected string or []byte but was %#v", value)
 	}
-	*t = DeviceType(s)
 	return nil
 }
 
