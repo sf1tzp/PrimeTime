@@ -1,9 +1,13 @@
 ---
 name: verify
-description: Build, launch, and drive PrimeTime to verify changes against the live traggo.lofi server.
+description: Build, launch, and drive PrimeTime to verify changes against the live traggo.lofi server. Auto-invoke only on macbook-air; on any other machine (check `hostname`) run only when the user explicitly asks to verify.
 ---
 
 # Verifying PrimeTime
+
+> **Machine gate:** only invoke this skill unprompted on macbook-air. On other
+> machines (e.g. macmini) the build/launch/AX-drive cycle is too resource-heavy
+> to run by default — skip verification there unless the user explicitly asks.
 
 ## Build & launch
 

@@ -132,12 +132,14 @@ struct MenuContentView: View {
         Divider()
 
         // Full-width rows, like Rectangle's menu: quick access to the content
-        // tabs of the settings window, then Settings and Quit.
+        // tabs of the settings window, then the config surfaces (Label Sets,
+        // Settings) and Quit.
         VStack(spacing: 2) {
+
             Button {
-                openSettings(tab: .launcher)
+                openSettings(tab: .tagSets)
             } label: {
-                Label("Launcher", systemImage: "square.grid.2x2")
+                Label("Label Sets", systemImage: "tag")
             }
             .buttonStyle(MenuRowButtonStyle())
 
@@ -163,6 +165,7 @@ struct MenuContentView: View {
             .buttonStyle(MenuRowButtonStyle())
 
             Divider()
+
 
             Button {
                 openSettings(tab: .settings)
