@@ -29,4 +29,32 @@ import Testing
                     TagRow(key: "a", value: "b")]
         #expect(rows.labels == [SpanLabel(key: "a", value: "b")])
     }
+
+    // MARK: Quick labels (labels(applying:))
+
+    @Test func applyingQuickLabelAppends() {
+        let set = TagSet(tags: [TagRow(key: "repo", value: "a"),
+                                TagRow(key: "feat", value: "b")])
+        #expect(set.labels(applying: TagRow(key: "type", value: "coding"))
+                == [SpanLabel(key: "repo", value: "a"),
+                    SpanLabel(key: "feat", value: "b"),
+                    SpanLabel(key: "type", value: "coding")])
+    }
+
+    @Test func applyingQuickLabelReplacesSameKey() {
+        // A quick label hones the set, so its value wins over the set's
+        // baked-in value for the same key — no double `type:`.
+        let set = TagSet(tags: [TagRow(key: "repo", value: "a"),
+                                TagRow(key: "type", value: "programming")])
+        #expect(set.labels(applying: TagRow(key: "type", value: "review"))
+                == [SpanLabel(key: "repo", value: "a"),
+                    SpanLabel(key: "type", value: "review")])
+    }
+
+    @Test func applyingQuickLabelMatchesNormalisedKeys() {
+        // "Type " and "type" are the same key once normalised.
+        let set = TagSet(tags: [TagRow(key: "Type ", value: "programming")])
+        #expect(set.labels(applying: TagRow(key: "type", value: "review"))
+                == [SpanLabel(key: "type", value: "review")])
+    }
 }

@@ -50,6 +50,28 @@ final class AppModel {
         didSet { persistTagSets() }
     }
 
+    /// Quick labels per label set, keyed by the set's UUID string — one-click
+    /// refinements the popover and Launcher offer on hover (#61): a set covers
+    /// the focus area (`repo:`, `feat:`) and a quick label hones in
+    /// (`type: review`). Per-set rather than global so e.g. a Workout set
+    /// isn't offered `type: programming`; the copy/paste clipboard below
+    /// spreads one list across sets without retyping. Stored as JSON in
+    /// UserDefaults, per-Mac until server sync exists (#92). Entries for
+    /// deleted sets linger harmlessly.
+    var quickLabels: [String: [TagRow]] {
+        didSet { persistQuickLabels() }
+    }
+
+    /// The copy/paste clipboard for quick labels in the Label Set editor.
+    /// Session-only by design: it's a hand-off between two edits, not state
+    /// worth keeping.
+    var quickLabelsClipboard: [TagRow]?
+
+    /// The quick labels to offer for a set (empty when none are defined).
+    func quickLabels(for set: TagSet) -> [TagRow] {
+        quickLabels[set.id.uuidString] ?? []
+    }
+
     /// When on, tags are coloured by their `key: value` pair (using the local
     /// overrides below) instead of only by key, so `repo: foo` and `repo: bar`
     /// can look different. On by default — differentiating spans by value is
@@ -148,6 +170,7 @@ final class AppModel {
         static let deviceName = "deviceName"
         // Stored under the legacy "presets" key so existing saved sets survive.
         static let tagSets = "presets"
+        static let quickLabels = "quickLabelsBySet"
         static let colorTagsByValue = "colorTagsByValue"
         static let valueColors = "valueColors"
         static let menuTagSetLimit = "menuTagSetLimit"
@@ -178,6 +201,12 @@ final class AppModel {
         token = demo ? nil : Keychain.get(account: Keys.traggoToken)
         tagSets = []          // loaded by activateStore()
         valueColors = [:]
+        if let data = defaults.data(forKey: Keys.quickLabels),
+           let rows = try? JSONDecoder().decode([String: [TagRow]].self, from: data) {
+            quickLabels = rows
+        } else {
+            quickLabels = [:]   // demo seeding needs set ids — activateStore()
+        }
 
         activateStore()
         startSyncIfConfigured()
@@ -213,6 +242,17 @@ final class AppModel {
             tagSets = (try? store.loadTagSets()) ?? []
             valueColors = (try? store.loadValueColors()) ?? [:]
             user = LocalBackend.localUser   // no login; ready immediately
+            // Demo quick labels are keyed by the set ids minted during this
+            // launch's reseed, so they can only be attached here, after the
+            // sets load. The scratch defaults suite is wiped each launch, so
+            // the check against existing entries never blocks the seed.
+            if isDemo && quickLabels.isEmpty {
+                for set in tagSets {
+                    if let rows = DemoSeed.quickLabels(forSetNamed: set.name) {
+                        quickLabels[set.id.uuidString] = rows
+                    }
+                }
+            }
         }
     }
 
@@ -685,5 +725,11 @@ final class AppModel {
         do { try localStore?.saveValueColors(valueColors) }
         catch { errorMessage = error.localizedDescription }
         syncSoon()
+    }
+
+    private func persistQuickLabels() {
+        if let data = try? JSONEncoder().encode(quickLabels) {
+            defaults.set(data, forKey: Keys.quickLabels)
+        }
     }
 }

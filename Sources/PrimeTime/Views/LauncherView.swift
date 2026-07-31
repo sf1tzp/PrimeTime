@@ -60,7 +60,9 @@ private struct NewTagSetCard: View {
 /// tag's colour (accent when the set has no tags). Clicking starts the set —
 /// alongside any running timers (overlapping timespans are supported). A set
 /// that is itself running dims instead; hovering it reveals a stop square,
-/// and clicking stops that timer.
+/// and clicking stops that timer. Hovering a startable card also floats the
+/// quick-label chips over its bottom edge — same one-click "set plus honing
+/// label" as the popover's quick-start rows.
 private struct TagSetCard: View {
     @Environment(AppModel.self) private var model
     let set: TagSet
@@ -113,6 +115,28 @@ private struct TagSetCard: View {
         .buttonStyle(.plain)
         .disabled(model.isBusy)
         .opacity(model.isBusy || (isRunning && !hovering) ? 0.5 : 1)
+        // The chips are separate buttons, so they sit over the card rather
+        // than nesting inside its label — on the same full-card scrim the
+        // running state uses for its stop square, which also keeps them
+        // readable on any tint (forcing dark resolves the chips' `.primary`
+        // text to white). Clicking off a chip still starts the set plain.
+        .overlay {
+            let quicks = model.quickLabels(for: set)
+            if hovering && !isRunning && !quicks.isEmpty {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(.black.opacity(0.35))
+                        .allowsHitTesting(false)
+                    FlowLayout(spacing: 4) {
+                        ForEach(quicks) { quick in
+                            QuickLabelChip(set: set, quick: quick, filled: true)
+                        }
+                    }
+                    .padding(8)
+                }
+                .environment(\.colorScheme, .dark)
+            }
+        }
         .onHover { hovering = $0 }
         .help(isRunning
               ? "Stop the running timer"

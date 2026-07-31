@@ -418,8 +418,71 @@ struct TagSetDetailView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            quickLabelsSection
         }
         .formStyle(.grouped)
+    }
+
+    /// This set's quick labels (#61): hovering the set in the popover or
+    /// Launcher offers them as one-click chips that start the set plus that
+    /// label. Copy/Paste spreads one list across sets without retyping —
+    /// the clipboard lives on the model, so it survives switching sets.
+    private var quickLabelsSection: some View {
+        Section {
+            ForEach(quickRows) { $tag in
+                HStack {
+                    TagColorPicker(key: tag.key, value: tag.value)
+                    TextField("key", text: $tag.key)
+                        .textFieldStyle(.roundedBorder)
+                        .autocorrectionDisabled()
+                    Text(":").foregroundStyle(.secondary)
+                    TextField("value", text: $tag.value)
+                        .textFieldStyle(.roundedBorder)
+                    Button(role: .destructive) {
+                        quickRows.wrappedValue.removeAll { $0.id == tag.id }
+                    } label: {
+                        Image(systemName: "minus.circle")
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            Button {
+                quickRows.wrappedValue.append(TagRow())
+            } label: {
+                Label("Add quick label", systemImage: "plus")
+            }
+            .buttonStyle(.borderless)
+            Text("Offered as one-click chips when hovering this set in the menu or Launcher: click one to start the set plus that label. If the set already carries the same key, the quick label’s value wins.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text("Saved on this Mac (syncing is #92).")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } header: {
+            HStack {
+                Text("Quick labels")
+                Spacer()
+                Button("Copy") {
+                    model.quickLabelsClipboard = quickRows.wrappedValue
+                }
+                .disabled(quickRows.wrappedValue.isEmpty)
+                Button("Paste") {
+                    if let rows = model.quickLabelsClipboard {
+                        quickRows.wrappedValue = rows
+                    }
+                }
+                .disabled(model.quickLabelsClipboard == nil)
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+
+    /// The editable rows behind this set's quick labels — a binding into the
+    /// model's per-set dictionary, so edits persist through its observer.
+    private var quickRows: Binding<[TagRow]> {
+        Binding(
+            get: { model.quickLabels[tagSet.id.uuidString] ?? [] },
+            set: { model.quickLabels[tagSet.id.uuidString] = $0 })
     }
 
     /// Key and value colours both live in the local database (and follow the

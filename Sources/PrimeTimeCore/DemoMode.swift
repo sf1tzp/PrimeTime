@@ -74,7 +74,7 @@ package extension LocalBackend {
 /// Everything is deterministic given (`now`, `calendar`): past days carry
 /// fixed templates chosen by weekday/weekend, today is laid out backwards
 /// from `now`.
-enum DemoSeed {
+package enum DemoSeed {
 
     // MARK: Tag sets (Launcher cards / popover quick start)
 
@@ -83,18 +83,21 @@ enum DemoSeed {
                tags: [TagRow(key: "project", value: "primetime"),
                       TagRow(key: "type", value: "programming")],
                symbolName: "brain"),
-        TagSet(name: "App Polish",
-               tags: [TagRow(key: "repo", value: "app"),
-                      TagRow(key: "type", value: "programming")],
+        // The two app sets carry no `type:` on purpose — they're the surface
+        // where the quick labels below add the honing label from scratch
+        // (Deep Work shows the replace-same-key story instead).
+        TagSet(name: "App Backend",
+               tags: [TagRow(key: "repo", value: "website"),
+                      TagRow(key: "feat", value: "backend")],
                symbolName: "hammer"),
         TagSet(name: "Server Ops",
                tags: [TagRow(key: "repo", value: "server"),
                       TagRow(key: "type", value: "ops")],
                symbolName: "terminal"),
-        TagSet(name: "Code Review",
-               tags: [TagRow(key: "repo", value: "app"),
-                      TagRow(key: "type", value: "review")],
-               symbolName: "doc.text"),
+        TagSet(name: "App Frontend",
+               tags: [TagRow(key: "repo", value: "website"),
+                      TagRow(key: "feat", value: "frontend")],
+               symbolName: "paintbrush"),
         TagSet(name: "Standup",
                tags: [TagRow(key: "team", value: "platform"),
                       TagRow(key: "type", value: "meeting")],
@@ -111,17 +114,41 @@ enum DemoSeed {
                symbolName: "figure.run"),
     ]
 
+    // MARK: Quick labels (popover / Launcher hover chips)
+
+    /// Quick labels for the dev-flavoured sets, matched by name because the
+    /// set ids are minted fresh on every reseed. The `type:` trio shows both
+    /// stories: added from scratch on the app sets (no `type:` baked in) and
+    /// replace-same-key on Deep Work. Workout et al. get none — quick labels
+    /// are per-set precisely so they don't.
+    package static func quickLabels(forSetNamed name: String) -> [TagRow]? {
+        switch name {
+        case "Deep Work", "App Backend", "App Frontend", "Server Ops":
+            return [TagRow(key: "type", value: "programming"),
+                    TagRow(key: "type", value: "review"),
+                    TagRow(key: "type", value: "debugging")]
+        default:
+            return nil
+        }
+    }
+
     // MARK: Colours
+    //
+    // Balanced warm/cool on purpose: the brand palette (oranges, reds, dark
+    // greys) carries the hero labels — `project:` and its spans dominate the
+    // demo, so it goes brand orange — while repo/type/feat keep their cool
+    // hues as contrast anchors. Roughly half-and-half across the spectrum.
 
     static let labelDefinitions: [LabelDefinition] = [
-        LabelDefinition(key: "project", color: "#5e35b1"),
+        LabelDefinition(key: "project", color: "#d84315"),
         // Same colour as `project` on purpose: the drifted key should look
         // like what it is — the same concept, misspelled — so the difference
         // shows up in Tag Review, not on every pill.
-        LabelDefinition(key: "proj", color: "#5e35b1"),
+        LabelDefinition(key: "proj", color: "#d84315"),
         LabelDefinition(key: "repo", color: "#00897b"),
+        LabelDefinition(key: "feat", color: "#8e24aa"),
         LabelDefinition(key: "type", color: "#1e88e5"),
-        LabelDefinition(key: "team", color: "#546e7a"),
+        LabelDefinition(key: "team", color: "#795548"),
         LabelDefinition(key: "topic", color: "#f4511e"),
     ]
 
@@ -129,11 +156,13 @@ enum DemoSeed {
     /// reads at a glance — `repo: app` blue vs `repo: server` teal, and every
     /// `type:` value its own slice colour in the History donuts.
     static let valueColors: [String: String] = [
-        ValueColorKey.join("project", "primetime"): "#7e57c2",
-        ValueColorKey.join("proj", "primetime"): "#7e57c2",   // drift matches too
+        ValueColorKey.join("project", "primetime"): "#e64a19",
+        ValueColorKey.join("proj", "primetime"): "#e64a19",   // drift matches too
         ValueColorKey.join("project", "website"): "#ec407a",
-        ValueColorKey.join("repo", "app"): "#42a5f5",
+        ValueColorKey.join("repo", "website"): "#42a5f5",
         ValueColorKey.join("repo", "server"): "#26a69a",
+        ValueColorKey.join("feat", "backend"): "#00acc1",
+        ValueColorKey.join("feat", "frontend"): "#f06292",
         ValueColorKey.join("type", "programming"): "#5c6bc0",
         ValueColorKey.join("type", "review"): "#ffa726",
         ValueColorKey.join("type", "meeting"): "#ef5350",
@@ -143,7 +172,7 @@ enum DemoSeed {
         ValueColorKey.join("type", "exercise"): "#9ccc65",
         ValueColorKey.join("type", "support"): "#ffca28",
         ValueColorKey.join("topic", "swift"): "#ff7043",
-        ValueColorKey.join("team", "platform"): "#78909c",
+        ValueColorKey.join("team", "platform"): "#a1887f",
     ]
 
     // MARK: Spans
@@ -171,9 +200,9 @@ enum DemoSeed {
                                   SpanLabel(key: "type", value: "meeting")]
     private static let deepWork = [SpanLabel(key: "project", value: "primetime"),
                                    SpanLabel(key: "type", value: "programming")]
-    private static let appWork = [SpanLabel(key: "repo", value: "app"),
+    private static let appWork = [SpanLabel(key: "repo", value: "website"),
                                   SpanLabel(key: "type", value: "programming")]
-    private static let appReview = [SpanLabel(key: "repo", value: "app"),
+    private static let appReview = [SpanLabel(key: "repo", value: "website"),
                                     SpanLabel(key: "type", value: "review")]
     private static let serverOps = [SpanLabel(key: "repo", value: "server"),
                                     SpanLabel(key: "type", value: "ops")]
@@ -279,7 +308,7 @@ enum DemoSeed {
         (220, 75, deepWork, "README screenshot pass"),
         (130, 20, email, ""),
         (105, 15, [], ""),
-        (80, 25, [SpanLabel(key: "repo", value: "app"),
+        (80, 25, [SpanLabel(key: "repo", value: "website"),
                   SpanLabel(key: "type", value: "support")], "Crash report triage"),
         (42, nil, deepWork, "Popover: running-row editor"),
         (9, nil, serverOps, ""),

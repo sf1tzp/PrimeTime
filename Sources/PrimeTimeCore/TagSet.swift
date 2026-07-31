@@ -48,6 +48,15 @@ package struct TagSet: Identifiable, Codable, Hashable {
         TagSet(name: "Meeting", tags: [TagRow(key: "type", value: "meeting")]),
         TagSet(name: "Email", tags: [TagRow(key: "type", value: "email")]),
     ]
+
+    /// The labels to start when a quick label rides along: the set's tags plus
+    /// the quick label — *replacing* the set's value for the same key, because
+    /// a quick label hones a set (`type: review` over the set's baked-in
+    /// `type: programming`) rather than double-labelling it.
+    package func labels(applying quick: TagRow) -> [SpanLabel] {
+        let key = normalizeKey(quick.key)
+        return (tags.filter { normalizeKey($0.key) != key } + [quick]).labels
+    }
 }
 
 /// Traggo tag keys must be lower-case with no spaces. Surrounding whitespace

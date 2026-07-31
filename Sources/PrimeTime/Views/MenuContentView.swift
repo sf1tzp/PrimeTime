@@ -13,6 +13,15 @@ struct MenuContentView: View {
     @State private var tagDrafts: [TagRow] = []
     @State private var noteDraft = ""
 
+    /// The quick-start row whose quick-label chips are expanded — set only
+    /// after the pointer *rests* on the row (hover intent, below), so the
+    /// list stays glanceable at rest and a quick sweep down the menu to the
+    /// shortcut rows doesn't expand and collapse every row it crosses.
+    @State private var hoveredQuickStartID: TagSet.ID?
+    /// The row a delayed expansion is armed for, and its timer.
+    @State private var pendingHoverID: TagSet.ID?
+    @State private var hoverIntentTask: Task<Void, Never>?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if model.isReady {
@@ -88,11 +97,12 @@ struct MenuContentView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         } else {
-            // Sets whose tags are running right now are hidden (they reappear
-            // on stop). The cap (0 = all) applies to what's left, so a hidden
-            // set doesn't consume one of the N slots; the rest hide behind a
-            // "more…" row so the popover stays glanceable.
-            let candidates = model.tagSets.filter { !model.isRunning($0) }
+            // Running sets stay listed: starting one again is legitimate now
+            // that a set can run several times concurrently under different
+            // quick labels (untangling the overlap is the query side's job).
+            // The cap (0 = all) hides the rest behind a "more…" row so the
+            // popover stays glanceable.
+            let candidates = model.tagSets
             let limit = model.menuTagSetLimit
             let visibleSets = limit > 0 ? Array(candidates.prefix(limit)) : candidates
             VStack(alignment: .leading, spacing: 2) {
@@ -186,11 +196,18 @@ struct MenuContentView: View {
         SettingsWindowManager.shared.show(model: model, tab: tab)
     }
 
-    /// One quick-start row. The row itself starts the set and stays greyed out
-    /// while a timer runs (stop before starting); in that state a trailing ＋
-    /// starts the set *alongside* the running timer instead.
+    /// One quick-start row. The row starts the set — alongside any running
+    /// timers (overlapping timespans are supported), the same semantics as a
+    /// Launcher card, so rows never grey out while something runs. Hovering
+    /// the row reveals the quick-label chips (when any are defined): one
+    /// click starts the set plus that label. The hover treatment is an accent
+    /// *outline* drawn here, around the whole expanded area, so it covers the
+    /// chips too and survives the mouse moving from the button onto a chip;
+    /// the button style's own accent fill is off (it would end at the
+    /// button's edge), and the row keeps its normal text colours.
     private func quickStartRow(_ set: TagSet) -> some View {
-        HStack(spacing: 0) {
+        let expanded = hoveredQuickStartID == set.id
+        return VStack(alignment: .leading, spacing: 2) {
             Button {
                 Task { await model.start(tagSet: set) }
             } label: {
@@ -207,18 +224,50 @@ struct MenuContentView: View {
                     }
                 }
             }
-            .buttonStyle(MenuRowButtonStyle())
-            .disabled(model.activeTimer != nil || model.isBusy)
+            .buttonStyle(MenuRowButtonStyle(fillsOnHover: false))
+            .disabled(model.isBusy)
 
-            if model.activeTimer != nil {
-                Button {
-                    Task { await model.start(tagSet: set) }
-                } label: {
-                    Image(systemName: "plus.circle")
+            let quicks = model.quickLabels(for: set)
+            if expanded, !quicks.isEmpty {
+                FlowLayout(spacing: 4) {
+                    ForEach(quicks) { quick in
+                        QuickLabelChip(set: set, quick: quick)
+                    }
                 }
-                .buttonStyle(HoverIconButtonStyle())
-                .disabled(model.isBusy)
-                .help("Start alongside the running timer")
+                .padding(.horizontal, 8)
+                .padding(.bottom, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        // Radius 8 rhymes with the chips' capsule ends (they're ~17pt tall)
+        // better than the menu rows' 5 does.
+        .overlay(RoundedRectangle(cornerRadius: 8)
+            .strokeBorder(expanded ? Color.accentColor : Color.clear, lineWidth: 1.5))
+        .onHover { rowHovered(set, inside: $0) }
+    }
+
+    /// Hover intent for a quick-start row: expansion waits until the pointer
+    /// has rested on the row briefly, then animates in — so passing through
+    /// the list never reflows it, and rows below slide rather than jump when
+    /// one does expand. Collapse is immediate (but animated) on exit.
+    private func rowHovered(_ set: TagSet, inside: Bool) {
+        if inside {
+            guard hoveredQuickStartID != set.id, pendingHoverID != set.id else { return }
+            hoverIntentTask?.cancel()
+            pendingHoverID = set.id
+            hoverIntentTask = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(180))
+                guard !Task.isCancelled else { return }
+                pendingHoverID = nil
+                withAnimation(.snappy(duration: 0.18)) { hoveredQuickStartID = set.id }
+            }
+        } else {
+            if pendingHoverID == set.id {
+                hoverIntentTask?.cancel()
+                pendingHoverID = nil
+            }
+            if hoveredQuickStartID == set.id {
+                withAnimation(.spring(duration: 0.25)) { hoveredQuickStartID = nil }
             }
         }
     }

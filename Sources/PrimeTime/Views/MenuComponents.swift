@@ -1,18 +1,26 @@
 import SwiftUI
+import PrimeTimeCore
 
 /// A menu row that highlights (accent-filled, white text) on mouse-over, like
 /// Rectangle's status-menu rows. Disabled rows dim and don't highlight.
 struct MenuRowButtonStyle: ButtonStyle {
+    /// Off for quick-start rows: their hover treatment is an accent outline
+    /// the caller draws around a larger region (button plus the
+    /// hover-revealed quick-label chips), so the style must not paint its
+    /// own accent fill, which would end at the button's edge.
+    var fillsOnHover = true
+
     func makeBody(configuration: Configuration) -> some View {
-        Row(configuration: configuration)
+        Row(configuration: configuration, fillsOnHover: fillsOnHover)
     }
 
     private struct Row: View {
         let configuration: ButtonStyleConfiguration
+        let fillsOnHover: Bool
         @Environment(\.isEnabled) private var isEnabled
         @State private var hovering = false
 
-        private var highlighted: Bool { hovering && isEnabled }
+        private var highlighted: Bool { hovering && isEnabled && fillsOnHover }
 
         var body: some View {
             configuration.label
@@ -72,6 +80,76 @@ struct TagPill: View {
             .padding(.vertical, 2)
             .background(Capsule().fill(color))
             .foregroundStyle(color.contrastingTextColor)
+    }
+}
+
+/// One quick-label chip — "+value" in the label's colour. Clicking starts the
+/// set with the quick label applied, replacing the set's value for the same
+/// key (see `TagSet.labels(applying:)`). Shared by the popover's quick-start
+/// rows and the Launcher cards.
+struct QuickLabelChip: View {
+    @Environment(AppModel.self) private var model
+    let set: TagSet
+    let quick: TagRow
+    /// See `QuickLabelChipStyle.filled`.
+    var filled = false
+
+    private var key: String { normalizeKey(quick.key) }
+    private var value: String { quick.value.trimmingCharacters(in: .whitespaces) }
+
+    var body: some View {
+        Button {
+            Task { await model.start(tags: set.labels(applying: quick)) }
+        } label: {
+            Text("+\(value.isEmpty ? key : value)")
+        }
+        .buttonStyle(QuickLabelChipStyle(color: model.tagColor(for: key, value: value),
+                                         filled: filled))
+        .disabled(model.isBusy)
+        .help("Start with \(value.isEmpty ? key : "\(key): \(value)")")
+    }
+}
+
+/// A clickable capsule chip for quick labels — visually a `TagPill` that reads
+/// as an action rather than a fact. Outlined in the label's colour at rest,
+/// filling with it on mouse-over. On busy backgrounds (the Launcher card
+/// scrim) the outline is too faint, so `filled` renders the fill at rest and
+/// moves the mouse-over feedback to a white ring instead.
+struct QuickLabelChipStyle: ButtonStyle {
+    let color: Color
+    var filled = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        Chip(configuration: configuration, color: color, filled: filled)
+    }
+
+    private struct Chip: View {
+        let configuration: ButtonStyleConfiguration
+        let color: Color
+        let filled: Bool
+        @Environment(\.isEnabled) private var isEnabled
+        @State private var hovering = false
+
+        private var highlighted: Bool { hovering && isEnabled }
+        private var showFill: Bool { filled || highlighted }
+
+        var body: some View {
+            configuration.label
+                .font(.caption2)
+                .lineLimit(1)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .foregroundStyle(showFill
+                                 ? AnyShapeStyle(color.contrastingTextColor)
+                                 : AnyShapeStyle(.primary))
+                .background(Capsule().fill(showFill ? color : .clear))
+                .overlay(Capsule().strokeBorder(
+                    filled ? Color.white.opacity(highlighted ? 0.9 : 0) : color,
+                    lineWidth: filled ? 1.5 : 1))
+                .contentShape(Capsule())
+                .opacity(isEnabled ? (configuration.isPressed ? 0.7 : 1) : 0.5)
+                .onHover { hovering = $0 }
+        }
     }
 }
 
