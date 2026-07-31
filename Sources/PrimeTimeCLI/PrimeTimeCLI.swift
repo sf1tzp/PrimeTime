@@ -101,10 +101,13 @@ struct StoreOptions: ParsableArguments {
 }
 
 /// Tell a running app the store changed under it — fire-and-forget; nothing
-/// listens when the app isn't running.
+/// listens when the app isn't running. Darwin-only: Linux Foundation has no
+/// DistributedNotificationCenter, and there is no app to poke there anyway.
 func notifyStoreChanged() {
+    #if canImport(Darwin)
     DistributedNotificationCenter.default().postNotificationName(
         .primeTimeStoreDidChange, object: nil, userInfo: nil, deliverImmediately: true)
+    #endif
 }
 
 // MARK: - Formatting
