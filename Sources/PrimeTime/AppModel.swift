@@ -149,6 +149,17 @@ final class AppModel {
     /// restoring state never echoes a write or re-dirties a synced record.
     @ObservationIgnored private var isRestoringState = false
 
+    /// Whether the first-run onboarding sequence has been seen (finished or
+    /// dismissed — either way it never reappears on its own). Lives in the
+    /// defaults suite, so demo launches — whose scratch suite is wiped every
+    /// launch — always start with it unset and show the onboarding again.
+    /// Read once at launch and written once at the end, so a plain computed
+    /// property (not observation-tracked) is enough.
+    var hasCompletedOnboarding: Bool {
+        get { defaults.bool(forKey: Keys.hasCompletedOnboarding) }
+        set { defaults.set(newValue, forKey: Keys.hasCompletedOnboarding) }
+    }
+
     /// The storage seam, for this model and its siblings (see
     /// `HistoryModel`). Always the local store; the protocol survives
     /// because the importer still consumes arbitrary backends.
@@ -174,6 +185,7 @@ final class AppModel {
         static let colorTagsByValue = "colorTagsByValue"
         static let valueColors = "valueColors"
         static let menuTagSetLimit = "menuTagSetLimit"
+        static let hasCompletedOnboarding = "hasCompletedOnboarding"
         /// Keychain accounts: the sync server's device token, and the legacy
         /// traggo token the importer still reuses.
         static let syncToken = "sync-token"
@@ -187,7 +199,9 @@ final class AppModel {
         updater = UpdaterModel(demo: demo)
         let defaults = Self.makeDefaults(demo: demo)
         self.defaults = defaults
-        serverURL = defaults.string(forKey: Keys.serverURL) ?? "https://traggo.lofi"
+        // The fallback doubles as the URL hint in the Traggo import forms —
+        // point at the public traggo.net, not an internal host.
+        serverURL = defaults.string(forKey: Keys.serverURL) ?? "https://traggo.net"
         deviceName = defaults.string(forKey: Keys.deviceName)
             ?? "Menu Bar (\(Host.current().localizedName ?? "Mac"))"
         colorTagsByValue = defaults.object(forKey: Keys.colorTagsByValue) == nil

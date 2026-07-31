@@ -36,6 +36,10 @@ cp "$ROOT/.build/release/primetime-cli" "$APP/Contents/Helpers/primetime"
 mkdir -p "$APP/Contents/Frameworks"
 ditto "$ROOT/.build/release/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+# The SwiftPM resource bundle (brand font + masthead icon); Bundle.module
+# looks in Contents/Resources when the binary runs from a bundle.
+ditto "$ROOT/.build/release/PrimeTime_PrimeTime.bundle" \
+      "$APP/Contents/Resources/PrimeTime_PrimeTime.bundle"
 sed -e "s/@VERSION@/$VERSION/" -e "s/@BUILD@/$BUILD/" \
     "$ROOT/scripts/Info.plist.in" > "$APP/Contents/Info.plist"
 printf 'APPL????' > "$APP/Contents/PkgInfo"

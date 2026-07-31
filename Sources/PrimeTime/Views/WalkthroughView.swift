@@ -1,0 +1,1249 @@
+import SwiftUI
+import AppKit
+import Charts
+import PrimeTimeCore
+
+/// The interactive walkthrough of the label model (issue #93), presented as
+/// seven Next/Back pages. Every page reads and mutates the one shared
+/// `WalkthroughModel`, so state carries across pages deliberately: a smell
+/// activated on page 3 keeps corrupting the charts until it is healed.
+///
+/// - `walkthrough` — the shared dataset: the demo week, the group-by key, the
+///   schema-smell selection, aggregation, and colours.
+/// - `onBack` — return to the Welcome step.
+/// - `onContinue` — end onboarding (finished *or* skipped); the caller closes
+///   the window and opens the Label Sets tab.
+struct WalkthroughView: View {
+    @Bindable var walkthrough: WalkthroughModel
+    var onBack: () -> Void
+    var onContinue: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var page = 0
+    /// Whether the last navigation went forward — decides the slide direction.
+    @State private var forward = true
+
+    private static let pageCount = 7
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Group {
+                    switch page {
+                    case 0: SpanIsLabelsPage(walkthrough: walkthrough)
+                    case 1: AggregatePage(walkthrough: walkthrough)
+                    case 2: SmellsPage(walkthrough: walkthrough)
+                    case 3: StarterSchemaPage()
+                    case 4: LabelSetsPage()
+                    case 5: QuickLabelsPage()
+                    default: SurfacesPage()
+                    }
+                }
+                .transition(pageTransition)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()   // sliding pages must not escape the fixed window
+
+            progressDots
+            Divider()
+            OnboardingFooter(back: goBack,
+                             primaryTitle: page == Self.pageCount - 1 ? "Continue" : "Next",
+                             primaryAction: goNext) {
+                Button("Skip Tour", action: onContinue)
+            }
+        }
+        // Healing a smell can strand the page-2 picker on a key the dataset no
+        // longer has (e.g. `proj` after healing drifting keys) — fall back.
+        .onChange(of: walkthrough.groupableKeys) { _, keys in
+            if !keys.contains(walkthrough.groupKey) { walkthrough.groupKey = "repo" }
+        }
+    }
+
+    private var pageTransition: AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return forward
+            ? .asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading))
+            : .asymmetric(insertion: .move(edge: .leading), removal: .move(edge: .trailing))
+    }
+
+    private func go(to target: Int) {
+        forward = target > page
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.3)) { page = target }
+    }
+
+    private func goBack() {
+        if page == 0 { onBack() } else { go(to: page - 1) }
+    }
+
+    private func goNext() {
+        if page == Self.pageCount - 1 { onContinue() } else { go(to: page + 1) }
+    }
+
+    private var progressDots: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<Self.pageCount, id: \.self) { index in
+                Circle()
+                    .fill(index == page ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary))
+                    .frame(width: 6, height: 6)
+            }
+        }
+        .padding(.bottom, 10)
+        .accessibilityLabel("Page \(page + 1) of \(Self.pageCount)")
+    }
+}
+
+// MARK: - Shared page chrome
+
+/// Common scaffold: mono step numeral (HelpView's rule style) + heading +
+/// one-line subtitle, then the page's interactive hero filling the rest.
+/// Top padding keeps the heading clear of the floating traffic lights.
+private struct WalkthroughPage<Content: View>: View {
+    let index: Int
+    let title: String
+    let subtitle: String
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(String(format: "%02d", index + 1))
+                    .font(.title3.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(.tint)
+                Text(title)
+                    .font(.title2.weight(.semibold))
+            }
+            Text(subtitle)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.top, 12)
+        }
+        .padding(.horizontal, 28)
+        .padding(.top, 40)
+        .padding(.bottom, 8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+private extension View {
+    /// Clickable-thing affordance for mock UI that lacks the system button
+    /// look.
+    func pointingHandCursor() -> some View {
+        onHover { inside in
+            if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+        }
+    }
+
+    /// One-time discoverability glow (driven by the caller's state; callers
+    /// never turn it on under Reduce Motion).
+    func discoveryGlow(_ on: Bool) -> some View {
+        shadow(color: Color.accentColor.opacity(on ? 0.9 : 0), radius: on ? 5 : 0)
+    }
+}
+
+// MARK: - Page 1: a span is its labels
+
+private struct SpanIsLabelsPage: View {
+    @Bindable var walkthrough: WalkthroughModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    // The mock timer: a fake base offset that keeps ticking while "running".
+    @State private var baseElapsed: TimeInterval = 42 * 60 + 17
+    @State private var runningSince: Date? = Date()
+
+    // The inline editor, mirroring the popover's `timerEditor`.
+    @State private var editing = false
+    @State private var tagDrafts: [TagRow] = []
+    @State private var noteDraft = ""
+
+    /// Which editor field holds focus — commits ride on its changes, so
+    /// Return *or* clicking away updates the pills reactively.
+    private enum EditorField: Hashable {
+        case key(UUID), value(UUID), note
+    }
+    @FocusState private var focusedField: EditorField?
+
+    /// One-time pulse pointing at the interactive bits; never under Reduce
+    /// Motion.
+    @State private var pulsing = false
+
+    private var anim: Animation? { reduceMotion ? nil : .easeOut(duration: 0.2) }
+
+    var body: some View {
+        WalkthroughPage(index: 0, title: "A span is its labels",
+                        subtitle: "No folders, no project tree — a span is a stretch of time plus key: value labels. This one is live: try it.") {
+            VStack(alignment: .leading, spacing: 14) {
+                mockPopoverCard
+                Text(walkthrough.mockupSummary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("One fact per key — when two rows share a key, the last one wins.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(maxWidth: 480)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+        .onAppear(perform: startPulse)
+    }
+
+    private func startPulse() {
+        guard !reduceMotion, !pulsing else { return }
+        withAnimation(.easeInOut(duration: 0.6).delay(0.6).repeatCount(5, autoreverses: true)) {
+            pulsing = true
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(4.2))
+            withAnimation(.easeOut(duration: 0.6)) { pulsing = false }
+        }
+    }
+
+    /// A compact working rendition of the real popover's running row.
+    private var mockPopoverCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(runningSince == nil ? "Stopped" : "Running")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                elapsedText
+                if walkthrough.mockupLabels.isEmpty {
+                    Text("No labels")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    FlowLayout(spacing: 4) {
+                        ForEach(walkthrough.mockupLabels, id: \.self) { label in
+                            removablePill(label)
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
+                Button {
+                    editing ? cancelEditing() : beginEditing()
+                } label: {
+                    Image(systemName: "pencil")
+                }
+                .buttonStyle(HoverIconButtonStyle())
+                .pointingHandCursor()
+                .discoveryGlow(pulsing)
+                .help("Edit labels and note")
+                Button(action: toggleTimer) {
+                    Image(systemName: runningSince == nil ? "play.fill" : "stop.fill")
+                }
+                .buttonStyle(HoverIconButtonStyle())
+                .pointingHandCursor()
+                .discoveryGlow(pulsing)
+                .help(runningSince == nil ? "Start again" : "Stop")
+            }
+            if !editing, !walkthrough.mockupNote.isEmpty {
+                Text(walkthrough.mockupNote)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .italic()
+            }
+            if editing {
+                mockEditor
+            }
+        }
+        .padding(14)
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    @ViewBuilder
+    private var elapsedText: some View {
+        // Ticks while running; a plain frozen Text while stopped (no need to
+        // keep a timeline alive for a static value).
+        if let since = runningSince {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                Text(Self.clock(baseElapsed + max(0, context.date.timeIntervalSince(since))))
+                    .font(.system(.body, design: .monospaced))
+                    .monospacedDigit()
+                    .foregroundStyle(.orange)
+            }
+        } else {
+            Text(Self.clock(baseElapsed))
+                .font(.system(.body, design: .monospaced))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private static func clock(_ elapsed: TimeInterval) -> String {
+        let seconds = Int(elapsed)
+        return String(format: "%d:%02d:%02d", seconds / 3600, (seconds / 60) % 60, seconds % 60)
+    }
+
+    private func toggleTimer() {
+        if let since = runningSince {
+            baseElapsed += max(0, Date().timeIntervalSince(since))
+            runningSince = nil
+        } else {
+            runningSince = Date()
+        }
+    }
+
+    /// Only the ⨯ removes — the pill body is a fact, not a button.
+    private func removablePill(_ label: SpanLabel) -> some View {
+        let color = WalkthroughModel.color(key: label.key, value: label.value)
+        return HStack(spacing: 4) {
+            Text("\(label.key): \(label.value)")
+            Button {
+                withAnimation(anim) { walkthrough.removeMockup(label) }
+                // Keep an open editor in step, or its next commit would
+                // resurrect the pill.
+                tagDrafts.removeAll { $0.key == label.key && $0.value == label.value }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 7, weight: .bold))
+                    .opacity(0.7)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+            .help("Remove \(label.key): \(label.value)")
+        }
+        .font(.caption2)
+        .lineLimit(1)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 2)
+        .background(Capsule().fill(color))
+        .foregroundStyle(color.contrastingTextColor)
+    }
+
+    // MARK: The inline editor (mirrors MenuContentView.timerEditor)
+
+    /// Same rows as the real editor, minus `TagColorPicker` — that writes the
+    /// user's colour store, which the walkthrough's demo data must not touch —
+    /// so a static swatch stands in. Return in a label field, or focus moving
+    /// anywhere, commits the drafts to the pills; Done just closes.
+    private var mockEditor: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach($tagDrafts) { $tag in
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(WalkthroughModel.color(key: tag.key, value: tag.value))
+                        .frame(width: 12, height: 12)
+                    TextField("key", text: $tag.key)
+                        .textFieldStyle(.roundedBorder)
+                        .autocorrectionDisabled()
+                        .focused($focusedField, equals: .key(tag.id))
+                        .onSubmit(commitEdits)
+                    Text(":").foregroundStyle(.secondary)
+                    TextField("value", text: $tag.value)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($focusedField, equals: .value(tag.id))
+                        .onSubmit(commitEdits)
+                    Button(role: .destructive) {
+                        tagDrafts.removeAll { $0.id == tag.id }
+                        commitEdits()
+                    } label: {
+                        Image(systemName: "minus.circle")
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            TextField("Add a note…", text: $noteDraft)
+                .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: .note)
+                .onSubmit(saveEdits)
+            HStack {
+                Button {
+                    tagDrafts.append(TagRow())
+                } label: {
+                    Label("Add tag", systemImage: "plus")
+                }
+                .buttonStyle(.borderless)
+                Spacer()
+                Button("Cancel", action: cancelEditing)
+                    .buttonStyle(.borderless)
+                Button("Done", action: saveEdits)
+            }
+        }
+        // "Clicking off" a field is a focus change — commit on every move,
+        // so the pills above always mirror the fields.
+        .onChange(of: focusedField) { _, _ in commitEdits() }
+    }
+
+    private func beginEditing() {
+        let rows = walkthrough.mockupLabels.map { TagRow(key: $0.key, value: $0.value) }
+        tagDrafts = rows.isEmpty ? [TagRow()] : rows
+        noteDraft = walkthrough.mockupNote
+        withAnimation(anim) { editing = true }
+    }
+
+    private func cancelEditing() {
+        withAnimation(anim) { editing = false }
+    }
+
+    /// Push the drafts into the pills without closing the editor.
+    private func commitEdits() {
+        withAnimation(anim) {
+            walkthrough.commitMockup(labels: tagDrafts.labels, note: noteDraft)
+        }
+    }
+
+    private func saveEdits() {
+        commitEdits()
+        withAnimation(anim) { editing = false }
+    }
+}
+
+// MARK: - Page 2: labels aggregate
+
+private struct AggregatePage: View {
+    @Bindable var walkthrough: WalkthroughModel
+
+    var body: some View {
+        WalkthroughPage(index: 1, title: "Labels aggregate",
+                        subtitle: "A demo week of labelled spans. Every question — invoicing, habits, standup — is just a group-by over their labels.") {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 20) {
+                    weekList
+                    MiniChartsPane(walkthrough: walkthrough)
+                        .frame(width: 270)
+                }
+                Text("Every colour belongs to a key: value pair — the same hue on the pills and in the charts. Each pair's colour is yours to change in the app.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    private var weekList: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                let byDay = Dictionary(grouping: walkthrough.spans, by: \.day)
+                ForEach(byDay.keys.sorted(), id: \.self) { day in
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(walkthrough.date(day: day), format: .dateTime.weekday(.abbreviated))
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 32, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(byDay[day] ?? []) { span in
+                                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                    Text(formatDuration(span.seconds))
+                                        .font(.caption2.monospacedDigit())
+                                        .foregroundStyle(.tertiary)
+                                        .frame(width: 42, alignment: .trailing)
+                                    FlowLayout(spacing: 4) {
+                                        ForEach(span.labels, id: \.self) { label in
+                                            TagPill(key: label.key, value: label.value,
+                                                    color: WalkthroughModel.color(key: label.key,
+                                                                                  value: label.value))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.trailing, 6)
+        }
+    }
+}
+
+/// Mini donut + stacked daily bar fed by the shared model — the same pane
+/// sits on pages 2 and 3 so corruptions carry over visibly. Page 2 exposes
+/// the group-by picker; page 3 passes `fixedKey` to pin the grouping to the
+/// key each smell damages best. Chart mutations animate because every write
+/// (picker, smell selection) happens inside `withAnimation`.
+private struct MiniChartsPane: View {
+    @Bindable var walkthrough: WalkthroughModel
+    /// When set, charts pin to this key and the picker is replaced by a
+    /// caption.
+    var fixedKey: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var key: String { fixedKey ?? walkthrough.groupKey }
+
+    var body: some View {
+        let totals = walkthrough.totals(by: key)
+        let colors = walkthrough.colorMap(for: totals, key: key)
+        VStack(alignment: .leading, spacing: 10) {
+            if fixedKey == nil {
+                Picker("Group by", selection: animatedGroupKey) {
+                    ForEach(walkthrough.groupableKeys, id: \.self) { key in
+                        Text(key).tag(key)
+                    }
+                }
+                .fixedSize()
+            } else {
+                (Text("Grouped by ").foregroundStyle(.secondary)
+                    + Text(key).fontWeight(.semibold))
+                    .font(.caption)
+            }
+            HStack {
+                Spacer(minLength: 0)
+                donut(totals, colors: colors)
+                Spacer(minLength: 0)
+            }
+            legend(totals, colors: colors)
+            dailyBar(colors: colors)
+        }
+    }
+
+    /// Routes picker writes through `withAnimation` so both charts re-slice
+    /// rather than jump.
+    private var animatedGroupKey: Binding<String> {
+        Binding(get: { walkthrough.groupKey },
+                set: { key in
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.35)) {
+                        walkthrough.groupKey = key
+                    }
+                })
+    }
+
+    private func donut(_ totals: [SeriesTotal], colors: [String: Color]) -> some View {
+        let missing = walkthrough.missingSeconds(for: key)
+        return Chart(totals) { item in
+            SectorMark(angle: .value("Time", item.seconds),
+                       innerRadius: .ratio(0.62),
+                       angularInset: 1.5)
+                .foregroundStyle(colors[item.label] ?? .gray)
+                .cornerRadius(2)
+        }
+        .chartLegend(.hidden)   // the compact legend below is the legend
+        .frame(width: 140, height: 140)
+        .overlay {
+            // The centre stays empty — the slices are the story — except
+            // when a smell is hiding hours: then it names the loss.
+            if missing > 0 {
+                VStack(spacing: 0) {
+                    Text("time missing")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text("~\(Int((missing / 3600).rounded()))h")
+                        .font(.subheadline.monospacedDigit().weight(.semibold))
+                }
+            }
+        }
+    }
+
+    private func legend(_ totals: [SeriesTotal], colors: [String: Color]) -> some View {
+        FlowLayout(spacing: 6) {
+            ForEach(totals) { item in
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(colors[item.label] ?? .gray)
+                        .frame(width: 6, height: 6)
+                    Text(item.label)
+                        .font(.caption2)
+                        .lineLimit(1)
+                }
+            }
+        }
+    }
+
+    private func dailyBar(colors: [String: Color]) -> some View {
+        Chart(walkthrough.dailyTotals(by: key)) { item in
+            BarMark(x: .value("Day", item.day, unit: .day),
+                    y: .value("Hours", item.seconds / 3600))
+                .foregroundStyle(colors[item.label] ?? .gray)
+                .cornerRadius(2)
+        }
+        .chartLegend(.hidden)
+        // Pin to the whole demo week or sparse data would stretch its bars.
+        .chartXScale(domain: walkthrough.weekInterval.start...walkthrough.weekInterval.end)
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day)) { _ in
+                AxisValueLabel(format: .dateTime.weekday(.narrow), centered: true)
+            }
+        }
+        .chartYAxis(.hidden)
+        .frame(height: 96)
+    }
+}
+
+// MARK: - Page 3: why schemas fail
+
+private struct SmellsPage: View {
+    @Bindable var walkthrough: WalkthroughModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        WalkthroughPage(index: 2, title: "Why schemas fail",
+                        subtitle: "Four ways a label schema goes wrong — PrimeTime helps you dodge all of these by defining your labels up front. Click a card to corrupt the week; click it again and the charts heal.") {
+            HStack(alignment: .top, spacing: 20) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(WalkthroughModel.SchemaSmell.allCases) { smell in
+                            smellCard(smell)
+                        }
+                    }
+                    .padding(.trailing, 6)
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    // Each smell pins the charts to the key that shows its
+                    // damage best; healthy weeks default to repo.
+                    MiniChartsPane(walkthrough: walkthrough,
+                                   fixedKey: walkthrough.activeSmell?.demoKey ?? "repo")
+                    if let smell = walkthrough.activeSmell {
+                        smellDetail(smell)
+                    } else {
+                        Label {
+                            Text("A healthy schema: every label lands in a slice, and both charts tell one story.")
+                                .foregroundStyle(.secondary)
+                        } icon: {
+                            Image(systemName: "checkmark.circle")
+                                .foregroundStyle(.green)
+                        }
+                        .font(.caption)
+                    }
+                }
+                .frame(width: 260)
+            }
+        }
+    }
+
+    /// The red callout beside the corrupted charts. Fused facts and drifting
+    /// keys get bespoke treatments — the one-line `sideEffect` wasn't enough
+    /// to make their counter-examples land for a new user.
+    /// (fixedSize throughout: the column is height-constrained and a tall
+    /// legend would otherwise squeeze the text to one truncated line.)
+    @ViewBuilder
+    private func smellDetail(_ smell: WalkthroughModel.SchemaSmell) -> some View {
+        switch smell {
+        case .fusedFacts:
+            // Lead with the question, prove it with the fused labels, then
+            // say why the query has nothing to join on.
+            VStack(alignment: .leading, spacing: 6) {
+                Text("“How much meeting time across all projects?”")
+                    .font(.caption.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                FlowLayout(spacing: 4) {
+                    ForEach(walkthrough.fusedExamples, id: \.self) { label in
+                        TagPill(key: label.key, value: label.value,
+                                color: WalkthroughModel.color(key: label.key,
+                                                              value: label.value))
+                    }
+                }
+                Text("These meetings sit greyed in the charts — fused inside work:, where type: meeting can't match them.")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        case .driftingKeys:
+            let pct = Int((walkthrough.missingSeconds(for: "repo")
+                / max(walkthrough.weekTotalSeconds, 1) * 100).rounded())
+            Text("You queried repo: — but \(pct)% of your time was accidentally labelled proj:. It rides along here greyed out as missing time; the real History tab would simply drop it.")
+                .font(.caption)
+                .foregroundStyle(.red)
+                .fixedSize(horizontal: false, vertical: true)
+        default:
+            Text(smell.sideEffect)
+                .font(.caption)
+                .foregroundStyle(.red)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func smellCard(_ smell: WalkthroughModel.SchemaSmell) -> some View {
+        let active = walkthrough.activeSmell == smell
+        return Button {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.35)) {
+                // Radio semantics: one corruption at a time reads cleanly.
+                walkthrough.activeSmell = active ? nil : smell
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(smell.title)
+                        .font(.callout.weight(.semibold))
+                    Spacer()
+                    Image(systemName: active
+                          ? "exclamationmark.triangle.fill" : "circle.dashed")
+                        .font(.caption)
+                        .foregroundStyle(active ? AnyShapeStyle(.red)
+                                                : AnyShapeStyle(.quaternary))
+                }
+                Text(smell.symptom)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if !smell.examples.isEmpty {
+                    FlowLayout(spacing: 8) {
+                        ForEach(smell.examples, id: \.label) { example in
+                            HStack(spacing: 3) {
+                                Image(systemName: example.good ? "checkmark" : "xmark")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(example.good
+                                                     ? AnyShapeStyle(.green)
+                                                     : AnyShapeStyle(.red))
+                                Text(example.label)
+                                    .font(.caption2.monospaced())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 1)
+                }
+                (Text("Fix  ").foregroundStyle(.tint).bold()
+                    + Text(smell.fix))
+                    .font(.caption)
+            }
+            .multilineTextAlignment(.leading)
+            .padding(10)
+            .padding(.leading, 5)
+            .contentShape(Rectangle())
+            .background(.quinary)
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .fill(.red.opacity(active ? 0.9 : 0.3))
+                    .frame(width: 3)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(.red.opacity(active ? 0.5 : 0)))
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+    }
+}
+
+// MARK: - Page 4: a starter schema
+
+private struct StarterSchemaPage: View {
+    var body: some View {
+        WalkthroughPage(index: 3, title: "A starter schema",
+                        subtitle: "Four keys cover most working weeks — copy it, then bend it to your stack.") {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Spacer(minLength: 0)
+                    FlowLayout(spacing: 6) {
+                        schemaPill("repo", "sfi/PrimeTime")
+                        schemaPill("feat", "label-review")
+                        schemaPill("type", "review")
+                        schemaPill("client", "acme")
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity)
+                .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 12) {
+                    reason(0, "Bounded values",
+                           "Every key draws from a vocabulary short enough for a chart legend. Free-form detail goes in the note.")
+                    reason(1, "One fact per key",
+                           "Repo, feature, type, and client each answer a different question — so every question keeps an axis to group by.")
+                    reason(2, "Names mirror your forge",
+                           "repo: sfi/PrimeTime is spelled exactly as the remote spells it. Joins are exact; so are your labels.")
+                }
+                Text("PrimeTime helps you keep a good schema by defining labels up front, one click away — so you're not at the mercy of typos and inconvenience. You can still start a blank timer and add labels as you go.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Text("Charts can group by any of the four — one schema, every question.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(maxWidth: 480)
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    private func schemaPill(_ key: String, _ value: String) -> some View {
+        let color = WalkthroughModel.color(key: key, value: value)
+        return Text("\(key): \(value)")
+            .font(.callout.weight(.medium))
+            .lineLimit(1)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(color))
+            .foregroundStyle(color.contrastingTextColor)
+    }
+
+    private func reason(_ index: Int, _ heading: String, _ detail: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(String(format: "%02d", index + 1))
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .foregroundStyle(.tint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(heading)
+                    .font(.callout.weight(.semibold))
+                Text(detail)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+// MARK: - Page 5: pick your starting label sets
+
+/// The five personas from the primetime.tools masthead, each openable into a
+/// small editor that creates a *real* label set — the walkthrough's one page
+/// that writes into the user's data, because that's its whole point.
+private struct LabelSetsPage: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private struct Persona: Identifiable {
+        let name: String
+        let symbol: String
+        /// The two primary keys, with example values — hints, never
+        /// prefilled. (The work *type* is deliberately absent: that's a
+        /// quick label's job, not a set's — see the next page.)
+        let rows: [(key: String, example: String)]
+        var id: String { name }
+    }
+
+    private static let personas: [Persona] = [
+        Persona(name: "Programming", symbol: "chevron.left.forwardslash.chevron.right",
+                rows: [("repo", "sfi/sfi-website"),
+                       ("feat", "kb-knowledge-graph")]),
+        Persona(name: "Studying", symbol: "graduationcap",
+                rows: [("course", "linear-algebra"),
+                       ("topic", "eigenvalues")]),
+        Persona(name: "Reading", symbol: "book",
+                rows: [("book", "dune"),
+                       ("author", "herbert")]),
+        Persona(name: "Project Management", symbol: "checklist",
+                rows: [("project", "q3-roadmap"),
+                       ("meeting", "sprint-planning")]),
+        Persona(name: "Creative Work", symbol: "paintbrush",
+                rows: [("film", "promo-spot"),
+                       ("stage", "edit")]),
+    ]
+
+    /// The grid's rows, two cards per row.
+    private static let personaPairs: [[Persona]] =
+        stride(from: 0, to: personas.count, by: 2).map {
+            Array(personas[$0..<min($0 + 2, personas.count)])
+        }
+
+    /// One editable label row in the persona editor — the popover editor's
+    /// key/value rows plus a colour swatch, with the persona's example as
+    /// placeholder on seeded rows.
+    private struct DraftRow: Identifiable {
+        let id = UUID()
+        var key: String
+        var value: String
+        var color: Color
+        var example: String?
+
+        var trimmedKey: String { key.trimmingCharacters(in: .whitespaces) }
+        var trimmedValue: String { value.trimmingCharacters(in: .whitespaces) }
+        var incomplete: Bool { trimmedKey.isEmpty || trimmedValue.isEmpty }
+    }
+
+    @State private var editing: Persona?
+    @State private var added: Set<String> = []
+    /// Tallest card in the grid — every card takes it as a floor, so a card
+    /// whose pills fit one line (Reading, Creative Work) doesn't run shorter
+    /// than its neighbours; its content centres in the extra room.
+    @State private var cardHeight: CGFloat = 0
+    @State private var draftName = ""
+    @State private var draftRows: [DraftRow] = []
+    /// Rows flagged by a failed add — their empty fields stay outlined red
+    /// until filled. No "required" copy anywhere, per the review.
+    @State private var invalidRows: Set<UUID> = []
+    /// Failed-add counter; each bump drives one shake of the add button.
+    @State private var shakes = 0
+
+    var body: some View {
+        WalkthroughPage(index: 4, title: "Pick your starting label sets",
+                        subtitle: "Five ways people run PrimeTime. Open one, type your own values, and it becomes a real one-click set.") {
+            Group {
+                if let persona = editing {
+                    editor(for: persona)
+                        .frame(maxWidth: 460)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        // Deliberately not a LazyVGrid: lazy cells materialise
+                        // mid page-slide, so the cards visibly popped in while
+                        // the text was still moving.
+                        ForEach(Array(Self.personaPairs.enumerated()),
+                                id: \.offset) { _, pair in
+                            HStack(alignment: .top, spacing: 10) {
+                                ForEach(pair) { persona in
+                                    card(for: persona)
+                                        .frame(maxWidth: .infinity)
+                                }
+                                if pair.count == 1 {
+                                    Color.clear.frame(maxWidth: .infinity)
+                                }
+                            }
+                            // Cards whose pills fit one line would otherwise
+                            // run shorter than their neighbour: the row takes
+                            // the taller card's height, the shorter one
+                            // stretches to match (content centres, below).
+                            .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Text("Add as many as fit — or none. The Label Sets tab can do all of this later.")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: editing?.id)
+        }
+    }
+
+    private func card(for persona: Persona) -> some View {
+        let isAdded = added.contains(persona.id)
+        return Button {
+            open(persona)
+        } label: {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: persona.symbol)
+                    .font(.title3)
+                    .foregroundStyle(.tint)
+                    .frame(width: 26)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(persona.name).font(.body.weight(.medium))
+                    FlowLayout(spacing: 4) {
+                        ForEach(persona.rows, id: \.key) { row in
+                            TagPill(key: row.key, value: row.example,
+                                    color: WalkthroughModel.color(key: row.key,
+                                                                  value: row.example))
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
+                Image(systemName: isAdded ? "checkmark.circle.fill" : "plus.circle")
+                    .foregroundStyle(isAdded ? AnyShapeStyle(.green)
+                                             : AnyShapeStyle(.quaternary))
+            }
+            .padding(10)
+            // Fill whatever height the row settled on — and at least the
+            // grid's tallest card — content centred.
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(minHeight: cardHeight > 0 ? cardHeight : nil)
+            .contentShape(Rectangle())
+            .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+        .overlay {
+            GeometryReader { proxy in
+                Color.clear.preference(key: CardHeightKey.self,
+                                       value: proxy.size.height)
+            }
+        }
+        .onPreferenceChange(CardHeightKey.self) { cardHeight = max(cardHeight, $0) }
+    }
+
+    private func open(_ persona: Persona) {
+        draftName = persona.name
+        // Swatches start on the walkthrough's colour for the example, so the
+        // editor matches the card the user just clicked.
+        draftRows = persona.rows.map {
+            DraftRow(key: $0.key, value: "",
+                     color: WalkthroughModel.color(key: $0.key, value: $0.example),
+                     example: $0.example)
+        }
+        invalidRows = []
+        editing = persona
+    }
+
+    /// The persona editor: the popover's editable key/value rows (add,
+    /// remove, retype — the seeded keys are suggestions, not law) with a
+    /// colour swatch per row.
+    private func editor(for persona: Persona) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: persona.symbol)
+                    .foregroundStyle(.tint)
+                TextField("Set name", text: $draftName)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.body.weight(.medium))
+            }
+            ForEach($draftRows) { $row in
+                HStack(spacing: 6) {
+                    ColorPicker("", selection: $row.color, supportsOpacity: false)
+                        .labelsHidden()
+                    TextField("key", text: $row.key)
+                        .textFieldStyle(.roundedBorder)
+                        .autocorrectionDisabled()
+                        .frame(width: 96)
+                        .overlay(invalidOutline(flagged(row) && row.trimmedKey.isEmpty))
+                    Text(":").foregroundStyle(.secondary)
+                    TextField("value", text: $row.value,
+                              prompt: row.example.map { Text($0) })
+                        .textFieldStyle(.roundedBorder)
+                        .autocorrectionDisabled()
+                        .overlay(invalidOutline(flagged(row) && row.trimmedValue.isEmpty))
+                    Button(role: .destructive) {
+                        draftRows.removeAll { $0.id == row.id }
+                    } label: {
+                        Image(systemName: "minus.circle")
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+            Button {
+                draftRows.append(DraftRow(key: "", value: "",
+                                          color: WalkthroughModel.keyColor("")))
+            } label: {
+                Label("Add label", systemImage: "plus")
+            }
+            .buttonStyle(.borderless)
+            Text("The grey values are examples — type your own.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            HStack {
+                Spacer()
+                Button("Cancel") { editing = nil }
+                Button("Add label set") { add(persona) }
+                    .buttonStyle(.borderedProminent)
+                    .tint(anyFlagged ? .red : nil)
+                    .modifier(Shake(animatableData: CGFloat(shakes)))
+                    .disabled(draftName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(14)
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    /// A field flagged by a failed add keeps its outline only while still
+    /// empty — typing clears it, without any bookkeeping.
+    private func flagged(_ row: DraftRow) -> Bool {
+        invalidRows.contains(row.id)
+    }
+
+    private var anyFlagged: Bool {
+        draftRows.contains { flagged($0) && $0.incomplete }
+    }
+
+    private func invalidOutline(_ on: Bool) -> some View {
+        RoundedRectangle(cornerRadius: 5)
+            .strokeBorder(.red, lineWidth: 1)
+            .opacity(on ? 1 : 0)
+    }
+
+    /// Create the real set — or refuse: a blank key or value doesn't pass.
+    /// The refusal is shown, not written: the empty fields outline red and
+    /// the add button shakes. Chosen colours go through the model's
+    /// per-value colour store; duplicate names are skipped (the set already
+    /// exists — still counts as added).
+    private func add(_ persona: Persona) {
+        let incomplete = draftRows.filter(\.incomplete)
+        guard incomplete.isEmpty, !draftRows.isEmpty else {
+            invalidRows.formUnion(incomplete.map(\.id))
+            if reduceMotion {
+                shakes += 1   // unanimated: the red tint still lands
+            } else {
+                withAnimation(.linear(duration: 0.4)) { shakes += 1 }
+            }
+            return
+        }
+        let name = draftName.trimmingCharacters(in: .whitespaces)
+        let duplicate = model.tagSets.contains { $0.name.lowercased() == name.lowercased() }
+        if !duplicate {
+            var tags: [TagRow] = []
+            for row in draftRows {
+                tags.append(TagRow(key: row.trimmedKey, value: row.trimmedValue))
+                model.setValueColor(key: row.trimmedKey, value: row.trimmedValue,
+                                    color: row.color)
+            }
+            model.tagSets.append(TagSet(name: name, tags: tags,
+                                        symbolName: persona.symbol))
+        }
+        added.insert(persona.id)
+        editing = nil
+    }
+}
+
+/// The tallest persona card's height (see `LabelSetsPage.cardHeight`).
+private struct CardHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+/// Horizontal shake for a refused action — driven by an incrementing
+/// counter; each whole step sweeps three cycles and lands back at rest.
+private struct Shake: GeometryEffect {
+    var travel: CGFloat = 5
+    var cycles: CGFloat = 3
+    var animatableData: CGFloat
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        ProjectionTransform(CGAffineTransform(
+            translationX: travel * sin(animatableData * .pi * cycles * 2), y: 0))
+    }
+}
+
+// MARK: - Page 6: quick labels
+
+private struct QuickLabelsPage: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private struct Quick: Hashable {
+        let key: String
+        let value: String
+    }
+
+    /// The mocked set — the starter schema's own labels — and its quick
+    /// labels: three work types that swap with each other, exactly the
+    /// role page 5 kept *out* of the sets.
+    private static let base = [Quick(key: "repo", value: "primetime"),
+                               Quick(key: "feat", value: "onboarding")]
+    private static let quicks = [Quick(key: "type", value: "programming"),
+                                 Quick(key: "type", value: "review"),
+                                 Quick(key: "type", value: "planning")]
+
+    @State private var applied: Quick?
+
+    var body: some View {
+        WalkthroughPage(index: 5, title: "Quick labels",
+                        subtitle: "Often you want to start from a label set but add one more label — the work type, the client. PrimeTime lets you define these Quick Labels ahead of time, so switching contexts takes a couple of clicks.") {
+            VStack(alignment: .leading, spacing: 14) {
+                mockRow
+                preview
+                Text("All three quick labels share the key type:, so they swap with each other — click between them as often as you like. Clicking the row anywhere else starts from just the set's own labels.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(maxWidth: 440)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+    }
+
+    /// A quick-start row like the popover's, chips permanently revealed (the
+    /// real row shows them on hover). As in the popover, the row itself is
+    /// the click target for "just the set" — anywhere that isn't a chip.
+    private var mockRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Quick start")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button {
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
+                    applied = nil
+                }
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("PrimeTime")
+                        .font(.callout)
+                    FlowLayout(spacing: 4) {
+                        ForEach(Self.base, id: \.self) { tag in
+                            TagPill(key: tag.key, value: tag.value,
+                                    color: WalkthroughModel.color(key: tag.key, value: tag.value))
+                        }
+                    }
+                    FlowLayout(spacing: 4) {
+                        ForEach(Self.quicks, id: \.self) { quick in
+                            chip(quick)
+                        }
+                    }
+                    .padding(.top, 2)
+                }
+                .padding(10)
+                .contentShape(Rectangle())
+                .overlay(RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(Color.accentColor, lineWidth: 1.5))
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+            .help("Start with the set's labels")
+        }
+        .padding(14)
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    /// Chips apply, they never toggle off — like the popover, where a chip
+    /// always means "start with this"; the row body is the way back to the
+    /// set's plain labels. So switching types is endlessly repeatable.
+    private func chip(_ quick: Quick) -> some View {
+        Button {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
+                applied = quick
+            }
+        } label: {
+            Text("+\(quick.value)")
+        }
+        .buttonStyle(QuickLabelChipStyle(
+            color: WalkthroughModel.color(key: quick.key, value: quick.value),
+            filled: applied == quick))
+        .pointingHandCursor()
+        .help("Start with \(quick.key): \(quick.value)")
+    }
+
+    /// The span a click would start: the set's labels with same-key
+    /// replacement applied — the `TagSet.labels(applying:)` rule, computed
+    /// locally on the mock data.
+    @ViewBuilder
+    private var preview: some View {
+        let labels = applied.map { quick in
+            Self.base.filter { $0.key != quick.key } + [quick]
+        } ?? Self.base
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("One click starts:")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            FlowLayout(spacing: 4) {
+                ForEach(labels, id: \.self) { tag in
+                    TagPill(key: tag.key, value: tag.value,
+                            color: WalkthroughModel.color(key: tag.key, value: tag.value))
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Page 7: where things live
+
+private struct SurfacesPage: View {
+    private struct Surface: Identifiable {
+        let symbol: String
+        let name: String
+        let blurb: String
+        var id: String { name }
+    }
+
+    // Blurbs mirror the website/readme feature copy.
+    private static let surfaces: [Surface] = [
+        Surface(symbol: "timer", name: "Menu-bar popover",
+                blurb: "Start and stop timers, add notes or change labels on the fly."),
+        Surface(symbol: "square.grid.2x2", name: "Launcher",
+                blurb: "Saved label sets as one-click cards — icons and colors for the way you actually organize work. Sets that are already running light up."),
+        Surface(symbol: "tag", name: "Label Sets",
+                blurb: "Name and edit the sets behind one-click timers. Set up quick labels to fit your workflow."),
+        Surface(symbol: "list.bullet.rectangle", name: "Log",
+                blurb: "Review and freely edit timespans after-the-fact: because real work overlaps, gets interrupted, and needs correcting."),
+        Surface(symbol: "calendar", name: "Calendar",
+                blurb: "Your week laid out hour by hour. Overlapping timers share columns, so multi-tasking is visible instead of hidden."),
+        Surface(symbol: "chart.pie", name: "History",
+                blurb: "Visualize your timespans with group-by based aggregations."),
+        Surface(symbol: "stethoscope", name: "Label Review",
+                blurb: "Merge drifted keys and stray values. With PrimeTime it's easy to catch these outliers and correct them before they impact downstream."),
+        Surface(symbol: "gear", name: "Settings",
+                blurb: "Sync, colours, and everything else."),
+    ]
+
+    var body: some View {
+        WalkthroughPage(index: 6, title: "Where things live",
+                        subtitle: "Everything you just did in miniature has a real surface in the app.") {
+            VStack(alignment: .leading, spacing: 9) {
+                ForEach(Self.surfaces) { surface in
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Image(systemName: surface.symbol)
+                            .foregroundStyle(.tint)
+                            .frame(width: 22)
+                        Text(surface.name)
+                            .font(.callout.weight(.semibold))
+                            .frame(width: 130, alignment: .leading)
+                        Text(surface.blurb)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Link(destination: URL(string: "https://primetime.tools/docs/labels")!) {
+                    Label("Read the full labelling guide", systemImage: "book")
+                }
+                .font(.callout)
+                .padding(.top, 6)
+                Text("Hit Continue to finish — you'll land in the Label Sets tab, next to whatever you just created.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(maxWidth: 520)
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+}

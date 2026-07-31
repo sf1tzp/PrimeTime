@@ -45,6 +45,15 @@ let package = Package(
                 .product(name: "Sparkle", package: "Sparkle")
             ],
             path: "Sources/PrimeTime",
+            // The brand font (OFL text rides alongside) and the icon the
+            // onboarding masthead draws. Bundle.module resolves these both
+            // unbundled (swift build) and inside the .app — bundle-app.sh
+            // copies the SwiftPM resource bundle into Contents/Resources.
+            resources: [
+                .copy("Resources/BricolageGrotesque.ttf"),
+                .copy("Resources/BricolageGrotesque-OFL.txt"),
+                .copy("Resources/AppIcon.icns")
+            ],
             linkerSettings: [
                 // Sparkle.framework rides in the .app at Contents/Frameworks;
                 // SwiftPM only adds an rpath into .build/artifacts (which also

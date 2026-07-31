@@ -13,6 +13,14 @@ struct MenuContentView: View {
     @State private var tagDrafts: [TagRow] = []
     @State private var noteDraft = ""
 
+    /// Which editor field holds focus. Return in a tag field, or focus
+    /// moving at all ("clicking off"), commits the drafts so the pills
+    /// above update reactively — the editor stays open.
+    private enum EditorField: Hashable {
+        case key(UUID), value(UUID), note
+    }
+    @FocusState private var focusedField: EditorField?
+
     /// The quick-start row whose quick-label chips are expanded — set only
     /// after the pointer *rests* on the row (hover intent, below), so the
     /// list stays glanceable at rest and a quick sweep down the menu to the
@@ -363,11 +371,16 @@ struct MenuContentView: View {
                     TextField("key", text: $tag.key)
                         .textFieldStyle(.roundedBorder)
                         .autocorrectionDisabled()
+                        .focused($focusedField, equals: .key(tag.id))
+                        .onSubmit { commitLiveEdits() }
                     Text(":").foregroundStyle(.secondary)
                     TextField("value", text: $tag.value)
                         .textFieldStyle(.roundedBorder)
+                        .focused($focusedField, equals: .value(tag.id))
+                        .onSubmit { commitLiveEdits() }
                     Button(role: .destructive) {
                         tagDrafts.removeAll { $0.id == tag.id }
+                        commitLiveEdits()
                     } label: {
                         Image(systemName: "minus.circle")
                     }
@@ -376,6 +389,7 @@ struct MenuContentView: View {
             }
             TextField("Add a note…", text: $noteDraft)
                 .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: .note)
                 .onSubmit { saveEdits() }
             HStack {
                 Button {
@@ -387,10 +401,11 @@ struct MenuContentView: View {
                 Spacer()
                 Button("Cancel") { editingTimerID = nil }
                     .buttonStyle(.borderless)
-                Button("Save") { saveEdits() }
+                Button("Done") { saveEdits() }
                     .disabled(model.isBusy)
             }
         }
+        .onChange(of: focusedField) { _, _ in commitLiveEdits() }
     }
 
     private func beginEditing(_ timer: TimeSpan) {
@@ -398,6 +413,19 @@ struct MenuContentView: View {
         tagDrafts = rows.isEmpty ? [TagRow()] : rows  // an empty row, ready to type
         noteDraft = timer.note
         editingTimerID = timer.id
+    }
+
+    /// Commit the drafts to the running span without leaving edit mode —
+    /// the reactive path behind Return / clicking off a field. Skips the
+    /// round-trip when nothing changed (focus hops between fields hit this).
+    private func commitLiveEdits() {
+        guard let id = editingTimerID,
+              let timer = model.activeTimers.first(where: { $0.id == id })
+        else { return }
+        let labels = tagDrafts.labels
+        let note = noteDraft
+        guard labels != timer.labels || note != timer.note else { return }
+        Task { await model.updateRunning(id: id, tags: labels, note: note) }
     }
 
     private func saveEdits() {
