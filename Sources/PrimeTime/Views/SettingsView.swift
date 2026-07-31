@@ -42,7 +42,7 @@ struct GeneralSettingsView: View {
                         .textSelection(.enabled)
                 }
                 HStack {
-                    Text("Save every timespan, tag, colour, and tag set as a JSON file — an archive of the database above.")
+                    Text("Save every timespan, label, colour, and label set as a JSON file — an archive of the database above.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -113,11 +113,11 @@ struct GeneralSettingsView: View {
                         model.disconnectSyncServer()
                     }
                 }
-                Text("Everything syncs: timespans, tag keys and colours, tag sets, and the settings below. Edits made offline catch up on the next sync.")
+                Text("Everything syncs: timespans, label keys and colours, label sets, and the settings below. Edits made offline catch up on the next sync.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Optional: connect a sync server to share timespans, tag sets, and colours across your Macs. Everything keeps working offline; changes sync in the background.")
+                Text("Optional: connect a sync server to share timespans, label sets, and colours across your Macs. Everything keeps working offline; changes sync in the background.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 TextField("Server URL", text: $syncURL)
@@ -172,7 +172,7 @@ struct GeneralSettingsView: View {
             let limit = Binding(
                 get: { model.menuTagSetLimit },
                 set: { model.menuTagSetLimit = max(0, min(99, $0)) })
-            LabeledContent("Quick-start tag sets") {
+            LabeledContent("Quick-start label sets") {
                 HStack(spacing: 2) {
                     TextField("", value: limit, format: .number)
                         .multilineTextAlignment(.trailing)
@@ -185,8 +185,8 @@ struct GeneralSettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        Section("Tags") {
-            Toggle("Colour tags by value", isOn: $model.colorTagsByValue)
+        Section("Labels") {
+            Toggle("Colour labels by value", isOn: $model.colorTagsByValue)
             Text("Pick a colour per key: value pair, so e.g. repo: foo and repo: bar look different. Pairs without an override keep their key colour.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -260,7 +260,7 @@ struct GeneralSettingsView: View {
         if summary.runningSpans > 0 {
             parts.append("— \(summary.runningSpans) still running —")
         }
-        parts.append("and \(summary.definitionsCreated + summary.definitionsRecolored) tag keys.")
+        parts.append("and \(summary.definitionsCreated + summary.definitionsRecolored) label keys.")
         return parts.joined(separator: " ")
     }
 
@@ -302,7 +302,7 @@ struct GeneralSettingsView: View {
     }()
 }
 
-// MARK: - Tag Sets
+// MARK: - Label Sets
 
 struct TagSetsSettingsView: View {
     @Environment(AppModel.self) private var model
@@ -365,7 +365,7 @@ struct TagSetsSettingsView: View {
             } else {
                 VStack {
                     Spacer()
-                    Text("Select or add a tag set")
+                    Text("Select or add a Tag set")
                         .foregroundStyle(.secondary)
                     Spacer()
                 }
@@ -387,14 +387,16 @@ struct TagSetDetailView: View {
             Section("Launcher icon") {
                 SymbolPicker(selection: $tagSet.symbolName)
             }
-            Section("Tags") {
+            Section("Labels") {
                 ForEach($tagSet.tags) { $tag in
                     HStack {
                         TagColorPicker(key: tag.key, value: tag.value)
                         TextField("key", text: $tag.key)
+                            .textFieldStyle(.roundedBorder)
                             .autocorrectionDisabled()
                         Text(":").foregroundStyle(.secondary)
                         TextField("value", text: $tag.value)
+                            .textFieldStyle(.roundedBorder)
                         Button(role: .destructive) {
                             tagSet.tags.removeAll { $0.id == tag.id }
                         } label: {
@@ -406,7 +408,7 @@ struct TagSetDetailView: View {
                 Button {
                     tagSet.tags.append(TagRow())
                 } label: {
-                    Label("Add tag", systemImage: "plus")
+                    Label("Add Label", systemImage: "plus")
                 }
                 .buttonStyle(.borderless)
                 Text("Keys are lower-cased with spaces turned into “-”. Missing keys are created automatically.")
@@ -426,7 +428,7 @@ struct TagSetDetailView: View {
     private var colorCaption: String {
         model.colorTagsByValue
             ? "Colours are saved per key: value pair and override the key’s colour. Right-click a swatch to go back to the key colour."
-            : "Colours are saved per tag key, so recolouring a key here also changes it in every other tag set that uses it."
+            : "Colours are saved per label key, so recolouring a key here also changes it in every other label set that uses it."
     }
 }
 
@@ -470,6 +472,7 @@ private struct SymbolPicker: View {
             }
             HStack(spacing: 4) {
                 TextField("Symbol name", text: typedName, prompt: Text("tag"))
+                    .textFieldStyle(.roundedBorder)
                     .autocorrectionDisabled()
                 if !selectionResolves {
                     Image(systemName: "exclamationmark.triangle.fill")
