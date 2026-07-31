@@ -53,6 +53,10 @@ enum Brand {
     /// nudged darker on light backgrounds where #00add8 runs out of contrast.
     static let traggoBlue = dynamic(light: "#0087a8", dark: "#00add8")
 
+    /// The torch gradient's gold stop as a standalone accent — for small
+    /// flourishes that should read as "brand fire" without the full gradient.
+    static let torchGold = dynamic(light: "#ca8a04", dark: "#f8bd40")
+
     /// The flaming-clock mark, from the bundled icns (works unbundled, where
     /// `NSApp.applicationIconImage` would be the generic executable icon).
     static var appIcon: NSImage? {

@@ -489,4 +489,20 @@ final class WalkthroughModel {
         let keys = mockupLabels.map(\.key)
         return "This span is nothing but its labels — it will appear in every chart grouped by \(keys.formatted(.list(type: .or)))."
     }
+
+    // MARK: Created label sets (page 5 → page 6)
+
+    /// A label set created from one of page 5's persona cards. Carries the
+    /// real `TagSet.id` (not the name — the user names the set themselves)
+    /// so page 6 can offer that persona's quick-label suggestions against
+    /// the right set.
+    struct CreatedSet: Identifiable, Hashable {
+        let setID: UUID
+        let personaID: String
+        var id: UUID { setID }
+    }
+
+    /// The sets created during this walkthrough, in creation order. Lives
+    /// here rather than in page state so it survives paging back and forth.
+    var createdSets: [CreatedSet] = []
 }
