@@ -46,9 +46,10 @@ let package = Package(
             ],
             path: "Sources/PrimeTime",
             // The brand font (OFL text rides alongside) and the icon the
-            // onboarding masthead draws. Bundle.module resolves these both
-            // unbundled (swift build) and inside the .app — bundle-app.sh
-            // copies the SwiftPM resource bundle into Contents/Resources.
+            // onboarding masthead draws. Resolved via Brand.resources, which
+            // handles both unbundled builds (swift run) and the .app, where
+            // bundle-app.sh copies the bundle into Contents/Resources —
+            // swift build's Bundle.module accessor can't find it there.
             resources: [
                 .copy("Resources/BricolageGrotesque.ttf"),
                 .copy("Resources/BricolageGrotesque-OFL.txt"),

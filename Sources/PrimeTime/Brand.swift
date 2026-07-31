@@ -10,12 +10,25 @@ import PrimeTimeCore
 /// read as one thing.
 enum Brand {
 
+    /// The SwiftPM resource bundle. `swift build`'s generated `Bundle.module`
+    /// checks only the .app root and the absolute .build path of the machine
+    /// that compiled the release — on any other machine it fatalErrors before
+    /// the first frame. Look where bundle-app.sh actually puts the bundle
+    /// (Contents/Resources), then fall back to `.module` for unbundled
+    /// `swift run` builds, where the baked-in .build path is the right one.
+    private static let resources: Bundle = {
+        if let url = Bundle.main.resourceURL?
+            .appendingPathComponent("PrimeTime_PrimeTime.bundle"),
+           let bundle = Bundle(url: url) { return bundle }
+        return .module
+    }()
+
     /// Register the bundled wordmark font (Bricolage Grotesque, OFL — the
     /// license text ships next to it). Process-scoped: nothing is installed
     /// on the user's system. Call once at launch, before any view renders.
     static func registerFonts() {
-        guard let url = Bundle.module.url(forResource: "BricolageGrotesque",
-                                          withExtension: "ttf") else { return }
+        guard let url = resources.url(forResource: "BricolageGrotesque",
+                                      withExtension: "ttf") else { return }
         CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
     }
 
@@ -60,7 +73,7 @@ enum Brand {
     /// The flaming-clock mark, from the bundled icns (works unbundled, where
     /// `NSApp.applicationIconImage` would be the generic executable icon).
     static var appIcon: NSImage? {
-        Bundle.module.url(forResource: "AppIcon", withExtension: "icns")
+        resources.url(forResource: "AppIcon", withExtension: "icns")
             .flatMap { NSImage(contentsOf: $0) }
     }
 

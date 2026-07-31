@@ -36,8 +36,9 @@ cp "$ROOT/.build/release/primetime-cli" "$APP/Contents/Helpers/primetime"
 mkdir -p "$APP/Contents/Frameworks"
 ditto "$ROOT/.build/release/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
 cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
-# The SwiftPM resource bundle (brand font + masthead icon); Bundle.module
-# looks in Contents/Resources when the binary runs from a bundle.
+# The SwiftPM resource bundle (brand font + masthead icon). Brand.resources
+# looks here — swift build's Bundle.module accessor does NOT check
+# Contents/Resources, only the .app root and the builder's absolute .build path.
 ditto "$ROOT/.build/release/PrimeTime_PrimeTime.bundle" \
       "$APP/Contents/Resources/PrimeTime_PrimeTime.bundle"
 sed -e "s/@VERSION@/$VERSION/" -e "s/@BUILD@/$BUILD/" \
