@@ -65,14 +65,13 @@ import Testing
         ])
     }
 
-    @Test func freshStoreExportsTheSeededSampleSets() throws {
+    @Test func freshStoreExportsNothing() throws {
         let backend = try makeBackend()
         let export = try backend.exportData()
         #expect(export.timeSpans.isEmpty)
         #expect(export.labelDefinitions.isEmpty)
         #expect(export.valueColors.isEmpty)
-        // The v1 migration seeds TagSet.samples on a fresh store.
-        #expect(export.labelSets.map(\.name) == TagSet.samples.map(\.name))
+        #expect(export.labelSets.isEmpty)
     }
 
     @Test func jsonCarriesTopLevelSchemaVersion() async throws {

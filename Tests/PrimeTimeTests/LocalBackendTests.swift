@@ -10,7 +10,7 @@ import Testing
 @Suite struct LocalBackendTests {
 
     /// A fresh in-memory store. No legacy defaults unless a test passes some,
-    /// so the import migration seeds `TagSet.samples` (the fresh-install path).
+    /// so the import migration has nothing to import (the fresh-install path).
     private func makeBackend(defaults: UserDefaults? = nil,
                              pageSize: Int = 200) throws -> LocalBackend {
         let backend = try LocalBackend(DatabaseQueue(), legacyDefaults: defaults)
@@ -303,12 +303,11 @@ import Testing
         }
     }
 
-    @Test func freshDatabaseSeedsSampleTagSets() throws {
-        // No legacy presets at all: the import migration seeds the same
-        // samples a first run has always shown.
+    @Test func freshDatabaseStartsWithNoTagSets() throws {
+        // No legacy presets at all: nothing is seeded — onboarding is where
+        // a fresh install's first label sets come from.
         let backend = try makeBackend()
-        let loaded = try backend.loadTagSets()
-        #expect(loaded.map(\.name) == TagSet.samples.map(\.name))
+        #expect(try backend.loadTagSets().isEmpty)
         #expect(try backend.loadValueColors().isEmpty)
     }
 

@@ -42,7 +42,6 @@ import Testing
                                            deviceName: "sync-integration-\(name)")
         client.token = login.token
         let store = try LocalBackend(DatabaseQueue())
-        try store.saveTagSets([])   // drop the fresh-install samples
         try store.connectSyncServer(url: base, user: login.user)
         return Mac(store: store, engine: SyncEngine(store: store, server: client))
     }

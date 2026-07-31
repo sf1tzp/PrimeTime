@@ -43,12 +43,6 @@ package struct TagSet: Identifiable, Codable, Hashable {
     /// stored.
     package var labels: [SpanLabel] { tags.labels }
 
-    package static let samples: [TagSet] = [
-        TagSet(name: "Deep Work", tags: [TagRow(key: "type", value: "programming")]),
-        TagSet(name: "Meeting", tags: [TagRow(key: "type", value: "meeting")]),
-        TagSet(name: "Email", tags: [TagRow(key: "type", value: "email")]),
-    ]
-
     /// The labels to start when a quick label rides along: the set's tags plus
     /// the quick label — *replacing* the set's value for the same key, because
     /// a quick label hones a set (`type: review` over the set's baked-in

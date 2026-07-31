@@ -119,11 +119,11 @@ import Testing
         }
     }
 
-    @Test func valueColorsDifferentiateRepoAppFromRepoServer() {
+    @Test func valueColorsDifferentiateRepoWebsiteFromRepoServer() {
         let colors = DemoSeed.valueColors
-        let app = colors[ValueColorKey.join("repo", "app")]
+        let website = colors[ValueColorKey.join("repo", "website")]
         let server = colors[ValueColorKey.join("repo", "server")]
-        #expect(app != nil && server != nil && app != server)
+        #expect(website != nil && server != nil && website != server)
     }
 
     // MARK: Isolation from the real store
@@ -161,7 +161,7 @@ import Testing
         #expect(count == seed(now: wednesday).count)
 
         // The demo never imports the user's presets (legacyDefaults is nil):
-        // its tag sets are the demo's, not TagSet.samples or anything legacy.
+        // its tag sets are the demo's, nothing legacy.
         #expect(try second.loadTagSets().map(\.name) == DemoSeed.tagSets.map(\.name))
     }
 }

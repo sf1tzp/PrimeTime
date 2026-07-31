@@ -65,7 +65,7 @@ package extension LocalBackend {
 /// The demo dataset. Content is designed around the surfaces it has to
 /// photograph well: eight tag sets with distinct symbols for the Launcher
 /// grid and popover quick start; per-value colours so colour-by-value (on by
-/// default) visibly splits pairs like `repo: app` vs `repo: server`; a
+/// default) visibly splits pairs like `repo: website` vs `repo: server`; a
 /// trailing week of spans with work-day clustering, overlaps, and notes for
 /// Log/Calendar/History; two running spans for the live-timer story; two
 /// unlabelled ad-hoc spans; and a deliberate `proj` vs `project` key drift
@@ -153,7 +153,7 @@ package enum DemoSeed {
     ]
 
     /// Per-pair overrides, one hue per value so the colour-by-value story
-    /// reads at a glance — `repo: app` blue vs `repo: server` teal, and every
+    /// reads at a glance — `repo: website` blue vs `repo: server` teal, and every
     /// `type:` value its own slice colour in the History donuts.
     static let valueColors: [String: String] = [
         ValueColorKey.join("project", "primetime"): "#e64a19",

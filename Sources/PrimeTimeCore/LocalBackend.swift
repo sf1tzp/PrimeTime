@@ -232,13 +232,15 @@ package final class LocalBackend: Backend {
         // carry; v3's defaults then mark these rows dirty like everything
         // else.
         migrator.registerMigration("v1-import-user-defaults") { db in
+            // Fresh installs (no legacy presets) start with no label sets:
+            // onboarding's walkthrough is where the user creates their first
+            // ones, and pre-seeded samples would sit next to those picks.
             let sets: [TagSet]
             if let data = legacyPresets,
                let decoded = try? JSONDecoder().decode([TagSet].self, from: data) {
                 sets = decoded
             } else {
-                // Fresh install: seed the same samples first-run always had.
-                sets = TagSet.samples
+                sets = []
             }
             for (position, set) in sets.enumerated() {
                 try db.execute(
