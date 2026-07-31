@@ -50,9 +50,11 @@ package struct TagSet: Identifiable, Codable, Hashable {
     ]
 }
 
-/// Traggo tag keys must be lower-case with no spaces.
+/// Traggo tag keys must be lower-case with no spaces. Surrounding whitespace
+/// is a typo, not intent, so it's trimmed rather than turned into dashes.
 package func normalizeKey(_ key: String) -> String {
-    key.lowercased().replacingOccurrences(of: " ", with: "-")
+    key.trimmingCharacters(in: .whitespaces)
+        .lowercased().replacingOccurrences(of: " ", with: "-")
 }
 
 /// The composite dictionary key for per-`key: value` colour overrides — a unit
@@ -74,9 +76,13 @@ package enum ValueColorKey {
 }
 
 package extension [TagRow] {
-    /// Drop empty rows and normalise keys — the domain form for any mutation.
+    /// Drop empty rows, normalise keys, and trim values — the domain form for
+    /// any mutation. Editors bind their fields to the raw rows (trimming per
+    /// keystroke would forbid typing internal spaces), so surrounding
+    /// whitespace is shed here, at the storage boundary.
     var labels: [SpanLabel] {
         filter { !$0.key.trimmingCharacters(in: .whitespaces).isEmpty }
-            .map { SpanLabel(key: normalizeKey($0.key), value: $0.value) }
+            .map { SpanLabel(key: normalizeKey($0.key),
+                             value: $0.value.trimmingCharacters(in: .whitespaces)) }
     }
 }

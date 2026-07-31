@@ -1,12 +1,11 @@
-
 build:
-  swift build && codesign --force --sign "TraggoMenuApp Dev" .build/debug/PrimeTime
-
-run-dev: build
-  ./.build/debug/PrimeTime
+  swift build
 
 run:
   ./.build/debug/PrimeTime
+
+demo:
+  ./.build/debug/PrimeTime --demo
 
 # --- Distribution (#44) ---
 
