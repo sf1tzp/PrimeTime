@@ -79,6 +79,38 @@ private struct HelpSection: Identifiable {
             your account to every connected Mac.
             """),
         HelpSection(
+            title: "Choosing good tags",
+            symbol: "tag",
+            body: """
+            Tags are the whole query model — every History chart, export filter, and \
+            Label Review pass works over the keys and values you pick, so the schema \
+            is worth a minute of thought. Six rules cover it:
+
+            **Tag what you'll query by.** If you'd never group a chart or filter an \
+            export by it, it isn't a tag — put it in the note. **Keep values from a \
+            small, stable vocabulary.** Every distinct value is one more slice in \
+            every chart that groups by its key; one-off values (ticket titles, prose) \
+            turn a report back into a log. **One fact per key.** `repo`, `feature`, \
+            and `type` as three keys filter and join independently; welded into one \
+            value they can only match whole. **Pick key names once.** `proj` on \
+            Mondays and `project` on Thursdays splits your history in two — every \
+            total silently misses whichever spelling you forget. **Mirror systems \
+            you'll join against.** To line time up with source control, use the \
+            forge's exact naming (`repo: sfi/PrimeTime`, not `repo: primetime`) — \
+            joins are literal. **Decide what untagged means.** A span with no \
+            `client` should mean something on purpose (internal? unbilled?), so gaps \
+            carry information instead of doubt.
+
+            A starter schema that covers most work: `repo: sfi/PrimeTime`, \
+            `feat: label-review`, `type: review`, `client: acme` — hours per client, \
+            review share per repo, and span-to-PR joins, with no hierarchy decided up \
+            front. Start smaller if in doubt: a key is easy to add and painful to \
+            rename (though Label Review can rescue a drifted schema after the fact).
+
+            The full guide, with worked examples of schemas going wrong, is at \
+            [primetime.tools/docs/labels](https://primetime.tools/docs/labels).
+            """),
+        HelpSection(
             title: "Menu bar popover",
             symbol: "menubar.arrow.up.rectangle",
             body: """
