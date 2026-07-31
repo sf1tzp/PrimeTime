@@ -20,7 +20,7 @@ Or download the latest notarized build from [GitHub releases](https://github.com
 Requires macOS 14 (Sonoma) or later on Apple silicon.
 
 <p align="center">
-  <img src="readme-images/drop-down.png" alt="PrimeTime menu-bar popover with two running timers and quick-start label sets" width="400">
+  <img src="readme-images/popover.gif" alt="The PrimeTime menu-bar popover: two running timers, quick-start rows revealing quick labels on hover, and a timer being stopped" width="400">
 </p>
 
 ## Time, measured on your terms
@@ -50,35 +50,17 @@ partial export can't pass for a full backup.
 
 ## A look inside
 
-### Launcher
-
-Saved label sets as one-click cards — icons and colors for the way you actually organize work. Sets that are already running light up.
-
-![Launcher grid with colored label-set cards](readme-images/launcher.png)
-
 ### Log
 
 An editable record of your time: days, entries, notes, and running totals — nothing hidden. Adjust start/end times, labels, and notes after the fact.
 
 ![Log view grouped by day with color-coded labels, notes, and totals](readme-images/log-view.png)
 
-### Calendar
-
-Your week laid out hour by hour. Overlapping timers share columns, so multi-tasking is visible instead of hidden.
-
-![Calendar week view with color-coded, overlapping timespans](readme-images/calendar-view.png)
-
 ### History
 
-Donut and per-day charts over any grouping — and a second grouping to compare against, so "time by type" and "time by repo" sit side by side.
+Donut and per-day charts over any grouping — and a second grouping to compare against, so "time by type" and "time by project" sit side by side.
 
-![History view comparing time grouped by type against time grouped by repo](readme-images/history-view.png)
-
-### Label Sets
-
-Define the sets behind the launcher cards and the popover's quick start: a name, an icon, and the `key: value` pairs to apply. Colors are saved per key, with per-value overrides.
-
-![Label set editor with launcher icon picker and key:value rows](readme-images/label-sets.png)
+![History view comparing time grouped by type against time grouped by project](readme-images/history-view.png)
 
 ### Label Review
 
@@ -86,9 +68,11 @@ Vocabulary drifts — one week says `project`, a stray day says `proj`. Label Re
 
 ![Label Review listing label keys with usage counts and total time](readme-images/label-review.png)
 
+There's more — a launcher of one-click label-set cards, a calendar where overlapping timers share columns, and an interactive onboarding that teaches the label model. See every surface in motion at [primetime.tools/features](https://primetime.tools/features).
+
 ## Try it: Demo Mode
 
-Every screenshot above is Demo Mode — a seeded, throwaway copy of the app's data with a week of realistic history and two running timers. It can't touch real data: it lives in its own `demo.sqlite` (rebuilt on every launch) and a scratch settings domain.
+Every capture above is Demo Mode — a seeded, throwaway copy of the app's data with a week of realistic history and two running timers. It can't touch real data: it lives in its own `demo.sqlite` (rebuilt on every launch) and a scratch settings domain.
 
 ```sh
 git clone <this repo>
