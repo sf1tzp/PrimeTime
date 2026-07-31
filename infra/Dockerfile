@@ -33,6 +33,10 @@ RUN CGO_ENABLED=1 go build -a \
         -o /out/admin ./cmd/admin
 
 FROM scratch
+# The source label links the GHCR package to the public mirror repo (#75).
+LABEL org.opencontainers.image.source="https://github.com/sf1tzp/PrimeTime" \
+      org.opencontainers.image.description="PrimeTime sync server — headless GraphQL time-tracking backend (SQLite)" \
+      org.opencontainers.image.licenses="AGPL-3.0-or-later AND GPL-3.0-only"
 WORKDIR /opt/primetime
 COPY --from=builder /out/primetime-server /opt/primetime/primetime-server
 COPY --from=builder /out/admin /opt/primetime/admin

@@ -1,12 +1,15 @@
 # Default values for primetime-server.
 
 image:
-  repository: gitea.zen.lofi/sfi/primetime-server
+  # Public image (#75). For internal/staging deploys, override with
+  # gitea.zen.lofi/sfi/primetime-server (#48).
+  repository: ghcr.io/sf1tzp/primetime-server
   # Defaults to "v<Chart.AppVersion>" when empty (see _helpers.tpl).
   tag: ""
   pullPolicy: IfNotPresent
 
-# Pull secret(s) for a private registry. Create one with:
+# Pull secret(s) — not needed for the public GHCR image; required for the
+# internal registry. Create one with:
 #   kubectl create secret docker-registry gitea-registry \
 #     --docker-server=gitea.zen.lofi --docker-username=<user> --docker-password=<token>
 # then set: imagePullSecrets: [{name: gitea-registry}]

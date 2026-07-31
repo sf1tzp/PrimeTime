@@ -7,20 +7,34 @@ strategy and never runs two pods against one DB file).
 
 ## Install
 
+From the public registry (chart and image both on GHCR; #75):
+
+```sh
+helm install primetime oci://ghcr.io/sf1tzp/charts/primetime-server \
+  --namespace primetime --create-namespace \
+  --set admin.password=<something-better-than-admin>
+```
+
+Pin a release with `--version X.Y.Z`; chart version, `appVersion`, and image
+tag all track the repo's `vX.Y.Z` release tags in lockstep. Or install from a
+checkout (uses the placeholder version in Chart.yaml):
+
 ```sh
 helm install primetime ./infra/helm/primetime-server \
   --namespace primetime --create-namespace \
   --set admin.password=<something-better-than-admin>
 ```
 
-The default image is `gitea.zen.lofi/sfi/primetime-server:v<appVersion>`. For a
-private registry, create a pull secret and reference it:
+The default image is `ghcr.io/sf1tzp/primetime-server:v<appVersion>` — public,
+no pull secret needed. For internal/staging deploys off the gitea registry
+(#48), override the repository and add a pull secret:
 
 ```sh
 kubectl -n primetime create secret docker-registry gitea-registry \
   --docker-server=gitea.zen.lofi --docker-username=<user> --docker-password=<token>
 
 helm install primetime ./infra/helm/primetime-server -n primetime \
+  --set image.repository=gitea.zen.lofi/sfi/primetime-server \
   --set imagePullSecrets[0].name=gitea-registry
 ```
 
@@ -28,7 +42,7 @@ helm install primetime ./infra/helm/primetime-server -n primetime \
 
 | Key | Default | Notes |
 |---|---|---|
-| `image.repository` | `gitea.zen.lofi/sfi/primetime-server` | |
+| `image.repository` | `ghcr.io/sf1tzp/primetime-server` | Public; set `gitea.zen.lofi/sfi/primetime-server` for staging. |
 | `image.tag` | `""` → `v<appVersion>` | Overrides the appVersion-derived tag. |
 | `admin.username` / `admin.password` | `admin` / `admin` | Seeds the first user on an empty DB. **Change the password.** |
 | `admin.existingSecret` | `""` | Source `username`/`password` keys from your own Secret. |

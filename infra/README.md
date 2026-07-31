@@ -4,6 +4,23 @@ Container distribution for [../server/](../server/) (headless GraphQL
 backend, SQLite by default). Two supported paths: **Docker Compose** for a
 single host and **Helm** ([helm/](helm/)) for Kubernetes.
 
+## Published images & chart (#75)
+
+Every `vX.Y.Z` release publishes the server image (multi-arch, amd64 + arm64)
+and Helm chart publicly to GHCR — automated by
+[release-server.yml](../.github/workflows/release-server.yml), which the tag's
+arrival on the public mirror triggers; `just release-server` is the by-hand
+equivalent. Image tag, chart version, and appVersion all match the release
+tag:
+
+```sh
+docker pull ghcr.io/sf1tzp/primetime-server:v0.2.0   # or :latest
+helm install primetime oci://ghcr.io/sf1tzp/charts/primetime-server
+```
+
+The internal gitea registry (`gitea.zen.lofi/sfi/primetime-server`; #48)
+receives the same image for staging; it needs a `docker login`.
+
 ## Docker Compose
 
 ```sh
@@ -14,6 +31,7 @@ docker compose up -d --build
 The server listens on port 3030. `docker compose up --build` builds the image
 from source, so no Go toolchain is needed on the host. To run a published
 image instead of building, set `image:` on the service (e.g.
+`ghcr.io/sf1tzp/primetime-server:v0.2.0`, or the internal
 `gitea.zen.lofi/sfi/primetime-server:v0.2.0`).
 
 To stamp the release version into a compose-built binary, export the build

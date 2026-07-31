@@ -2,9 +2,12 @@ apiVersion: v2
 name: primetime-server
 description: PrimeTime sync server — headless GraphQL time-tracking backend (SQLite).
 type: application
-# Chart version tracks the app release; appVersion is the server image tag
-# (prefixed with 'v' — see templates/_helpers.tpl). Keep both aligned to the
-# vX.Y.Z release per issue #48.
+# Lockstep versioning (#48, #75): chart version = appVersion = the repo's
+# vX.Y.Z release tag; appVersion also derives the image tag (v-prefixed —
+# see templates/_helpers.tpl). The values below are placeholders for local
+# `helm install ./…` — scripts/release-server.sh stamps the real version
+# from the git tag at package time (--version/--app-version), so releases
+# never depend on remembering to bump this file.
 version: 0.2.0
 appVersion: "0.2.0"
 home: https://primetime.tools

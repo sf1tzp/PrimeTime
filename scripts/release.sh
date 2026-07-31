@@ -21,6 +21,10 @@
 # stamps the tag into CFBundleShortVersionString and the commit count into
 # CFBundleVersion; the Help tab renders both.
 #
+# The server image + Helm chart ship separately off the same tag via
+# scripts/release-server.sh (`just release-server`; #75) — same versioning,
+# independent execution (that side needs docker/helm, not a Mac).
+#
 # Secrets stay in the login keychain — the "Developer ID Application"
 # identity and the notarytool profile ("primetime-notary"; one-time setup:
 # xcrun notarytool store-credentials primetime-notary). Publishing needs the
