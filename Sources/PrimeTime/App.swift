@@ -20,11 +20,17 @@ struct PrimeTimeApp: App {
             // The menu-bar label is reactive: when `activeTimer` changes (or the
             // per-second tick fires) this closure re-renders with the new elapsed
             // time. When idle we just show an icon.
-            if let label = model.menuBarLabel {
-                Text(label)
-            } else {
-                Image(systemName: "timer")
+            Group {
+                if let label = model.menuBarLabel {
+                    Text(label)
+                } else {
+                    Image(systemName: "timer")
+                }
             }
+            // The label is the only view alive from launch (the popover exists
+            // only while open), so it hosts the first-run hook. `.task` fires
+            // once the label appears, safely after the app finishes launching.
+            .task { OnboardingWindowManager.shared.showIfNeeded(model: model) }
         }
         .menuBarExtraStyle(.window) // a real SwiftUI panel, not a plain NSMenu
 

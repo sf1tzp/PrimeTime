@@ -149,6 +149,17 @@ final class AppModel {
     /// restoring state never echoes a write or re-dirties a synced record.
     @ObservationIgnored private var isRestoringState = false
 
+    /// Whether the first-run onboarding sequence has been seen (finished or
+    /// dismissed — either way it never reappears on its own). Lives in the
+    /// defaults suite, so demo launches — whose scratch suite is wiped every
+    /// launch — always start with it unset and show the onboarding again.
+    /// Read once at launch and written once at the end, so a plain computed
+    /// property (not observation-tracked) is enough.
+    var hasCompletedOnboarding: Bool {
+        get { defaults.bool(forKey: Keys.hasCompletedOnboarding) }
+        set { defaults.set(newValue, forKey: Keys.hasCompletedOnboarding) }
+    }
+
     /// The storage seam, for this model and its siblings (see
     /// `HistoryModel`). Always the local store; the protocol survives
     /// because the importer still consumes arbitrary backends.
@@ -174,6 +185,7 @@ final class AppModel {
         static let colorTagsByValue = "colorTagsByValue"
         static let valueColors = "valueColors"
         static let menuTagSetLimit = "menuTagSetLimit"
+        static let hasCompletedOnboarding = "hasCompletedOnboarding"
         /// Keychain accounts: the sync server's device token, and the legacy
         /// traggo token the importer still reuses.
         static let syncToken = "sync-token"
