@@ -1,37 +1,37 @@
 import SwiftUI
 
 /// The Help tab: static copy explaining the data model and each surface of
-/// the app. The subtleties documented here (key/value split, server-vs-local
-/// colours, tag sets as launch presets, review rewrites bounded by the scan)
-/// otherwise live only in code comments — keep the sections short and cheap
-/// to amend as features change.
+/// the app, one collapsible card per section (first card open by default).
+/// The subtleties documented here (key/value split, server-vs-local colours,
+/// tag sets as launch presets, review rewrites bounded by the scan) otherwise
+/// live only in code comments — keep the sections short and cheap to amend as
+/// features change.
 struct HelpView: View {
+    @State private var expanded: Set<String> = [HelpSection.all[0].id]
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 10) {
                 ForEach(HelpSection.all) { section in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Label(section.title, systemImage: section.symbol)
-                            .font(.headline)
-                        // .init so the string is parsed as markdown.
-                        Text(.init(section.body))
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if section.id != HelpSection.all.last?.id {
-                        Divider()
-                    }
+                    HelpSectionCard(section: section, isExpanded: binding(for: section))
                 }
-                Divider()
                 Text("PrimeTime \(Self.versionString)")
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
+                    .padding(.top, 6)
             }
             .frame(maxWidth: 620, alignment: .leading)
             .frame(maxWidth: .infinity)
             .padding(20)
         }
+    }
+
+    private func binding(for section: HelpSection) -> Binding<Bool> {
+        Binding(
+            get: { expanded.contains(section.id) },
+            set: { open in
+                if open { expanded.insert(section.id) } else { expanded.remove(section.id) }
+            })
     }
 
     /// "1.2.0 (347)" from the bundle's Info.plist; a bare SwiftPM binary
@@ -44,10 +44,93 @@ struct HelpView: View {
     }
 }
 
+/// One section as a card: a full-width clickable header (icon, title,
+/// chevron) over the body, which is paragraphs — optionally interleaved with
+/// a numbered rule list — shown only while expanded.
+private struct HelpSectionCard: View {
+    let section: HelpSection
+    @Binding var isExpanded: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeOut(duration: 0.15)) { isExpanded.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: section.symbol)
+                        .frame(width: 20)
+                        .foregroundStyle(.tint)
+                    Text(section.title)
+                        .font(.headline)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 10) {
+                    paragraphs(of: section.body)
+                    if !section.rules.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            ForEach(Array(section.rules.enumerated()), id: \.offset) { index, rule in
+                                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                    Text(String(format: "%02d", index + 1))
+                                        .font(.caption.monospacedDigit().weight(.semibold))
+                                        .foregroundStyle(.tint)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(rule.heading)
+                                            .font(.callout.weight(.semibold))
+                                        bodyText(rule.detail)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    if let footer = section.footer {
+                        paragraphs(of: footer)
+                    }
+                }
+                .padding(.top, 10)
+                .padding(.leading, 28)  // align body under the title, past the icon
+            }
+        }
+        .padding(12)
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    @ViewBuilder
+    private func paragraphs(of text: String) -> some View {
+        ForEach(text.components(separatedBy: "\n\n"), id: \.self) { paragraph in
+            bodyText(paragraph)
+        }
+    }
+
+    /// `.init` so the string is parsed as markdown.
+    private func bodyText(_ markdown: String) -> some View {
+        Text(.init(markdown))
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
 private struct HelpSection: Identifiable {
+    struct Rule {
+        let heading: String
+        let detail: String   // inline markdown
+    }
+
     let title: String
     let symbol: String
-    let body: String   // inline markdown; \n\n separates paragraphs
+    let body: String         // inline markdown; \n\n separates paragraphs
+    var rules: [Rule] = []   // numbered list rendered between body and footer
+    var footer: String? = nil
     var id: String { title }
 
     static let all: [HelpSection] = [
@@ -77,6 +160,63 @@ private struct HelpSection: Identifiable {
             (see Settings) and it becomes yours-across-machines instead: timespans, \
             key and value colours, tag sets, and the two settings below all follow \
             your account to every connected Mac.
+            """),
+        HelpSection(
+            title: "Choosing good tags",
+            symbol: "tag",
+            body: """
+            Tags are the whole query model — every History chart, export filter, and \
+            Label Review pass works over the keys and values you pick, so the schema \
+            is worth a minute of thought. Six rules cover it:
+            """,
+            rules: [
+                Rule(
+                    heading: "Tag what you'll query by",
+                    detail: """
+                    If you'd never group a chart or filter an export by it, it isn't \
+                    a tag — put it in the note.
+                    """),
+                Rule(
+                    heading: "Keep values from a small, stable vocabulary",
+                    detail: """
+                    Every distinct value is one more slice in every chart that groups \
+                    by its key; one-off values (ticket titles, prose) turn a report \
+                    back into a log.
+                    """),
+                Rule(
+                    heading: "One fact per key",
+                    detail: """
+                    `repo`, `feature`, and `type` as three keys filter and join \
+                    independently; welded into one value they can only match whole.
+                    """),
+                Rule(
+                    heading: "Pick key names once",
+                    detail: """
+                    `proj` on Mondays and `project` on Thursdays splits your history \
+                    in two — every total silently misses whichever spelling you forget.
+                    """),
+                Rule(
+                    heading: "Mirror systems you'll join against",
+                    detail: """
+                    To line time up with source control, use the forge's exact naming \
+                    (`repo: sfi/PrimeTime`, not `repo: primetime`) — joins are literal.
+                    """),
+                Rule(
+                    heading: "Decide what untagged means",
+                    detail: """
+                    A span with no `client` should mean something on purpose \
+                    (internal? unbilled?), so gaps carry information instead of doubt.
+                    """),
+            ],
+            footer: """
+            A starter schema that covers most work: `repo: sfi/PrimeTime`, \
+            `feat: label-review`, `type: review`, `client: acme` — hours per client, \
+            review share per repo, and span-to-PR joins, with no hierarchy decided up \
+            front. Start smaller if in doubt: a key is easy to add and painful to \
+            rename (though Label Review can rescue a drifted schema after the fact).
+
+            The full guide, with worked examples of schemas going wrong, is at \
+            [primetime.tools/docs/labels](https://primetime.tools/docs/labels).
             """),
         HelpSection(
             title: "Menu bar popover",
