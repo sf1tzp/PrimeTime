@@ -384,9 +384,6 @@ struct TagSetDetailView: View {
             Section("Label set") {
                 TextField("Name", text: $tagSet.name)
             }
-            Section("Launcher icon") {
-                SymbolPicker(selection: $tagSet.symbolName)
-            }
             Section("Labels") {
                 ForEach($tagSet.tags) { $tag in
                     HStack {
@@ -419,6 +416,11 @@ struct TagSetDetailView: View {
                     .foregroundStyle(.secondary)
             }
             quickLabelsSection
+            // Last deliberately: the icon is cosmetic next to the labels and
+            // quick labels that define what the set *does*.
+            Section("Launcher icon") {
+                SymbolPicker(selection: $tagSet.symbolName)
+            }
         }
         .formStyle(.grouped)
     }
