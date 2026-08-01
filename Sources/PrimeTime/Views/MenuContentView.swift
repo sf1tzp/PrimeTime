@@ -361,21 +361,23 @@ struct MenuContentView: View {
     }
 
     /// In-place editor for a running row — one line per tag (colour swatch,
-    /// key, value, remove) plus the note, with Add / Cancel / Save. Save
-    /// commits tags and note together via `updateRunning`.
+    /// key, value, remove), the add-label button, then the note, with
+    /// Cancel / Done. Save commits tags and note together via `updateRunning`.
     private var timerEditor: some View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach($tagDrafts) { $tag in
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     TagColorPicker(key: tag.key, value: tag.value)
                     TextField("key", text: $tag.key)
                         .textFieldStyle(.roundedBorder)
                         .autocorrectionDisabled()
+                        .frame(width: LabelEditorStyle.compactKeyFieldWidth)
                         .focused($focusedField, equals: .key(tag.id))
                         .onSubmit { commitLiveEdits() }
                     Text(":").foregroundStyle(.secondary)
                     TextField("value", text: $tag.value)
                         .textFieldStyle(.roundedBorder)
+                        .autocorrectionDisabled()
                         .focused($focusedField, equals: .value(tag.id))
                         .onSubmit { commitLiveEdits() }
                     Button(role: .destructive) {
@@ -387,17 +389,17 @@ struct MenuContentView: View {
                     .buttonStyle(.borderless)
                 }
             }
+            Button {
+                tagDrafts.append(TagRow())
+            } label: {
+                Label("Add Label", systemImage: "plus")
+            }
+            .buttonStyle(.borderless)
             TextField("Add a note…", text: $noteDraft)
                 .textFieldStyle(.roundedBorder)
                 .focused($focusedField, equals: .note)
                 .onSubmit { saveEdits() }
             HStack {
-                Button {
-                    tagDrafts.append(TagRow())
-                } label: {
-                    Label("Add tag", systemImage: "plus")
-                }
-                .buttonStyle(.borderless)
                 Spacer()
                 Button("Cancel") { editingTimerID = nil }
                     .buttonStyle(.borderless)

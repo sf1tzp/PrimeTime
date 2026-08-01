@@ -189,6 +189,34 @@ struct TagColorPicker: View {
     }
 }
 
+/// Shared metrics for key: value editor rows. Every label editor (popover
+/// timer editor, Label Sets pane, log editor, the onboarding editors) follows
+/// the same anatomy: chip-shaped colour swatch, narrow key field with a "key"
+/// hint, standalone colon, wide value field with a "value" hint, then a
+/// borderless "+ Add Label" button directly after the rows.
+enum LabelEditorStyle {
+    /// Keys are short (`repo`, `feat`) — the value field takes the rest.
+    static let keyFieldWidth: CGFloat = 96
+    /// For the 300pt popover, where 96 would leave the value field narrower
+    /// than the key — this keeps the small-key / wide-value proportion of
+    /// the full-width editors.
+    static let compactKeyFieldWidth: CGFloat = 72
+}
+
+/// A non-interactive stand-in for `TagColorPicker`'s chip-shaped well, for
+/// editors that must not read or write the user's palette (the walkthrough's
+/// mock editor).
+struct TagColorChip: View {
+    let color: Color
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 5)
+            .fill(color)
+            .frame(width: 26, height: 15)
+            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(.quaternary))
+    }
+}
+
 /// A simple left-to-right flow layout that wraps to the next line when it runs
 /// out of width — used for rows of `TagPill`s.
 struct FlowLayout: Layout {

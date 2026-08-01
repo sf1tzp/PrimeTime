@@ -88,12 +88,14 @@ struct TimeSpanEditorView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 ForEach($tagRows) { $tag in
-                    HStack {
+                    HStack(spacing: 6) {
+                        TagColorPicker(key: tag.key, value: tag.value)
                         TextField("key", text: $tag.key)
                             .autocorrectionDisabled()
-                            .frame(width: 90)
+                            .frame(width: LabelEditorStyle.keyFieldWidth)
                         Text(":").foregroundStyle(.secondary)
                         TextField("value", text: $tag.value)
+                            .autocorrectionDisabled()
                         Button(role: .destructive) {
                             tagRows.removeAll { $0.id == tag.id }
                         } label: {
@@ -105,7 +107,7 @@ struct TimeSpanEditorView: View {
                 Button {
                     tagRows.append(TagRow())
                 } label: {
-                    Label("Add tag", systemImage: "plus")
+                    Label("Add Label", systemImage: "plus")
                 }
                 .buttonStyle(.borderless)
                 .font(.callout)

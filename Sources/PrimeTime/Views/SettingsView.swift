@@ -386,14 +386,23 @@ struct TagSetDetailView: View {
             }
             Section("Labels") {
                 ForEach($tagSet.tags) { $tag in
-                    HStack {
+                    HStack(spacing: 6) {
                         TagColorPicker(key: tag.key, value: tag.value)
-                        TextField("key", text: $tag.key)
+                        // labelsHidden + prompt: the grouped Form would
+                        // otherwise render the titles as row labels — the
+                        // editors use in-field hints instead.
+                        TextField("key", text: $tag.key, prompt: Text("key"))
                             .textFieldStyle(.roundedBorder)
+                            .labelsHidden()
+                            .multilineTextAlignment(.leading)
                             .autocorrectionDisabled()
+                            .frame(width: LabelEditorStyle.keyFieldWidth)
                         Text(":").foregroundStyle(.secondary)
-                        TextField("value", text: $tag.value)
+                        TextField("value", text: $tag.value, prompt: Text("value"))
                             .textFieldStyle(.roundedBorder)
+                            .labelsHidden()
+                            .multilineTextAlignment(.leading)
+                            .autocorrectionDisabled()
                         Button(role: .destructive) {
                             tagSet.tags.removeAll { $0.id == tag.id }
                         } label: {
@@ -432,14 +441,20 @@ struct TagSetDetailView: View {
     private var quickLabelsSection: some View {
         Section {
             ForEach(quickRows) { $tag in
-                HStack {
+                HStack(spacing: 6) {
                     TagColorPicker(key: tag.key, value: tag.value)
-                    TextField("key", text: $tag.key)
+                    TextField("key", text: $tag.key, prompt: Text("key"))
                         .textFieldStyle(.roundedBorder)
+                        .labelsHidden()
+                        .multilineTextAlignment(.leading)
                         .autocorrectionDisabled()
+                        .frame(width: LabelEditorStyle.keyFieldWidth)
                     Text(":").foregroundStyle(.secondary)
-                    TextField("value", text: $tag.value)
+                    TextField("value", text: $tag.value, prompt: Text("value"))
                         .textFieldStyle(.roundedBorder)
+                        .labelsHidden()
+                        .multilineTextAlignment(.leading)
+                        .autocorrectionDisabled()
                     Button(role: .destructive) {
                         quickRows.wrappedValue.removeAll { $0.id == tag.id }
                     } label: {
@@ -451,7 +466,7 @@ struct TagSetDetailView: View {
             Button {
                 quickRows.wrappedValue.append(TagRow())
             } label: {
-                Label("Add quick label", systemImage: "plus")
+                Label("Add Quick Label", systemImage: "plus")
             }
             .buttonStyle(.borderless)
             Text("Offered as one-click chips when hovering this set in the menu or Launcher: click one to start the set plus that label. If the set already carries the same key, the quick label’s value wins.")

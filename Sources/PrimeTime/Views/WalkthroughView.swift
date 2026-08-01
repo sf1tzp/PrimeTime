@@ -320,18 +320,19 @@ private struct SpanIsLabelsPage: View {
     private var mockEditor: some View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach($tagDrafts) { $tag in
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(WalkthroughModel.color(key: tag.key, value: tag.value))
-                        .frame(width: 12, height: 12)
+                HStack(spacing: 6) {
+                    TagColorChip(color: WalkthroughModel.color(key: tag.key,
+                                                               value: tag.value))
                     TextField("key", text: $tag.key)
                         .textFieldStyle(.roundedBorder)
                         .autocorrectionDisabled()
+                        .frame(width: LabelEditorStyle.keyFieldWidth)
                         .focused($focusedField, equals: .key(tag.id))
                         .onSubmit(commitEdits)
                     Text(":").foregroundStyle(.secondary)
                     TextField("value", text: $tag.value)
                         .textFieldStyle(.roundedBorder)
+                        .autocorrectionDisabled()
                         .focused($focusedField, equals: .value(tag.id))
                         .onSubmit(commitEdits)
                     Button(role: .destructive) {
@@ -343,17 +344,17 @@ private struct SpanIsLabelsPage: View {
                     .buttonStyle(.borderless)
                 }
             }
+            Button {
+                tagDrafts.append(TagRow())
+            } label: {
+                Label("Add Label", systemImage: "plus")
+            }
+            .buttonStyle(.borderless)
             TextField("Add a note…", text: $noteDraft)
                 .textFieldStyle(.roundedBorder)
                 .focused($focusedField, equals: .note)
                 .onSubmit(saveEdits)
             HStack {
-                Button {
-                    tagDrafts.append(TagRow())
-                } label: {
-                    Label("Add tag", systemImage: "plus")
-                }
-                .buttonStyle(.borderless)
                 Spacer()
                 Button("Cancel", action: cancelEditing)
                     .buttonStyle(.borderless)
@@ -1026,7 +1027,7 @@ private struct LabelSetsPage: View {
                     TextField("key", text: $row.key)
                         .textFieldStyle(.roundedBorder)
                         .autocorrectionDisabled()
-                        .frame(width: 96)
+                        .frame(width: LabelEditorStyle.keyFieldWidth)
                         .overlay(invalidOutline(flagged(row) && row.trimmedKey.isEmpty))
                     Text(":").foregroundStyle(.secondary)
                     TextField("value", text: $row.value,
@@ -1052,7 +1053,7 @@ private struct LabelSetsPage: View {
                 draftRows.append(DraftRow(key: "", value: "",
                                           color: WalkthroughModel.keyColor("")))
             } label: {
-                Label("Add label", systemImage: "plus")
+                Label("Add Label", systemImage: "plus")
             }
             .buttonStyle(.borderless)
             Text("The grey values are examples — type your own, or press Tab to keep one.")
@@ -1170,6 +1171,15 @@ private struct QuickLabelsPage: View {
                                  Quick(key: "type", value: "review"),
                                  Quick(key: "type", value: "planning")]
 
+    /// The example widget's chip colours — blue, gold, purple — inherited by
+    /// position, so every persona's three suggested values read as instances
+    /// of the example. Written into the user's palette when a suggestion is
+    /// added, so the real chips keep the hue.
+    private static func suggestionColor(at index: Int) -> Color {
+        let quick = quicks[index % quicks.count]
+        return WalkthroughModel.color(key: quick.key, value: quick.value)
+    }
+
     @State private var applied: Quick?
 
     /// A set the user created on page 5, joined with its persona — the
@@ -1179,15 +1189,6 @@ private struct QuickLabelsPage: View {
         let persona: WalkthroughPersona
         var id: UUID { tagSet.id }
     }
-
-    /// One suggestion chip opened for editing before it is confirmed.
-    private struct EditTarget: Equatable {
-        let setID: UUID
-        let value: String
-    }
-    @State private var editTarget: EditTarget?
-    @State private var editKey = ""
-    @State private var editValue = ""
 
     private var anim: Animation? { reduceMotion ? nil : .easeOut(duration: 0.2) }
 
@@ -1238,9 +1239,9 @@ private struct QuickLabelsPage: View {
 
     /// The sets created on page 5, each with three suggested quick labels
     /// under the conventional key `type:` — the kinds of work within the
-    /// set. Chips open a small editor (tweak, then confirm); the button
-    /// adds every remaining suggestion verbatim. Both write the user's
-    /// real per-set quick labels, like page 5 wrote real sets.
+    /// set. All or nothing: the chips are a preview, and the one button
+    /// adds every remaining suggestion verbatim to the user's real per-set
+    /// quick labels, like page 5 wrote real sets.
     private var suggestionsCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Suggested for your sets")
@@ -1257,16 +1258,14 @@ private struct QuickLabelsPage: View {
                             .lineLimit(1)
                     }
                     FlowLayout(spacing: 4) {
-                        ForEach(suggestion.persona.quickValues, id: \.self) { value in
-                            suggestionChip(value, for: suggestion.tagSet)
+                        ForEach(Array(suggestion.persona.quickValues.enumerated()),
+                                id: \.element) { index, value in
+                            suggestionChip(value, at: index, for: suggestion.tagSet)
                         }
-                    }
-                    if editTarget?.setID == suggestion.tagSet.id {
-                        suggestionEditor(for: suggestion.tagSet)
                     }
                 }
             }
-            Text("type: is the conventional key for kinds of work — click a chip to tweak it first.")
+            Text("You customize these any time in the Label Sets menu.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1300,69 +1299,24 @@ private struct QuickLabelsPage: View {
         }
     }
 
-    /// A suggested chip: not yet a quick label, so clicking opens the
-    /// editor rather than adding outright. Already-added ones render
-    /// filled, like an applied chip in the widget, and stop responding.
-    private func suggestionChip(_ value: String, for set: TagSet) -> some View {
+    /// A suggested chip — a preview, not a control: the card is all or
+    /// nothing, added by the one button below. Pending chips wear the
+    /// example's positional colour outlined; added ones render filled from
+    /// the user's real palette (which the add seeded with that colour).
+    private func suggestionChip(_ value: String, at index: Int,
+                                for set: TagSet) -> some View {
         let added = isAdded(value, in: set)
-        return Button {
-            withAnimation(anim) {
-                editTarget = EditTarget(setID: set.id, value: value)
-                editKey = WalkthroughPersona.quickKey
-                editValue = value
-            }
-        } label: {
-            Text("+\(value)")
-        }
-        .buttonStyle(QuickLabelChipStyle(
-            color: model.tagColor(for: WalkthroughPersona.quickKey, value: value),
-            filled: added))
-        .disabled(added)
-        .pointingHandCursor()
-        .help(added ? "\(WalkthroughPersona.quickKey): \(value) is a quick label on \(set.name)"
-                    : "Edit and add \(WalkthroughPersona.quickKey): \(value) to \(set.name)")
-    }
-
-    /// The confirm step under a clicked chip — the suggestion, editable
-    /// before it becomes a real quick label on the set.
-    private func suggestionEditor(for set: TagSet) -> some View {
-        HStack(spacing: 4) {
-            TextField("key", text: $editKey)
-                .frame(width: 56)
-            Text(":").foregroundStyle(.secondary)
-            TextField("value", text: $editValue)
-            Button("Add") { confirmEdit(for: set) }
-                .font(.caption)
-                .disabled(normalizeKey(editKey).isEmpty
-                          || editValue.trimmingCharacters(in: .whitespaces).isEmpty)
-            Button {
-                withAnimation(anim) { editTarget = nil }
-            } label: {
-                Image(systemName: "xmark")
-            }
-            .buttonStyle(HoverIconButtonStyle())
-            .help("Cancel")
-        }
-        .textFieldStyle(.roundedBorder)
-        .font(.caption)
-        .padding(.top, 2)
-    }
-
-    private func confirmEdit(for set: TagSet) {
-        let key = normalizeKey(editKey)
-        let value = editValue.trimmingCharacters(in: .whitespaces)
-        guard !key.isEmpty, !value.isEmpty else { return }
-        let exists = model.quickLabels(for: set).contains {
-            normalizeKey($0.key) == key
-                && $0.value.trimmingCharacters(in: .whitespaces) == value
-        }
-        withAnimation(anim) {
-            if !exists {
-                model.quickLabels[set.id.uuidString, default: []]
-                    .append(TagRow(key: key, value: value))
-            }
-            editTarget = nil
-        }
+        let color = added ? model.tagColor(for: WalkthroughPersona.quickKey, value: value)
+                          : Self.suggestionColor(at: index)
+        return Text("+\(value)")
+            .font(.caption2)
+            .lineLimit(1)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .foregroundStyle(added ? AnyShapeStyle(color.contrastingTextColor)
+                                   : AnyShapeStyle(.primary))
+            .background(Capsule().fill(added ? color : .clear))
+            .overlay(Capsule().strokeBorder(added ? .clear : color))
     }
 
     /// The card's one-click path: every suggestion not already present,
@@ -1370,13 +1324,20 @@ private struct QuickLabelsPage: View {
     private func addAllSuggestions() {
         withAnimation(anim) {
             for suggestion in suggestions {
-                for value in suggestion.persona.quickValues
+                for (index, value) in suggestion.persona.quickValues.enumerated()
                 where !isAdded(value, in: suggestion.tagSet) {
+                    // Carry the chips' positional colours into the palette —
+                    // without clobbering a pair the user already coloured.
+                    if model.valueColor(key: WalkthroughPersona.quickKey,
+                                        value: value) == nil {
+                        model.setValueColor(key: WalkthroughPersona.quickKey,
+                                            value: value,
+                                            color: Self.suggestionColor(at: index))
+                    }
                     model.quickLabels[suggestion.tagSet.id.uuidString, default: []]
                         .append(TagRow(key: WalkthroughPersona.quickKey, value: value))
                 }
             }
-            editTarget = nil
         }
     }
 
