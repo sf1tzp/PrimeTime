@@ -75,8 +75,14 @@ just --justfile "$ROOT/justfile" notarize
 just --justfile "$ROOT/justfile" assess
 
 # --- package ------------------------------------------------------------------
+# --norsrc: the bundle's files carry com.apple.provenance xattrs, which ditto
+# would otherwise store as AppleDouble (._*) sidecar entries. Archive Utility —
+# how testers double-click the zip — extracts those as real files, and the ones
+# landing in Sparkle.framework's root break the code seal ("unsealed contents
+# present in the root directory of an embedded framework"), so Gatekeeper
+# rejects the quarantined app with the could-not-verify-malware dialog (#112).
 ARTIFACT="$ROOT/dist/PrimeTime-$VERSION.zip"
-ditto -c -k --keepParent "$ROOT/dist/PrimeTime.app" "$ARTIFACT"
+ditto -c -k --norsrc --keepParent "$ROOT/dist/PrimeTime.app" "$ARTIFACT"
 echo "==> packaged $ARTIFACT"
 
 # --- release notes -------------------------------------------------------------
