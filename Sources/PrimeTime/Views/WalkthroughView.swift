@@ -6,7 +6,7 @@ import PrimeTimeCore
 /// The interactive walkthrough of the label model (issue #93), presented as
 /// seven Next/Back pages. Every page reads and mutates the one shared
 /// `WalkthroughModel`, so state carries across pages deliberately: a smell
-/// activated on page 3 keeps corrupting the charts until it is healed.
+/// activated on page 4 keeps corrupting the charts until it is healed.
 ///
 /// - `walkthrough` — the shared dataset: the demo week, the group-by key, the
 ///   schema-smell selection, aggregation, and colours.
@@ -32,8 +32,8 @@ struct WalkthroughView: View {
                     switch page {
                     case 0: SpanIsLabelsPage(walkthrough: walkthrough)
                     case 1: AggregatePage(walkthrough: walkthrough)
-                    case 2: SmellsPage(walkthrough: walkthrough)
-                    case 3: StarterSchemaPage()
+                    case 2: LabelingSchemesPage()
+                    case 3: SmellsPage(walkthrough: walkthrough)
                     case 4: LabelSetsPage(walkthrough: walkthrough)
                     case 5: QuickLabelsPage(walkthrough: walkthrough)
                     default: SurfacesPage()
@@ -171,14 +171,14 @@ private struct SpanIsLabelsPage: View {
     private var anim: Animation? { reduceMotion ? nil : .easeOut(duration: 0.2) }
 
     var body: some View {
-        WalkthroughPage(index: 0, title: "A span is its labels",
-                        subtitle: "No folders, no project tree — a span is a stretch of time plus key: value labels. This one is live: try it.") {
+        WalkthroughPage(index: 0, title: "A timer is nothing without its labels",
+                        subtitle: "No folders, no project tree — a timer records a stretch of time plus key: value labels and notes. This one is live: try it.") {
             VStack(alignment: .leading, spacing: 14) {
                 mockPopoverCard
                 Text(walkthrough.mockupSummary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("One fact per key — when two rows share a key, the last one wins.")
+                Text("You can always start a blank timer and label it later, if you want.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -396,15 +396,15 @@ private struct AggregatePage: View {
     @Bindable var walkthrough: WalkthroughModel
 
     var body: some View {
-        WalkthroughPage(index: 1, title: "Labels aggregate",
-                        subtitle: "A demo week of labelled spans. Every question — invoicing, habits, standup — is just a group-by over their labels.") {
+        WalkthroughPage(index: 1, title: "Labels group up",
+                        subtitle: "This is what a typical week of labeled time spans looks like. See where time was spent simply by grouping these labels together.") {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top, spacing: 20) {
                     weekList
                     MiniChartsPane(walkthrough: walkthrough)
                         .frame(width: 270)
                 }
-                Text("Every colour belongs to a key: value pair — the same hue on the pills and in the charts. Each pair's colour is yours to change in the app.")
+                Text("Colours follow labels around: the same color on the labels and in the charts. Customize colors to your liking in Settings!")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -447,8 +447,8 @@ private struct AggregatePage: View {
 }
 
 /// Mini donut + stacked daily bar fed by the shared model — the same pane
-/// sits on pages 2 and 3 so corruptions carry over visibly. Page 2 exposes
-/// the group-by picker; page 3 passes `fixedKey` to pin the grouping to the
+/// sits on pages 2 and 4 so corruptions carry over visibly. Page 2 exposes
+/// the group-by picker; page 4 passes `fixedKey` to pin the grouping to the
 /// key each smell damages best. Chart mutations animate because every write
 /// (picker, smell selection) happens inside `withAnimation`.
 private struct MiniChartsPane: View {
@@ -558,15 +558,155 @@ private struct MiniChartsPane: View {
     }
 }
 
-// MARK: - Page 3: why schemas fail
+// MARK: - Page 3: labeling schemes
+
+/// Static copy page between the aggregation demo and the smells: keep the
+/// scheme small, put the overflow in notes — so "don't grow the scheme"
+/// lands before the ways a grown scheme goes wrong.
+private struct LabelingSchemesPage: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// One entry in the rotating hero: a scheme's keys, and the caption
+    /// tying its dimension count to the work it runs.
+    private struct Scheme {
+        let keys: [String]
+        let caption: String
+    }
+
+    /// Good schemes at every dimensionality, building up — one key is
+    /// enough for a bookshelf, four run a software shop.
+    private static let schemes: [Scheme] = [
+        Scheme(keys: ["book"],
+               caption: "A simple 'book' label can track any number of books."),
+        Scheme(keys: ["project", "type"],
+               caption: "Two labels can cover most general types of work."),
+        Scheme(keys: ["repo", "feat", "client", "type"],
+               caption: "Four labels can cover complex workflows."),
+    ]
+
+    @State private var schemeIndex = 0
+
+    var body: some View {
+        WalkthroughPage(index: 2, title: "Labeling schemes",
+                        subtitle: "Don't overcomplicate it — a timer that accumulates half a dozen or more labels gets complicated fast.") {
+            VStack(alignment: .leading, spacing: 14) {
+                rotatingSchemes
+
+                Text("Things will pop up that feel like they should be a label but don't fit your scheme — write those as notes instead:")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                dilemmaCard
+
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: "stethoscope")
+                        .foregroundStyle(.tint)
+                    Text("Label Review shows when notes develop a trend — problem: this, problem: that. If you notice that happening, it's okay to add to your your scheme. Decide what works best in your workflow.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Text("PrimeTime lets you save custom labeling schemes as Label Sets — more on this later.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(maxWidth: 480)
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    /// The rotating hero: one scheme's key pills over its caption, fading
+    /// to the next every few seconds. The cycle still runs under Reduce
+    /// Motion (it is content, not decoration) — only the cross-fade goes.
+    private var rotatingSchemes: some View {
+        ZStack {
+            let scheme = Self.schemes[schemeIndex]
+            VStack(spacing: 10) {
+                HStack(spacing: 16) {
+                    ForEach(scheme.keys, id: \.self) { key in
+                        keyPill(key)
+                    }
+                }
+                Text(scheme.caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .id(schemeIndex)
+            .transition(.opacity)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(3))
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.5)) {
+                    schemeIndex = (schemeIndex + 1) % Self.schemes.count
+                }
+            }
+        }
+    }
+
+    /// The temptation and its answer: the one-off that "feels" like a label,
+    /// kept as a note so the context sticks to the span without a new key.
+    private var dilemmaCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("“I'm on the backend feature but went down a rabbit hole setting up CA trust — should I label it problem: certificate-trust?”")
+                .font(.callout.italic())
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            (Text("No — ").fontWeight(.semibold)
+                + Text("this information is better suited for a Note. Notes stick with the time span, so the context is preserved without complicating the scheme."))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("1:12:07")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.tertiary)
+                VStack(alignment: .leading, spacing: 3) {
+                    FlowLayout(spacing: 4) {
+                        TagPill(key: "repo", value: "sfi/backend",
+                                color: WalkthroughModel.color(key: "repo",
+                                                              value: "sfi/backend"))
+                        TagPill(key: "feat", value: "registry-auth",
+                                color: WalkthroughModel.color(key: "feat",
+                                                              value: "registry-auth"))
+                    }
+                    Text("Rabbit hole: CA trust for the internal registry.")
+                        .font(.caption)
+                        .italic()
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 10)
+        }
+        .padding(12)
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func keyPill(_ key: String) -> some View {
+        let color = WalkthroughModel.keyColor(key)
+        return Text("\(key):")
+            .font(.callout.weight(.medium))
+            .lineLimit(1)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(color))
+            .foregroundStyle(color.contrastingTextColor)
+    }
+}
+
+// MARK: - Page 4: why schemes fail
 
 private struct SmellsPage: View {
     @Bindable var walkthrough: WalkthroughModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        WalkthroughPage(index: 2, title: "Why schemas fail",
-                        subtitle: "Four ways a label schema goes wrong — PrimeTime helps you dodge all of these by defining your labels up front. Click a card to corrupt the week; click it again and the charts heal.") {
+        WalkthroughPage(index: 3, title: "Why schemes fail",
+                        subtitle: "Four ways a labeling scheme goes wrong — PrimeTime helps you dodge all of these by defining your labels up front. Click a card to corrupt the week; click it again and the charts heal.") {
             HStack(alignment: .top, spacing: 20) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
@@ -585,7 +725,7 @@ private struct SmellsPage: View {
                         smellDetail(smell)
                     } else {
                         Label {
-                            Text("A healthy schema: every label lands in a slice, and both charts tell one story.")
+                            Text("A healthy scheme: every label lands in a slice, and both charts tell one story.")
                                 .foregroundStyle(.secondary)
                         } icon: {
                             Image(systemName: "checkmark.circle")
@@ -700,74 +840,6 @@ private struct SmellsPage: View {
         }
         .buttonStyle(.plain)
         .pointingHandCursor()
-    }
-}
-
-// MARK: - Page 4: a starter schema
-
-private struct StarterSchemaPage: View {
-    var body: some View {
-        WalkthroughPage(index: 3, title: "A starter schema",
-                        subtitle: "Four keys cover most working weeks — copy it, then bend it to your stack.") {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Spacer(minLength: 0)
-                    FlowLayout(spacing: 6) {
-                        schemaPill("repo", "sfi/PrimeTime")
-                        schemaPill("feat", "label-review")
-                        schemaPill("type", "review")
-                        schemaPill("client", "acme")
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity)
-                .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
-
-                VStack(alignment: .leading, spacing: 12) {
-                    reason(0, "Bounded values",
-                           "Every key draws from a vocabulary short enough for a chart legend. Free-form detail goes in the note.")
-                    reason(1, "One fact per key",
-                           "Repo, feature, type, and client each answer a different question — so every question keeps an axis to group by.")
-                    reason(2, "Names mirror your forge",
-                           "repo: sfi/PrimeTime is spelled exactly as the remote spells it. Joins are exact; so are your labels.")
-                }
-                Text("PrimeTime helps you keep a good schema by defining labels up front, one click away — so you're not at the mercy of typos and inconvenience. You can still start a blank timer and add labels as you go.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                Text("Charts can group by any of the four — one schema, every question.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            .frame(maxWidth: 480)
-            .frame(maxWidth: .infinity, alignment: .center)
-        }
-    }
-
-    private func schemaPill(_ key: String, _ value: String) -> some View {
-        let color = WalkthroughModel.color(key: key, value: value)
-        return Text("\(key): \(value)")
-            .font(.callout.weight(.medium))
-            .lineLimit(1)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(Capsule().fill(color))
-            .foregroundStyle(color.contrastingTextColor)
-    }
-
-    private func reason(_ index: Int, _ heading: String, _ detail: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text(String(format: "%02d", index + 1))
-                .font(.caption.monospacedDigit().weight(.semibold))
-                .foregroundStyle(.tint)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(heading)
-                    .font(.callout.weight(.semibold))
-                Text(detail)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-        }
     }
 }
 
@@ -897,7 +969,7 @@ private struct LabelSetsPage: View {
     }
 
     var body: some View {
-        WalkthroughPage(index: 4, title: "Pick your starting label sets",
+        WalkthroughPage(index: 4, title: "Pick your starting Label Sets",
                         subtitle: "Eight ways people run PrimeTime. Open one, type your own values, and it becomes a real one-click set.") {
             Group {
                 if let persona = editing {
@@ -1162,7 +1234,7 @@ private struct QuickLabelsPage: View {
         let value: String
     }
 
-    /// The mocked set — the starter schema's own labels — and its quick
+    /// The mocked set — the SWE-shop scheme's own labels — and its quick
     /// labels: three work types that swap with each other, exactly the
     /// role page 5 kept *out* of the sets.
     private static let base = [Quick(key: "repo", value: "primetime"),

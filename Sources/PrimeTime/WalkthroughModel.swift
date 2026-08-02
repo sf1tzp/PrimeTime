@@ -322,7 +322,7 @@ final class WalkthroughModel {
         .sorted { $0.day < $1.day }
     }
 
-    /// The fused `work:` labels page 3 shows as proof of the counter-example:
+    /// The fused `work:` labels page 4 shows as proof of the counter-example:
     /// the *meeting* fusions — the spans the user expected the type: meeting
     /// query to return. Two suffice, and the height-constrained detail column
     /// can't fit more plus the explanation.
@@ -364,6 +364,7 @@ final class WalkthroughModel {
         case "client": hex = "#f9a825"
         case "proj": hex = "#d84315"
         case "work": hex = "#e53935"
+        case "book": hex = "#b39ddb"   // pastel purple, distinct from feat's
         default: hex = "#546e7a"
         }
         return Color(hex: hex) ?? .gray
@@ -487,7 +488,7 @@ final class WalkthroughModel {
             return "No labels: this span can only ever answer “how long?”."
         }
         let keys = mockupLabels.map(\.key)
-        return "This span is nothing but its labels — it will appear in every chart grouped by \(keys.formatted(.list(type: .or)))."
+        return "With these labels, this timer can be found by \(keys.formatted(.list(type: .or)))."
     }
 
     // MARK: Created label sets (page 5 → page 6)
