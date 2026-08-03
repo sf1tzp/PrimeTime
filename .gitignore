@@ -1,5 +1,7 @@
 .build/
 dist/
+captures/raw/
+captures/out/
 .DS_Store
 *.swiftpm
 .netrc

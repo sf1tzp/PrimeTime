@@ -67,6 +67,25 @@ if (( PUBLISH )); then
                   "or run with --no-publish" >&2; exit 1; }
 fi
 
+# Advisory only: releases ship regardless, but stale marketing captures are
+# easy to forget — flag when UI sources moved since the last capture batch
+# (captures/manifest.json, stamped by export-captures.sh).
+CAP_MANIFEST="$ROOT/captures/manifest.json"
+if command -v jq >/dev/null && [[ -f "$CAP_MANIFEST" ]]; then
+    CAP_COMMIT="$(jq -r '.commit // empty' "$CAP_MANIFEST")"
+    if [[ -n "$CAP_COMMIT" ]] && git -C "$ROOT" cat-file -e "$CAP_COMMIT^{commit}" 2>/dev/null; then
+        CHANGED="$(git -C "$ROOT" diff --name-only "$CAP_COMMIT"..HEAD -- \
+                       Sources/PrimeTime Sources/PrimeTimeCore | wc -l | tr -d ' ')"
+        if [[ "$CHANGED" != 0 ]]; then
+            echo "note: $CHANGED UI source files changed since the last capture batch" \
+                 "($(jq -r .describe "$CAP_MANIFEST"), $(jq -r .captured "$CAP_MANIFEST"))" \
+                 "— consider refreshing release assets (captures/README.md)"
+        fi
+    else
+        echo "note: captures/manifest.json has no resolvable commit — capture provenance unknown"
+    fi
+fi
+
 echo "==> releasing $TAG"
 
 # --- build → sign → notarize → staple → assess -------------------------------

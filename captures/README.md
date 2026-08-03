@@ -1,0 +1,36 @@
+# Release-asset capture pipeline
+
+Everything the README and [primetime.tools](https://primetime.tools) show is
+the app's own demo mode — seeded data, unretouched UI. This directory makes
+that capture batch reproducible instead of a per-session improvisation.
+
+| Piece | Role |
+| --- | --- |
+| `shots.yaml` | The shot list: every asset, the scene it must show, and which renditions ship where. Update a shot's `scene` in the same PR that changes its surface. |
+| `raw/` (gitignored) | Native-resolution captures as they come off `screencapture` — `<id>.png` stills, `<id>.mov` recordings. |
+| `out/` (gitignored) | Processed renditions (`just process-captures`): WebP stills, the README GIF, scaled mp4s. |
+| `manifest.json` | Provenance of the last exported batch: app commit, version, date, host, shots covered. `just release` warns when UI sources changed since this commit. |
+
+## Refreshing the batch
+
+1. On macbook-air, in a fresh PrimeTime worktree branch off origin/main
+   (`git worktree add ~/worktrees/PrimeTime/captures-<date> -b captures-<date>
+   origin/main`): `swift build` and launch with `--demo` (quit the installed
+   app first). Running the pipeline from that worktree keeps the README
+   exports and the provenance commit on the branch, never on a primary
+   checkout.
+2. Run the `/capture` skill — it drives each scene in `shots.yaml` and lands
+   raw captures in `captures/raw/`. Partial refreshes are fine: only the raw
+   files present are processed and exported.
+3. `just process-captures` — deps: `brew install yq jq ffmpeg webp`.
+4. `just export-captures` — copies renditions into `readme-images/` here and
+   into a matching dated worktree of the website repo, which it creates from
+   origin/main under `~/worktrees/primetime-website/` (the primary website
+   checkout — `$PRIMETIME_WEBSITE_DIR`, default `~/primetime-website` — is
+   only used as the repo to branch from, never written to). Stamps provenance
+   manifests in both. Pass an explicit directory to override the destination.
+5. Review the image diffs in both worktrees, commit and push each branch, and
+   open the companion PRs (e.g. PrimeTime#102 + primetime-website#22).
+
+Future platforms (iOS) keep this contract — same shot list, different capture
+backend (XCUITest + simctl instead of AX driving).

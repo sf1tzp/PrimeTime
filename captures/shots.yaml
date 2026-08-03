@@ -1,0 +1,130 @@
+# Release-asset shot list — the single source of truth for what marketing
+# captures exist, what each must show, and which renditions ship where.
+#
+# The /capture skill drives the app (demo mode, macbook-air) through each
+# shot's `scene`, landing raw captures in captures/raw/. Then:
+#
+#   just process-captures   raw → distributable renditions in captures/out/
+#   just export-captures    out → consumer repos + provenance manifests
+#
+# Schema:
+#   id        stable slug; raw capture is captures/raw/<id>.png (still)
+#             or captures/raw/<id>.mov (recording)
+#   kind      still | recording
+#   surface   which app surface this shows
+#   scene     what must be visible — the contract a re-capture has to meet.
+#             When a PR changes a surface, update its scene here in the same PR.
+#   outputs   renditions, one per consumer file:
+#     to      readme | website  (destination roots: this repo /
+#             $PRIMETIME_WEBSITE_DIR — see scripts/export-captures.sh)
+#     path    destination-repo-relative path
+#     format  png | webp | gif | mp4
+#     width   target pixel width; omit to keep the native (2x retina) size.
+#             Recordings are scaled; stills ship native.
+#     fps     gif only (mp4 keeps the source frame rate)
+
+shots:
+  - id: popover
+    kind: still
+    surface: menu-bar popover
+    scene: |
+      Popover open under the menu-bar status item, idle (no timer running).
+      Quick-start rows for the seeded label sets (Deep Work, App Backend,
+      App Frontend, Server Ops, Workout, …) plus the Log / Calendar /
+      History / Settings… rows below.
+    outputs:
+      - { to: website, path: static/screenshots/popover.webp, format: webp }
+
+  - id: popover-motion
+    kind: recording
+    surface: menu-bar popover
+    scene: |
+      ~18s. Start with the demo's running timer active. Click the status
+      item to open the popover; hover a couple of quick-start rows so their
+      quick-label chips reveal; then stop the running timer via its Stop row.
+      Record over a plain dark desktop (hide other windows, set a solid dark
+      wallpaper) — the wallpaper shows through around the popover, and a
+      detailed one balloons the README GIF roughly 8x.
+    outputs:
+      - { to: readme, path: readme-images/popover.gif, format: gif, width: 640, fps: 12 }
+      - { to: website, path: static/screenshots/popover.mp4, format: mp4, width: 800 }
+
+  - id: onboarding
+    kind: recording
+    surface: onboarding window
+    scene: |
+      ~50s. The 7-page interactive onboarding walkthrough, opening on page 1.
+      Advance through all pages at a readable pace (~6s each), exercising the
+      interactive bits (label editors, quick-label suggestions) as you go.
+    outputs:
+      - { to: website, path: static/screenshots/onboarding.mp4, format: mp4, width: 1400 }
+
+  - id: launcher
+    kind: still
+    surface: window / Launcher tab
+    scene: |
+      Launcher tab of the PrimeTime window: the quick-start grid of seeded
+      label sets with their quick-label chips.
+    outputs:
+      - { to: website, path: static/screenshots/launcher.webp, format: webp }
+
+  - id: label-sets
+    kind: still
+    surface: window / Label Sets tab
+    scene: |
+      Label Sets tab: the seeded sets (Deep Work, App Backend, App Frontend,
+      Server Ops, Workout, …) with their labels visible.
+    outputs:
+      - { to: website, path: static/screenshots/label-sets.webp, format: webp }
+
+  - id: log
+    kind: still
+    surface: window / Log tab
+    scene: |
+      Log tab on the most recent full seeded week — navigate to the previous
+      week when the current week has just begun (a Sunday capture shows one
+      thin partial day). Several full days of spans with labels and notes
+      visible.
+    outputs:
+      - { to: website, path: static/screenshots/log.webp, format: webp }
+      - { to: readme, path: readme-images/log-view.png, format: png }
+
+  - id: calendar
+    kind: still
+    surface: window / Calendar tab
+    scene: |
+      Calendar tab, week view of the most recent full seeded week (same
+      navigate-back rule as the log shot; note the week navigator state is
+      shared across tabs), showing the seeded spans as colored blocks across
+      several days — include the side-by-side overlap columns.
+    outputs:
+      - { to: website, path: static/screenshots/calendar.webp, format: webp }
+
+  - id: history
+    kind: still
+    surface: window / History tab
+    scene: |
+      History tab showing the side-by-side comparison grouping (type vs
+      project) over the seeded weeks — both panels populated.
+    outputs:
+      - { to: website, path: static/screenshots/history.webp, format: webp }
+      - { to: readme, path: readme-images/history-view.png, format: png }
+
+  - id: label-review
+    kind: still
+    surface: window / Label Review tab
+    scene: |
+      Label Review tab surfacing the demo seed's deliberate `proj` vs
+      `project` key drift and the unlabelled ad-hoc spans.
+    outputs:
+      - { to: website, path: static/screenshots/label-review.webp, format: webp }
+      - { to: readme, path: readme-images/label-review.png, format: png }
+
+  - id: settings
+    kind: still
+    surface: window / Settings tab
+    scene: |
+      Settings tab in demo mode: the "Demo mode" banner and the
+      server/connection section.
+    outputs:
+      - { to: website, path: static/screenshots/settings.webp, format: webp }

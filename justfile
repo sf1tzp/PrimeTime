@@ -7,6 +7,22 @@ run:
 demo:
   ./.build/debug/PrimeTime --demo
 
+# --- Release assets (capture pipeline) ---
+
+# Process raw demo-mode captures (captures/raw/) into distributable
+# renditions in captures/out/, per captures/shots.yaml. Scene driving is the
+# /capture skill's job (macbook-air) — see captures/README.md.
+# Deps: brew install yq jq ffmpeg webp
+process-captures:
+  scripts/process-captures.sh
+
+# Copy processed renditions into their consumer repos — readme-images/ here,
+# and a dated worktree of the website repo (created from origin/main; the
+# primary ~/primetime-website checkout is never written to) — and stamp
+# provenance manifests in both. Pass a directory to override the destination.
+export-captures *flags:
+  scripts/export-captures.sh {{flags}}
+
 # --- Distribution (#44) ---
 
 # Assemble dist/PrimeTime.app from a release build (arm64-only).

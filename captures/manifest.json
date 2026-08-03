@@ -1,0 +1,18 @@
+{
+  "commit": "371ca89bb38036ef85b9110fe87d24d661539cf9",
+  "describe": "v0.5.5-4-g371ca89",
+  "captured": "2026-08-03",
+  "host": "macbook-air",
+  "shots": [
+    "popover",
+    "popover-motion",
+    "onboarding",
+    "launcher",
+    "label-sets",
+    "log",
+    "calendar",
+    "history",
+    "label-review",
+    "settings"
+  ]
+}
