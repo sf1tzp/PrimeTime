@@ -6,12 +6,9 @@ import AppKit
 struct MenuContentView: View {
     @Environment(AppModel.self) private var model
 
-    /// Which running timespan is being edited in place (tags + note), plus
-    /// local drafts. Seeded on entering edit mode so a background poll can't
-    /// clobber edits; dropped if the timespan stops from elsewhere.
-    @State private var editingTimerID: TimeSpan.ID?
-    @State private var tagDrafts: [TagRow] = []
-    @State private var noteDraft = ""
+    // The edit drafts live in `model.editSession`, shared with the Log
+    // view's running-row editor (#61) and surviving the popover closing
+    // (#70) — this view only tracks focus.
 
     /// Which editor field holds focus. Return in a tag field, or focus
     /// moving at all ("clicking off"), commits the drafts so the pills
@@ -44,12 +41,11 @@ struct MenuContentView: View {
         .task {
             await model.refresh()
         }
-        .onChange(of: model.activeTimers.map(\.id)) {
-            // Drop the in-place editor if its timespan stopped elsewhere.
-            if let id = editingTimerID,
-               !model.activeTimers.contains(where: { $0.id == id }) {
-                editingTimerID = nil
-            }
+        // Closing the popover commits pending drafts (the session itself
+        // survives in the model, so reopening resumes the edit) — with
+        // view-local drafts this teardown was where edits silently died (#70).
+        .onDisappear {
+            Task { await model.commitEditSession() }
         }
     }
 
@@ -302,7 +298,7 @@ struct MenuContentView: View {
         Button {
             Task {
                 if let created = await model.start(tags: []) {
-                    beginEditing(created)
+                    await model.beginEditing(created)
                 }
             }
         } label: {
@@ -336,10 +332,12 @@ struct MenuContentView: View {
             }
             Spacer(minLength: 0)
             Button {
-                if editingTimerID == timer.id {
-                    editingTimerID = nil
-                } else {
-                    beginEditing(timer)
+                Task {
+                    if model.editSession?.spanID == timer.id {
+                        await model.finishEditing()   // toggle-off saves, like Done
+                    } else {
+                        await model.beginEditing(timer)
+                    }
                 }
             } label: {
                 Image(systemName: "pencil")
@@ -355,17 +353,20 @@ struct MenuContentView: View {
             .disabled(model.isBusy)
             .help("Stop")
         }
-        if editingTimerID == timer.id {
-            timerEditor
+        if let session = model.editSession, session.spanID == timer.id {
+            timerEditor(session)
         }
     }
 
     /// In-place editor for a running row — one line per tag (colour swatch,
     /// key, value, remove), the add-label button, then the note, with
-    /// Cancel / Done. Save commits tags and note together via `updateRunning`.
-    private var timerEditor: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ForEach($tagDrafts) { $tag in
+    /// Cancel / Done. The drafts are the shared session's; commits go through
+    /// the model's one funnel (`commitEditSession`), which skips the
+    /// round-trip when nothing changed (focus hops between fields hit this).
+    private func timerEditor(_ session: SpanEditSession) -> some View {
+        @Bindable var session = session
+        return VStack(alignment: .leading, spacing: 4) {
+            ForEach($session.tagDrafts) { $tag in
                 HStack(spacing: 6) {
                     TagColorPicker(key: tag.key, value: tag.value)
                     TextField("key", text: $tag.key)
@@ -373,16 +374,16 @@ struct MenuContentView: View {
                         .autocorrectionDisabled()
                         .frame(width: LabelEditorStyle.compactKeyFieldWidth)
                         .focused($focusedField, equals: .key(tag.id))
-                        .onSubmit { commitLiveEdits() }
+                        .onSubmit { commit() }
                     Text(":").foregroundStyle(.secondary)
                     TextField("value", text: $tag.value)
                         .textFieldStyle(.roundedBorder)
                         .autocorrectionDisabled()
                         .focused($focusedField, equals: .value(tag.id))
-                        .onSubmit { commitLiveEdits() }
+                        .onSubmit { commit() }
                     Button(role: .destructive) {
-                        tagDrafts.removeAll { $0.id == tag.id }
-                        commitLiveEdits()
+                        session.tagDrafts.removeAll { $0.id == tag.id }
+                        commit()
                     } label: {
                         Image(systemName: "minus.circle")
                     }
@@ -390,52 +391,27 @@ struct MenuContentView: View {
                 }
             }
             Button {
-                tagDrafts.append(TagRow())
+                session.tagDrafts.append(TagRow())
             } label: {
                 Label("Add Label", systemImage: "plus")
             }
             .buttonStyle(.borderless)
-            TextField("Add a note…", text: $noteDraft)
+            TextField("Add a note…", text: $session.noteDraft)
                 .textFieldStyle(.roundedBorder)
                 .focused($focusedField, equals: .note)
-                .onSubmit { saveEdits() }
+                .onSubmit { Task { await model.finishEditing() } }
             HStack {
                 Spacer()
-                Button("Cancel") { editingTimerID = nil }
+                Button("Cancel") { model.cancelEditing() }
                     .buttonStyle(.borderless)
-                Button("Done") { saveEdits() }
+                Button("Done") { Task { await model.finishEditing() } }
                     .disabled(model.isBusy)
             }
         }
-        .onChange(of: focusedField) { _, _ in commitLiveEdits() }
+        .onChange(of: focusedField) { _, _ in commit() }
     }
 
-    private func beginEditing(_ timer: TimeSpan) {
-        let rows = timer.labels.map { TagRow(key: $0.key, value: $0.value) }
-        tagDrafts = rows.isEmpty ? [TagRow()] : rows  // an empty row, ready to type
-        noteDraft = timer.note
-        editingTimerID = timer.id
-    }
-
-    /// Commit the drafts to the running span without leaving edit mode —
-    /// the reactive path behind Return / clicking off a field. Skips the
-    /// round-trip when nothing changed (focus hops between fields hit this).
-    private func commitLiveEdits() {
-        guard let id = editingTimerID,
-              let timer = model.activeTimers.first(where: { $0.id == id })
-        else { return }
-        let labels = tagDrafts.labels
-        let note = noteDraft
-        guard labels != timer.labels || note != timer.note else { return }
-        Task { await model.updateRunning(id: id, tags: labels, note: note) }
-    }
-
-    private func saveEdits() {
-        guard let id = editingTimerID else { return }
-        let labels = tagDrafts.labels
-        Task {
-            await model.updateRunning(id: id, tags: labels, note: noteDraft)
-            if model.errorMessage == nil { editingTimerID = nil }
-        }
+    private func commit() {
+        Task { await model.commitEditSession() }
     }
 }

@@ -137,3 +137,27 @@ package protocol Backend {
     /// timespans are excluded — merge in `timers()` for a complete picture.
     func timeSpans(from: Date, to: Date, page: PageToken?) async throws -> TimeSpanPage
 }
+
+package extension Backend {
+    /// Make sure every tag's key exists as a definition, creating missing ones
+    /// with the default colour. Idempotent where `createLabelDefinition` is
+    /// deliberately not: the existing keys are read fresh from the backend (a
+    /// caller's stale cache must not turn "already exists" into a duplicate-
+    /// insert error), and a key appearing on several tags is created once.
+    /// Returns the definitive definition list, in the backend's order, so
+    /// callers can refresh their caches from it.
+    @discardableResult
+    func ensureLabelDefinitions(for tags: [SpanLabel],
+                                defaultColor: String) async throws -> [LabelDefinition] {
+        var definitions = try await labelDefinitions()
+        var known = Set(definitions.map(\.key))
+        var createdAny = false
+        for tag in tags where known.insert(tag.key).inserted {
+            try await createLabelDefinition(key: tag.key, color: defaultColor)
+            createdAny = true
+        }
+        // Re-fetch rather than append locally, so the returned list carries
+        // whatever ordering and defaults the backend applied.
+        return createdAny ? try await labelDefinitions() : definitions
+    }
+}

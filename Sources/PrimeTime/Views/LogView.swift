@@ -130,6 +130,12 @@ struct LogView: View {
             HStack(spacing: 0) {
                 Button {
                     editingID = span.id
+                    // Expanding a running row claims the shared edit session
+                    // (see TimeSpanEditorView) — an explicit user action, so
+                    // it may take the session from another surface's editor.
+                    if span.isRunning {
+                        Task { await model.beginEditing(span) }
+                    }
                 } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
                         VStack(alignment: .leading, spacing: 2) {

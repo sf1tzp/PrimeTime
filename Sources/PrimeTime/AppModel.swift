@@ -117,6 +117,12 @@ final class AppModel {
     /// The first-started running timespan — the popover's top row and the one
     /// the menu-bar label counts up for.
     var activeTimer: TimeSpan? { activeTimers.first }
+
+    /// The in-flight edit of a running timespan, or nil when nothing is being
+    /// edited. One at a time, shared by every editing surface — see
+    /// `SpanEditSession`. Surviving here (not in view `@State`) is what lets
+    /// drafts outlive the popover closing (#70).
+    var editSession: SpanEditSession?
     var errorMessage: String?
     var isBusy = false
     /// Updated once per second while a timer runs so elapsed labels tick.
@@ -478,9 +484,63 @@ final class AppModel {
             let (runningTimers, labelDefinitions) = try await (timers, definitions)
             activeTimers = runningTimers.sorted { $0.start < $1.start }
             tagDefinitions = labelDefinitions
+            pruneEditSession()
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: The shared edit session (#61, #70)
+
+    /// Open (or move) the edit session onto this running timespan. The claim
+    /// happens synchronously — before the first await — so an editor
+    /// rendering off `editSession` never sees a gap while the previous
+    /// drafts flush; those are committed right after, because switching
+    /// what's being edited must never silently discard an edit (#70).
+    func beginEditing(_ span: TimeSpan) async {
+        let previous = editSession
+        editSession = SpanEditSession(span: span)
+        await commit(previous)
+    }
+
+    /// Write the session's drafts to its timespan if they changed, staying in
+    /// edit mode — the live path behind Return, focus moves, and the popover
+    /// closing. Returns false when the write failed (the session stays put so
+    /// nothing is lost); a no-op counts as success.
+    @discardableResult
+    func commitEditSession() async -> Bool {
+        await commit(editSession)
+    }
+
+    @discardableResult
+    private func commit(_ session: SpanEditSession?) async -> Bool {
+        guard let session,
+              let timer = activeTimers.first(where: { $0.id == session.spanID }),
+              session.differs(from: timer)
+        else { return true }
+        return await updateRunning(id: timer.id, start: session.startDraft,
+                                   tags: session.tagDrafts.labels,
+                                   note: session.noteDraft)
+    }
+
+    /// Commit and close the editor; a failed write keeps it open for a retry.
+    func finishEditing() async {
+        if await commitEditSession() { editSession = nil }
+    }
+
+    /// Close the editor, discarding any uncommitted drafts.
+    func cancelEditing() {
+        editSession = nil
+    }
+
+    /// Drop the session when its timespan is no longer running — stopped or
+    /// deleted from any surface, this app or elsewhere. Called wherever
+    /// `activeTimers` is rewritten.
+    private func pruneEditSession() {
+        if let session = editSession,
+           !activeTimers.contains(where: { $0.id == session.spanID }) {
+            editSession = nil
         }
     }
 
@@ -494,6 +554,10 @@ final class AppModel {
     @discardableResult
     func start(tags: [SpanLabel]) async -> TimeSpan? {
         guard let backend = api else { return nil }
+        // Flush any pending edit of another timer first — a quick-start or
+        // blank-timer click must not discard drafts sitting in an open
+        // editor (#70).
+        await commitEditSession()
         isBusy = true
         defer { isBusy = false }
         do {
@@ -515,34 +579,41 @@ final class AppModel {
     }
 
     /// Ensure every tag key exists as a definition, or the server rejects the
-    /// timespan. Creates missing ones with a default colour.
+    /// timespan. Creates missing ones with a default colour. Delegates to the
+    /// backend's idempotent ensure (which checks the store, not our cache) and
+    /// refreshes the cache from its result — an edit path that creates a key
+    /// mid-session must not leave `tagDefinitions` behind, or the next commit
+    /// re-creates the key and hits the duplicate-insert error (#61).
     func ensureTagDefinitions(for tags: [SpanLabel]) async throws {
         guard let backend = api else { return }
-        let existing = Set(tagDefinitions.map(\.key))
-        for tag in tags where !existing.contains(tag.key) {
-            try await backend.createLabelDefinition(key: tag.key, color: "#2196f3")
-        }
+        tagDefinitions = try await backend.ensureLabelDefinitions(for: tags,
+                                                                  defaultColor: "#2196f3")
     }
 
-    /// Update the tags and note on a running timespan, preserving its start.
-    /// Missing tag definitions are created first (traggo rejects unknown
-    /// keys), the same guard `start(tags:)` uses.
-    func updateRunning(id: Int, tags: [SpanLabel], note: String) async {
+    /// Update the start, tags, and note on a running timespan (nil start
+    /// preserves the current one). Missing tag definitions are created first
+    /// (traggo rejects unknown keys), the same guard `start(tags:)` uses.
+    /// Returns whether the write succeeded.
+    @discardableResult
+    func updateRunning(id: Int, start: Date? = nil,
+                       tags: [SpanLabel], note: String) async -> Bool {
         guard let backend = api,
-              let span = activeTimers.first(where: { $0.id == id }) else { return }
+              let span = activeTimers.first(where: { $0.id == id }) else { return false }
         isBusy = true
         defer { isBusy = false }
         do {
             try await ensureTagDefinitions(for: tags)
             let updated = try await backend.updateTimeSpan(
-                id: span.id, start: span.start, end: span.end,
+                id: span.id, start: start ?? span.start, end: span.end,
                 labels: tags, note: note)
             replaceActiveTimer(with: updated)
             errorMessage = nil
             await history.reloadIfLoaded()
             syncSoon()
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -554,6 +625,7 @@ final class AppModel {
         do {
             _ = try await backend.stopTimeSpan(id: target, end: Date())
             activeTimers.removeAll { $0.id == target }
+            pruneEditSession()
             errorMessage = nil
             await refresh()
             await history.reloadIfLoaded()

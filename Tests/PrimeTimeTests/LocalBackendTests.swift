@@ -146,6 +146,31 @@ import Testing
         }
     }
 
+    /// The ensure path must be idempotent even though bare create is not:
+    /// repeated ensures of the same key (an editor committing twice), and one
+    /// ensure carrying the same new key on several tags, create it once and
+    /// never surface the duplicate-insert error (#61).
+    @Test func ensureLabelDefinitionsIsIdempotent() async throws {
+        let backend = try makeBackend()
+        try await backend.createLabelDefinition(key: "repo", color: "#112233")
+
+        let tags = [SpanLabel(key: "repo", value: "primetime"),
+                    SpanLabel(key: "work-type", value: "review"),
+                    SpanLabel(key: "work-type", value: "debug")]
+        let first = try await backend.ensureLabelDefinitions(for: tags,
+                                                             defaultColor: "#445566")
+        // Again, as a caller with a stale cache would.
+        let second = try await backend.ensureLabelDefinitions(for: tags,
+                                                              defaultColor: "#445566")
+
+        // One definition per key; the pre-existing colour is untouched.
+        let expected = [LabelDefinition(key: "repo", color: "#112233"),
+                        LabelDefinition(key: "work-type", color: "#445566")]
+        #expect(first == expected)
+        #expect(second == expected)
+        #expect(try await backend.labelDefinitions() == expected)
+    }
+
     // MARK: Date ranges
 
     @Test func timeSpansReturnsOverlapsOnly() async throws {

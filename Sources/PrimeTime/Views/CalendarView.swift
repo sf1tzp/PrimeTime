@@ -131,6 +131,11 @@ struct CalendarView: View {
 
         Button {
             editingSegmentID = segment.id
+            // Opening a running block's editor claims the shared edit
+            // session, same as expanding a running Log row.
+            if segment.span.isRunning {
+                Task { await model.beginEditing(segment.span) }
+            }
         } label: {
             VStack(alignment: .leading, spacing: 1) {
                 Text(segment.span.timeRangeLabel)
