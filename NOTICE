@@ -11,3 +11,10 @@ One tree carries an exception: server/ is derived from traggo/server
 and combines GPL-3.0 code (the traggo-derived files) with
 AGPL-3.0-or-later additions. See server/NOTICE for the per-file rules
 and for how the two licenses interact in the combined server.
+
+As copyright holder of the PrimeTime additions, Street Fortress
+Industries also distributes (or plans to distribute) app builds through
+channels under separate license terms, such as Apple's App Store. This
+is a parallel grant: it does not affect the public licenses above, and
+contributions are accepted under terms that keep it possible — see
+CONTRIBUTING.md.

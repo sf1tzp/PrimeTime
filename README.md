@@ -113,6 +113,10 @@ rm -rf ~/Library/Application\ Support/PrimeTime && defaults delete PrimeTime
 
 The `server/` tree is derived from [traggo/server](https://github.com/traggo/server); its provenance and licensing are documented in [server/README.md](server/README.md).
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) — in particular the contribution terms (DCO sign-off plus a relicensing grant) that keep PrimeTime's dual-channel distribution possible.
+
 ## License
 
-[AGPL-3.0-or-later](LICENSE). The `server/` tree is derived from [traggo/server](https://github.com/traggo/server) and combines GPL-3.0 code with AGPL-3.0-or-later additions — see [NOTICE](NOTICE) and [server/NOTICE](server/NOTICE) for the structure.
+[AGPL-3.0-or-later](LICENSE). The `server/` tree is derived from [traggo/server](https://github.com/traggo/server) and combines GPL-3.0 code with AGPL-3.0-or-later additions — see [NOTICE](NOTICE) and [server/NOTICE](server/NOTICE) for the structure. App-store builds are distributed under separate terms by the copyright holder ([NOTICE](NOTICE)).
