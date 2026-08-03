@@ -307,6 +307,7 @@ struct GeneralSettingsView: View {
 struct TagSetsSettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var selection: TagSet.ID?
+    @State private var pendingDelete: TagSet?
 
     var body: some View {
         splitView
@@ -315,6 +316,31 @@ struct TagSetsSettingsView: View {
             // otherwise the first set.
             .onAppear { consumePendingSelection() }
             .onChange(of: model.pendingTagSetSelection) { consumePendingSelection() }
+            .confirmationDialog(
+                "Delete “\(pendingDelete.map { $0.name.isEmpty ? "Untitled" : $0.name } ?? "")”?",
+                isPresented: Binding(
+                    get: { pendingDelete != nil },
+                    set: { if !$0 { pendingDelete = nil } }
+                )
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let set = pendingDelete {
+                        model.tagSets.removeAll { $0.id == set.id }
+                    }
+                }
+            } message: {
+                Text("This will remove the quick start preset. Existing timespan labels will be unaffected.")
+            }
+    }
+
+    /// Deleting an empty set loses nothing, so it skips the dialog; a set
+    /// with labels asks first (#106).
+    private func requestDelete(_ set: TagSet) {
+        if set.tags.isEmpty {
+            model.tagSets.removeAll { $0.id == set.id }
+        } else {
+            pendingDelete = set
+        }
     }
 
     private func consumePendingSelection() {
@@ -335,7 +361,11 @@ struct TagSetsSettingsView: View {
                         Text(set.name.isEmpty ? "Untitled" : set.name)
                             .tag(set.id)
                     }
-                    .onDelete { model.tagSets.remove(atOffsets: $0) }
+                    .onDelete { offsets in
+                        if let index = offsets.first {
+                            requestDelete(model.tagSets[index])
+                        }
+                    }
                     // Order matters: the popover shows the first N sets.
                     .onMove { model.tagSets.move(fromOffsets: $0, toOffset: $1) }
                 }
@@ -348,8 +378,8 @@ struct TagSetsSettingsView: View {
                     } label: { Image(systemName: "plus") }
                     Button {
                         if let selection,
-                           let index = model.tagSets.firstIndex(where: { $0.id == selection }) {
-                            model.tagSets.remove(at: index)
+                           let set = model.tagSets.first(where: { $0.id == selection }) {
+                            requestDelete(set)
                         }
                     } label: { Image(systemName: "minus") }
                     .disabled(selection == nil)
