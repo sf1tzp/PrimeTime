@@ -37,6 +37,19 @@ skills, so the two don't drift.
 - The status-item click *toggles* the popover, and it stays open across
   osascript runs — guard with `if not (exists window "" of p)` before
   clicking again, or a fresh script closes what the last one opened.
+- The popover window is not reliably `window ""` — on macbook-air
+  (2026-08-03) it enumerated as `window "Untitled"`. Address it as
+  `window 1` (the PrimeTime window is findable by its real name, so the
+  popover is whatever's left) and check `name of every window` when lost.
+- Collective element queries on the popover (`buttons of group 1 of
+  window 1`) can fail wholesale with `-10000` even when the elements exist —
+  iterate `UI elements of …` and filter on `role` instead.
+- Views at `.opacity(0)` (e.g. hover-revealed controls) are absent from the
+  AX tree entirely — not present-but-invisible. To reach them, hover with a
+  real cursor move first (`cliclick m:x,y`, app frontmost), then re-query;
+  their presence/absence also doubles as a check that the hover reveal
+  works. Buttons identify nicely by their `help` attribute (read it per
+  element inside a `try`; some elements throw).
 
 ## Screenshots & recordings
 

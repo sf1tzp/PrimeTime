@@ -46,8 +46,10 @@ struct WeekNavigatorView: View {
 
 // MARK: - Timespan editor
 
-/// Inline editor for one timespan: start/end, tags, note, delete. Used
-/// expanded-in-place by the Log and inside a popover by the Calendar.
+/// Inline editor for one timespan: start/end, tags, note, delete, and the
+/// #60 lifecycle actions (Stop on a running span; Re-Open and New Timer on a
+/// finished one). Used expanded-in-place by the Log and inside a popover by
+/// the Calendar.
 ///
 /// Two regimes: a *finished* span edits view-local drafts, saved through
 /// `HistoryModel.update`. A *running* span instead binds the shared
@@ -59,6 +61,12 @@ struct TimeSpanEditorView: View {
     @Environment(AppModel.self) private var model
     let span: TimeSpan
     var onDone: () -> Void
+    /// Move the editing surface to another timespan — New Timer hands the
+    /// panel over to the span it just started. Parents that can re-anchor
+    /// their editor (the Log's expanded row) pass this; ones that can't (the
+    /// Calendar's per-block popover, whose blocks don't exist until relayout)
+    /// leave it nil and the panel just closes.
+    var onOpen: ((TimeSpan) -> Void)?
 
     @State private var start: Date
     @State private var end: Date
@@ -67,9 +75,11 @@ struct TimeSpanEditorView: View {
     @State private var isSaving = false
     @State private var confirmingDelete = false
 
-    init(span: TimeSpan, onDone: @escaping () -> Void) {
+    init(span: TimeSpan, onDone: @escaping () -> Void,
+         onOpen: ((TimeSpan) -> Void)? = nil) {
         self.span = span
         self.onDone = onDone
+        self.onOpen = onOpen
         _start = State(initialValue: span.start)
         _end = State(initialValue: span.end ?? Date())
         _tagRows = State(initialValue: span.labels.map {
@@ -79,10 +89,36 @@ struct TimeSpanEditorView: View {
     }
 
     var body: some View {
-        if span.isRunning {
-            runningBody
-        } else {
-            finishedBody
+        // A stop registers in two steps: the span leaves `activeTimers`
+        // synchronously, and the reloaded (finished) span value arrives a
+        // beat later. Route on the first signal so the finished editor is on
+        // screen for that whole window — the badge is replaced by the End
+        // widget in place, with no collapse in between. The drafts it shows
+        // are seeded by `willStop` (the badge path) or rebased by the
+        // onChange below (a stop from any other surface).
+        let stopLanded = span.isRunning
+            && !model.activeTimers.contains { $0.id == span.id }
+        Group {
+            if span.isRunning && !stopLanded {
+                runningBody
+            } else {
+                finishedBody
+            }
+        }
+        .onChange(of: span) { old, new in
+            // A stop landed under this editor (the running badge, or the
+            // popover's Stop) and the panel stays open, switching regimes.
+            // The finished drafts were captured back when the row expanded —
+            // rebase them on the span as it was actually stopped (real end,
+            // plus whatever the session committed on the way out). Only on
+            // this transition: a finished span's drafts are the user's, not
+            // to be clobbered by background reloads.
+            if old.isRunning && !new.isRunning {
+                start = new.start
+                end = new.end ?? Date()
+                tagRows = new.labels.map { TagRow(key: $0.key, value: $0.value) }
+                note = new.note
+            }
         }
     }
 
@@ -91,14 +127,25 @@ struct TimeSpanEditorView: View {
     @ViewBuilder
     private var runningBody: some View {
         if let session = model.editSession, session.spanID == span.id {
-            RunningSessionEditor(session: session, onDone: onDone)
+            RunningSessionEditor(session: session, onDone: onDone) {
+                // The badge is about to stop this span: seed the finished
+                // drafts from the live session so the finished regime shows
+                // the right values the instant it takes over — the reloaded
+                // span rebases them (real end time) in the onChange above.
+                start = session.startDraft
+                tagRows = session.tagDrafts
+                note = session.noteDraft
+                end = Date()
+            }
         } else {
             // The session ended or moved to another editor — collapse.
             // Claiming it is the expansion click's job (see LogView /
             // CalendarView), never a render side effect: a row whose view
             // identity gets recreated while expanded (a filter toggle, lazy
             // scrolling) must not steal the session back from whichever
-            // surface holds it now.
+            // surface holds it now. (A stop never lands here — the body
+            // routes to `finishedBody` the moment the span leaves
+            // `activeTimers`.)
             Color.clear.frame(height: 1)
                 .task { onDone() }
         }
@@ -111,7 +158,36 @@ struct TimeSpanEditorView: View {
             HStack(spacing: 12) {
                 MinuteSteppingDatePicker(label: "Start", date: $start)
                 MinuteSteppingDatePicker(label: "End", date: $end)
+                Spacer(minLength: 0)
+                // The finished-span actions (#60), next to the fields they
+                // act on. Re-Open writes what the panel shows minus the end
+                // — drafts ride along — and the panel stays open, switched
+                // to the running regime. New Timer starts a fresh span with
+                // the drafted labels; this span (and any unsaved edits to
+                // it) stays put.
+                Button("Re-Open") { reopen() }
+                    .help("Clear the end — this span becomes the running timer again, absorbing the gap since it stopped")
+                Button("New Timer") {
+                    Task {
+                        isSaving = true
+                        if let created = await model.start(tags: tagRows.labels) {
+                            // Editing moves to the new timer: claim the
+                            // session, then let the parent re-anchor its
+                            // panel onto the new span (or just close, where
+                            // it can't). A failed start keeps this editor.
+                            if let onOpen {
+                                await model.beginEditing(created)
+                                onOpen(created)
+                            } else {
+                                onDone()
+                            }
+                        }
+                        isSaving = false
+                    }
+                }
+                .help("Start a new timer with these labels")
             }
+            .disabled(isSaving)
 
             LabelRowsEditor(rows: $tagRows)
                 .textFieldStyle(.roundedBorder)
@@ -157,6 +233,23 @@ struct TimeSpanEditorView: View {
             if saved { onDone() }
         }
     }
+
+    /// Re-Open (#60): commit the drafted fields with the end cleared, then
+    /// claim the edit session so the panel stays open as the running editor.
+    /// The claim races nothing: `reopen` returns on the main actor with no
+    /// suspension before `beginEditing`'s synchronous session claim, so
+    /// `runningBody` can never render session-less in between (its fallback
+    /// would collapse the row).
+    private func reopen() {
+        Task {
+            isSaving = true
+            if let running = await model.reopen(id: span.id, start: start,
+                                                tags: tagRows.labels, note: note) {
+                await model.beginEditing(running)
+            }
+            isSaving = false
+        }
+    }
 }
 
 /// The running-span editor body: the same chrome as the finished editor, but
@@ -166,6 +259,10 @@ private struct RunningSessionEditor: View {
     @Environment(AppModel.self) private var model
     @Bindable var session: SpanEditSession
     var onDone: () -> Void
+    /// Runs just before the badge's stop is written: the parent seeds its
+    /// finished-regime drafts from the session, so the hand-over renders
+    /// with the right values from the first frame.
+    var willStop: () -> Void
 
     @State private var isSaving = false
     @State private var confirmingDelete = false
@@ -174,11 +271,17 @@ private struct RunningSessionEditor: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 MinuteSteppingDatePicker(label: "Start", date: $session.startDraft)
-                // Stopping belongs to the popover's Stop button; here a
-                // running span just keeps running.
-                Label("Running", systemImage: "record.circle")
-                    .foregroundStyle(.secondary)
-                    .font(.callout)
+                // The running badge doubles as the Stop button (#60), sitting
+                // where the finished editor's End picker is — the end field
+                // and the action that sets it share a slot.
+                Button {
+                    stop()
+                } label: {
+                    Label("Running", systemImage: "stop.circle")
+                }
+                .buttonStyle(HoverIconButtonStyle())
+                .font(.callout)
+                .help("Stop this timer")
             }
 
             LabelRowsEditor(rows: $session.tagDrafts)
@@ -222,6 +325,22 @@ private struct RunningSessionEditor: View {
             isSaving = false
             // A failed write keeps the session (and this editor) open.
             if model.editSession == nil { onDone() }
+        }
+    }
+
+    /// Stop from the editor: drafts are committed first — stopping must not
+    /// silently discard an open edit (#70) — and a failed commit keeps the
+    /// timer running and the editor open, like Save. The panel stays open:
+    /// `willStop` seeds the parent's finished drafts, and the parent
+    /// switches to the finished regime in place the moment the stop lands.
+    private func stop() {
+        Task {
+            isSaving = true
+            if await model.commitEditSession() {
+                willStop()
+                await model.stop(id: session.spanID)
+            }
+            isSaving = false
         }
     }
 }
@@ -275,6 +394,10 @@ private struct MinuteSteppingDatePicker: View {
             DatePicker(label, selection: $date,
                        displayedComponents: [.date, .hourAndMinute])
                 .datePickerStyle(.field)
+                // Keep the intrinsic width: sharing a row with a Spacer and
+                // the #60 action buttons otherwise squeezes the label into a
+                // one-character-per-line vertical wrap.
+                .fixedSize()
             Stepper(label) {
                 step(by: 1)
             } onDecrement: {

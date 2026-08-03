@@ -124,7 +124,11 @@ struct LogView: View {
     @ViewBuilder
     private func row(for span: TimeSpan) -> some View {
         if editingID == span.id {
-            TimeSpanEditorView(span: span) { editingID = nil }
+            TimeSpanEditorView(span: span,
+                               onDone: { editingID = nil },
+                               // New Timer hands the panel to the span it
+                               // started — its (running) row expands here.
+                               onOpen: { editingID = $0.id })
                 .background(Color.accentColor.opacity(0.06))
         } else {
             HStack(spacing: 0) {

@@ -635,6 +635,38 @@ final class AppModel {
         }
     }
 
+    /// Reopen a finished timespan (#60): write the given fields with the end
+    /// cleared, so it's the running timer again — the recovery for an
+    /// accidental stop. The stop is erased and the untracked gap since it is
+    /// absorbed into the span, which is the point: "I never meant to stop".
+    /// The fields are parameters (not read off the span) so the editor can
+    /// reopen with its drafts riding along — Re-Open writes what the panel
+    /// shows, minus the end. The cleared end reaches a connected sync server
+    /// as an ordinary dirty-span push. Returns the now-running span, nil on
+    /// failure, so the caller can move straight into editing it.
+    @discardableResult
+    func reopen(id: Int, start: Date, tags: [SpanLabel], note: String) async -> TimeSpan? {
+        guard let backend = api else { return nil }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            // The labels are rewritten wholesale by the update; drafted rows
+            // may carry new keys, same guard as every edit path.
+            try await ensureTagDefinitions(for: tags)
+            let updated = try await backend.updateTimeSpan(id: id, start: start,
+                                                           end: nil, labels: tags,
+                                                           note: note)
+            errorMessage = nil
+            await refresh()
+            await history.reloadIfLoaded()
+            syncSoon()
+            return updated
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
     private func replaceActiveTimer(with updated: TimeSpan) {
         if let index = activeTimers.firstIndex(where: { $0.id == updated.id }) {
             activeTimers[index] = updated
