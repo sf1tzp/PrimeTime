@@ -85,7 +85,7 @@ Look for the timer in the menu bar. Launch without `--demo` to start tracking fo
 
 ## Sync with PrimeTime Server — optional
 
-PrimeTime is local-first: the app is fully functional offline, and the local store stays the source of truth. When you want your history on more than one Mac — or shared across a team — run [PrimeTime Server](server/): a headless GraphQL backend, derived from [traggo/server](https://github.com/traggo/server) and evolved into the PrimeTime v1 API (label vocabulary, per-value colors, server-side label sets). It ships as a single container; SQLite is perfect for a personal server, Postgres for teams.
+PrimeTime is local-first: the app is fully functional offline, and the local store stays the source of truth. When you want your history on more than one Mac — or shared across a team — run [PrimeTime Server](server/): a headless GraphQL backend, derived from [traggo/server](https://github.com/traggo/server) and evolved into the PrimeTime v1 API (label vocabulary, per-value colors, server-side label sets). It ships as a single container backed by SQLite.
 
 Connect in **Settings → Sync**: enter your server URL, sign in, and your local history uploads and stays in sync from then on.
 
