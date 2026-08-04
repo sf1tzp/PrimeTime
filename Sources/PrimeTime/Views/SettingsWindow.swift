@@ -11,12 +11,12 @@ enum SettingsTab: Int, CaseIterable {
 /// Rectangle's preferences window: a toolbar-style `NSTabViewController` with an
 /// icon per section, each section a SwiftUI view hosted in an `NSHostingController`.
 @MainActor
-final class SettingsWindowManager {
+final class SettingsWindowManager: NSObject, NSWindowDelegate {
     static let shared = SettingsWindowManager()
     private var windowController: NSWindowController?
     private var tabController: NSTabViewController?
 
-    private init() {}
+    private override init() {}
 
     func show(model: AppModel, tab: SettingsTab = .settings) {
         if windowController == nil {
@@ -64,9 +64,17 @@ final class SettingsWindowManager {
         // pane's fitting size, so pin the content size to the shared pane size.
         window.setContentSize(size)
         window.center()
+        window.delegate = self
 
         self.tabController = tabController
         return NSWindowController(window: window)
+    }
+
+    /// The panel follows the window that opened it (#142): swatches in the
+    /// settings tabs front the shared colour panel, and letting it outlive
+    /// the window strands it hidden once the app deactivates.
+    func windowWillClose(_ notification: Notification) {
+        NSColorPanel.closeShared()
     }
 
     private func item(_ label: String, symbol: String,

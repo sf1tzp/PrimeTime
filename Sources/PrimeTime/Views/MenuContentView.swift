@@ -46,6 +46,9 @@ struct MenuContentView: View {
         // view-local drafts this teardown was where edits silently died (#70).
         .onDisappear {
             Task { await model.commitEditSession() }
+            // A colour panel opened from the timer editor would otherwise
+            // linger with nothing to sweep it up (#142).
+            NSColorPanel.closeShared()
         }
     }
 
