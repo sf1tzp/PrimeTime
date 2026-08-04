@@ -371,7 +371,10 @@ struct MenuContentView: View {
         return VStack(alignment: .leading, spacing: 4) {
             ForEach($session.tagDrafts) { $tag in
                 HStack(spacing: 6) {
-                    TagColorPicker(key: tag.key, value: tag.value)
+                    // The popover gets its own anchored picker (#13); the
+                    // system panel is unusable from a non-activating window
+                    // (#142).
+                    PopoverTagColorPicker(key: tag.key, value: tag.value)
                     TextField("key", text: $tag.key)
                         .textFieldStyle(.roundedBorder)
                         .autocorrectionDisabled()

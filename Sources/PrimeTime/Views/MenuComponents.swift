@@ -261,17 +261,19 @@ extension View {
     }
 }
 
-/// A non-interactive stand-in for `TagColorPicker`'s chip-shaped well, for
-/// editors that must not read or write the user's palette (the walkthrough's
-/// mock editor).
+/// A stand-in for `TagColorPicker`'s well — the popover picker's swatch
+/// button face, and the swatch in editors that must not read or write the
+/// user's palette (the walkthrough's mock editor). Sized and shaped to match
+/// the native `ColorPicker` well in the window editors (Label Sets, Log), a
+/// 48×20 capsule, so every label-editor row reads the same.
 struct TagColorChip: View {
     let color: Color
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 5)
+        Capsule()
             .fill(color)
-            .frame(width: 26, height: 15)
-            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(.quaternary))
+            .frame(width: 48, height: 20)
+            .overlay(Capsule().strokeBorder(.quaternary))
     }
 }
 

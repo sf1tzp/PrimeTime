@@ -93,6 +93,17 @@ skills, so the two don't drift.
   app process; a `cliclick` inside the wheel applies live to the SwiftUI
   binding (no OK step — unlike text fields, this path is trustworthy).
   Close it via `button 1 of window "Colors"` before driving on.
+- **The popover's anchored colour picker (#13) is invisible to AX windows**
+  (2026-08-04): the child NSPopover never enumerates in `windows` of the
+  process — the count stays 1 while it's plainly on screen. Screenshot to
+  confirm it opened, then drive it by `cliclick` screen coords (the wheel
+  and preset clicks apply live to the binding, same as the Colors panel).
+  The swatch buttons identify by `help` ("Choose colour").
+- **NSColorSampler dismisses the MenuBarExtra popover** the moment its
+  magnifier overlay appears (both the menu popover and the child picker
+  close). The sample still lands — the callback fires and writes through
+  the model, and the edit session survives — so verify by reopening the
+  popover afterwards, not by watching for it to stay up.
 
 ## Screenshots & recordings
 
