@@ -139,42 +139,42 @@ private struct HelpSection: Identifiable {
             symbol: "cube",
             body: """
             Time is tracked as **timespans**: a start, an end, an optional note, and any \
-            number of tags. A *running* timespan is one with no end yet — the menu-bar \
+            number of labels. A *running* timespan is one with no end yet — the menu-bar \
             clock counts it up. Overlaps are allowed, so several can run at once.
 
-            A tag is a **key: value** pair on a timespan, like `project: traggo`. Values \
+            A label is a **key: value** pair on a timespan, like `project: traggo`. Values \
             are free text; keys are lower-cased with spaces turned into “-”.
 
-            Tag **keys** each carry a colour, stored with your timespans in the local \
+            Label **keys** each carry a colour, stored with your timespans in the local \
             database; recolouring a key changes it everywhere the key appears. *Colour \
-            tags by value* (on by default; see Settings) additionally lets you pick a \
+            labels by value* (on by default; see Settings) additionally lets you pick a \
             colour per key: value pair, so spans differ by what they're about rather \
             than only by key.
 
-            **Label sets** are named bundles of tags used to start timespans with one \
+            **Label sets** are named bundles of labels used to start timespans with one \
             click, with a name and an icon. A timespan started from a set keeps the \
-            tags but no link to the set. Their order matters — the popover lists the \
+            labels but no link to the set. Their order matters — the popover lists the \
             first few, in order (drag to reorder in Label Sets).
 
             Everything above lives on this Mac by default. Connect a **sync server** \
             (see Settings) and it becomes yours-across-machines instead: timespans, \
-            key and value colours, tag sets, and the two settings below all follow \
+            key and value colours, label sets, and the two settings below all follow \
             your account to every connected Mac.
             """),
         HelpSection(
-            title: "Choosing good tags",
+            title: "Choosing good labels",
             symbol: "tag",
             body: """
-            Tags are the whole query model — every History chart, export filter, and \
+            Labels are the whole query model — every History chart, export filter, and \
             Label Review pass works over the keys and values you pick, so the schema \
             is worth a minute of thought. Six rules cover it:
             """,
             rules: [
                 Rule(
-                    heading: "Tag what you'll query by",
+                    heading: "Label what you'll query by",
                     detail: """
                     If you'd never group a chart or filter an export by it, it isn't \
-                    a tag — put it in the note.
+                    a label — put it in the note.
                     """),
                 Rule(
                     heading: "Keep values from a small, stable vocabulary",
@@ -202,7 +202,7 @@ private struct HelpSection: Identifiable {
                     (`repo: sfi/PrimeTime`, not `repo: primetime`) — joins are literal.
                     """),
                 Rule(
-                    heading: "Decide what untagged means",
+                    heading: "Decide what unlabelled means",
                     detail: """
                     A span with no `client` should mean something on purpose \
                     (internal? unbilled?), so gaps carry information instead of doubt.
@@ -222,14 +222,14 @@ private struct HelpSection: Identifiable {
             title: "Menu bar popover",
             symbol: "menubar.arrow.up.rectangle",
             body: """
-            The top section lists every **running timespan**: elapsed time, tags, a \
-            pencil that edits its tags and note in place, and a square stop button. \
-            **Start blank timer** begins an untagged timespan — alongside anything \
+            The top section lists every **running timespan**: elapsed time, labels, a \
+            pencil that edits its labels and note in place, and a square stop button. \
+            **Start blank timer** begins an unlabelled timespan — alongside anything \
             already running — and opens its editor so you can describe the time while \
             it runs.
 
-            **Quick start** shows your tag sets, capped to the first N (set the cap in \
-            Settings; “N more…” opens the Launcher). A set whose exact tags are \
+            **Quick start** shows your label sets, capped to the first N (set the cap in \
+            Settings; “N more…” opens the Launcher). A set whose exact labels are \
             currently running is hidden until that timespan stops. While a timer runs \
             the other rows grey out, but each keeps an enabled **＋** that starts the \
             set *alongside* the running timer.
@@ -238,24 +238,24 @@ private struct HelpSection: Identifiable {
             title: "Launcher",
             symbol: "square.grid.2x2",
             body: """
-            Every tag set as a clickable card — tinted with its first tag's colour and \
-            showing the icon picked in Label Sets. A set with no tags of its own (say, \
+            Every label set as a clickable card — tinted with its first label's colour and \
+            showing the icon picked in Label Sets. A set with no labels of its own (say, \
             quick labels do all the work) is tinted with the fallback colour picked \
             there instead. Click to start the set; a card whose \
             set is currently running is dimmed until it stops (other cards keep \
             working, since timespans may overlap). The dashed **＋** card creates a new \
-            tag set.
+            label set.
             """),
         HelpSection(
             title: "Log",
             symbol: "list.bullet.rectangle",
             body: """
             The week's timespans, day by day. Click a row to edit in place — start and \
-            end (the arrows step by the minute), tags, note — or delete it.
+            end (the arrows step by the minute), labels, note — or delete it.
 
-            A row whose tag combination matches no saved tag set shows a **＋**: it \
-            saves those tags as a new set, so an ad-hoc timespan you keep repeating is \
-            one click from becoming a preset.
+            A row whose label combination matches no saved label set shows a **＋**: it \
+            saves those labels as a new set, so an ad-hoc timespan you keep repeating is \
+            one click from becoming a label set.
             """),
         HelpSection(
             title: "Calendar",
@@ -269,19 +269,19 @@ private struct HelpSection: Identifiable {
             title: "History",
             symbol: "chart.pie",
             body: """
-            Two donut charts, each with its own **Group by**: a tag key (one slice per \
-            value) or a tag set (one slice per member tag), so two breakdowns of the \
+            Two donut charts, each with its own **Group by**: a label key (one slice per \
+            value) or a label set (one slice per member label), so two breakdowns of the \
             same week sit side by side. The bars below show each day — one stack per \
             donut when both are active.
 
-            Chart colours come from a fixed palette; with *Colour tags by value* on, \
+            Chart colours come from a fixed palette; with *Colour labels by value* on, \
             your per-value colours win so the charts match the pills elsewhere.
             """),
         HelpSection(
             title: "Label Review",
             symbol: "stethoscope",
             body: """
-            Scans your timespans (pick how far back) and lists every tag key with its \
+            Scans your timespans (pick how far back) and lists every label key with its \
             values and usage counts — the keys with the most distinct values first, \
             which is where typos, near-duplicates, and casing drift show up.
 
@@ -293,7 +293,7 @@ private struct HelpSection: Identifiable {
             progress and cancel.
 
             Two boundaries to know: rewrites only touch the **scanned range** — spans \
-            outside it keep their old tags (scan wider to catch them; approving again \
+            outside it keep their old labels (scan wider to catch them; approving again \
             after a failure or cancel safely picks up where it left off) — and \
             **running timespans are never rewritten**; stop them first, then rescan.
             """),
@@ -305,14 +305,14 @@ private struct HelpSection: Identifiable {
             and no account. **Sync** optionally connects a sync server: sign in once \
             and this Mac gets a device token (revocable server-side; your password is \
             never stored). From then on every change — starting and stopping \
-            timespans, edits, colours, tag sets, the settings below — lands locally \
+            timespans, edits, colours, label sets, the settings below — lands locally \
             first and syncs in the background, so nothing waits on the network and \
             offline edits catch up on reconnect. If the same thing was edited on two \
             Macs, the most recent edit wins. **Import from Traggo** copies an existing \
             Traggo server's history into the local database (safe to re-run).
 
-            **Quick-start tag sets** caps how many sets the popover lists (0 shows \
-            all). **Colour tags by value** (on by default) enables the per-pair colour \
+            **Quick-start label sets** caps how many sets the popover lists (0 shows \
+            all). **Colour labels by value** (on by default) enables the per-pair colour \
             overrides described above; turn it off to colour strictly by key. With a \
             sync server connected, both follow your account across Macs.
             """),

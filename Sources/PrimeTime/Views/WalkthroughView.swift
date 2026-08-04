@@ -401,7 +401,7 @@ private struct AggregatePage: View {
 
     var body: some View {
         WalkthroughPage(index: 1, title: "Labels group up",
-                        subtitle: "This is what a typical week of labeled time spans looks like. See where time was spent simply by grouping these labels together.") {
+                        subtitle: "This is what a typical week of labelled time spans looks like. See where time was spent simply by grouping these labels together.") {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top, spacing: 20) {
                     weekList

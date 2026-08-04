@@ -265,7 +265,7 @@ struct TagReviewView: View {
                 .font(.system(size: 32))
                 .foregroundStyle(.secondary)
             Text(model.review.isScanning
-                 ? "Scanning…" : "No tags in the scanned range")
+                 ? "Scanning…" : "No labels in the scanned range")
                 .foregroundStyle(.secondary)
             Spacer()
         }
@@ -423,7 +423,7 @@ private struct RenameSheet: View {
         let count = review.movableMatches(key: key, value: value).count
         VStack(alignment: .leading, spacing: 12) {
             Text(isKeyRename
-                 ? "Rename tag key “\(key)”"
+                 ? "Rename label key “\(key)”"
                  : "Rename a value of “\(key)”")
                 .font(.headline)
 

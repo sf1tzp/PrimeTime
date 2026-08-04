@@ -329,7 +329,7 @@ struct TagSetsSettingsView: View {
                     }
                 }
             } message: {
-                Text("This will remove the quick start preset. Existing timespan labels will be unaffected.")
+                Text("This will remove the label set. Existing timespan labels will be unaffected.")
             }
     }
 
@@ -395,7 +395,7 @@ struct TagSetsSettingsView: View {
             } else {
                 VStack {
                     Spacer()
-                    Text("Select or add a Tag set")
+                    Text("Select or add a label set")
                         .foregroundStyle(.secondary)
                     Spacer()
                 }

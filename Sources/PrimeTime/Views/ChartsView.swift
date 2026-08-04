@@ -104,7 +104,7 @@ struct HistoryChartsView: View {
             if let grouping = selection.wrappedValue {
                 let totals = folded(model.history.totals(for: grouping))
                 if totals.isEmpty {
-                    placeholderDonut("No tagged time")
+                    placeholderDonut("No labelled time")
                 } else {
                     let colors = colorMap(for: totals, grouping: grouping)
                     let grand = totals.reduce(0) { $0 + $1.seconds }
@@ -172,7 +172,7 @@ struct HistoryChartsView: View {
             let totals = folded(model.history.combinedTotals(outer: outer, inner: inner))
             if totals.isEmpty {
                 // Strict pairing: only spans carrying BOTH dimensions count.
-                placeholderDonut("No time tagged with both groupings")
+                placeholderDonut("No time labelled with both groupings")
             } else {
                 let colors = paletteSlots(for: totals)
                 let grand = totals.reduce(0) { $0 + $1.seconds }
@@ -232,7 +232,7 @@ struct HistoryChartsView: View {
     private var dailyBody: some View {
         let marks = dailyMarks
         if marks.isEmpty {
-            Text("No tagged time this week")
+            Text("No labelled time this week")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
@@ -300,14 +300,14 @@ struct HistoryChartsView: View {
             if includeNone {
                 Text("None").tag(ChartGrouping?.none)
             }
-            Section("Tag keys") {
+            Section("Label keys") {
                 ForEach(model.history.groupableKeys, id: \.self) { key in
                     Text(key).tag(ChartGrouping?.some(.key(key)))
                 }
             }
             let sets = model.tagSets.filter { !$0.labels.isEmpty }
             if !sets.isEmpty {
-                Section("Tag sets") {
+                Section("Label sets") {
                     ForEach(sets) { set in
                         Text(set.name.isEmpty ? "Untitled" : set.name)
                             .tag(ChartGrouping?.some(.tagSet(set.id)))

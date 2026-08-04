@@ -52,7 +52,7 @@ private struct NewTagSetCard: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .help("Create a tag set")
+        .help("Create a label set")
     }
 }
 
@@ -143,7 +143,7 @@ private struct TagSetCard: View {
         .help(isRunning
               ? "Stop the running timer"
               : set.labels.isEmpty
-              ? "Start with no tags"
+              ? "Start with no labels"
               : "Start " + set.labels.map {
                     $0.value.isEmpty ? $0.key : "\($0.key): \($0.value)"
                 }.joined(separator: ", "))

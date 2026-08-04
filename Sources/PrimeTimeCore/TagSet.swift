@@ -15,10 +15,10 @@ package struct TagRow: Identifiable, Codable, Hashable {
     }
 }
 
-/// A named bundle of tags the user can start with one click. "Tag set" is our
-/// term for a reusable group of tags — e.g. "Project A" → `proj:a`. Persisted
-/// locally (UserDefaults); tag sets are a client-side convenience, not a server
-/// concept. Tag *colours*, by contrast, live on the server keyed by tag key.
+/// A named bundle of tags the user can start with one click — "label set" in
+/// UI copy (the type name predates the tag→label rename, #27). Persisted in
+/// the local database and carried by sync (#92), so a user's sets follow
+/// their account across connected Macs.
 package struct TagSet: Identifiable, Codable, Hashable {
     package var id = UUID()
     package var name: String = ""

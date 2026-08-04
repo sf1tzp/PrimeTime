@@ -100,7 +100,7 @@ struct MenuContentView: View {
             .foregroundStyle(.secondary)
 
         if model.tagSets.isEmpty {
-            Text("No tag sets yet — add some in Settings.")
+            Text("No label sets yet — add some in Settings.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         } else {
@@ -322,7 +322,7 @@ struct MenuContentView: View {
                 .monospacedDigit()
             let tags = timer.labels
             if tags.isEmpty {
-                Text("No tags")
+                Text("No labels")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -346,7 +346,7 @@ struct MenuContentView: View {
                 Image(systemName: "pencil")
             }
             .buttonStyle(HoverIconButtonStyle())
-            .help("Edit tags and note")
+            .help("Edit labels and note")
             Button {
                 Task { await model.stop(id: timer.id) }
             } label: {

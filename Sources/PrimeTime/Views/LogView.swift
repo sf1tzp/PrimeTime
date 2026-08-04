@@ -215,7 +215,7 @@ struct LogView: View {
                         Image(systemName: "plus")
                     }
                     .buttonStyle(HoverIconButtonStyle())
-                    .help("Save these tags as a tag set")
+                    .help("Save these labels as a label set")
                     .padding(.trailing, 10)
                 }
             }

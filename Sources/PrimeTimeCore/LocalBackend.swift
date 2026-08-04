@@ -425,7 +425,7 @@ package final class LocalBackend: Backend {
             try db.execute(sql: "UPDATE label_definition SET color = ?, dirty = 1, modified_at = ? WHERE key = ?",
                            arguments: [color, Date(), key])
             guard db.changesCount > 0 else {
-                throw Error(message: "No such tag key: \(key)")
+                throw Error(message: "No such label key: \(key)")
             }
         }
     }

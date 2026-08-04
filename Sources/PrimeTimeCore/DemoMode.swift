@@ -270,7 +270,7 @@ package enum DemoSeed {
             Draft(startMinute: 600, durationMinutes: 150, labels: deepWork,
                   note: "Label Review: drag values between keys"),
             Draft(startMinute: 810, durationMinutes: 30,
-                  note: "Phone call — forgot the tags"),
+                  note: "Phone call — forgot the labels"),
             Draft(startMinute: 870, durationMinutes: 60, labels: serverOps),
             Draft(startMinute: 945, durationMinutes: 45,
                   labels: [SpanLabel(key: "project", value: "website"),
