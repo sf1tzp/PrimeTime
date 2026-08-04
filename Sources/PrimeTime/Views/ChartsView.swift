@@ -6,8 +6,9 @@ import Charts
 /// flexibility lives in the grouping controls: two side-by-side donut columns,
 /// each with its own "Group by" picker (any tag key, or a Tag Set — one series
 /// per member tag), so two breakdowns of the same week sit next to each other.
-/// A Split/Combined toggle (#109) can instead nest the first grouping inside
-/// the second: one donut and one daily stack of strict "outer · inner" pairs.
+/// A "Count labels" toggle (#109) in the navigator row can instead nest the
+/// first grouping inside the second ("in Groups"): one full-width donut and
+/// one daily stack of strict "outer · inner" pairs (#151).
 struct HistoryChartsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var colorScheme
@@ -15,7 +16,7 @@ struct HistoryChartsView: View {
     var body: some View {
         let history = model.history
         VStack(spacing: 0) {
-            WeekNavigatorView()
+            WeekNavigatorView { modeToggle }
             Divider()
 
             if let error = history.errorMessage {
@@ -38,37 +39,38 @@ struct HistoryChartsView: View {
 
     // MARK: Layout
 
+    /// The mode toggle, slotted into the week navigator row (#151):
+    /// "Separately" shows two independent breakdowns side by side; "in
+    /// Groups" counts the first grouping split by the second in a single
+    /// donut. Meaningless with one grouping, so it's disabled (and split
+    /// rendered) until a second grouping is picked.
+    private var modeToggle: some View {
+        @Bindable var history = model.history
+        return HStack(spacing: 6) {
+            // fixedSize: the navigator row resolves its Spacer by squeezing
+            // flexible children, which wrapped this caption onto two lines.
+            Text("Count labels")
+                .foregroundStyle(.secondary)
+                .fixedSize()
+            Picker("Count labels", selection: $history.chartsCombined) {
+                Text("Separately").tag(false)
+                Text("in Groups").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+        }
+        .disabled(history.chartGrouping2 == nil)
+    }
+
     private var chartsBody: some View {
         @Bindable var history = model.history
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Split shows two independent breakdowns side by side;
-                // Combined groups the first by the second in a single donut.
-                // Meaningless with one grouping, so the toggle is disabled
-                // (and split rendered) until a second grouping is picked.
-                HStack {
-                    Spacer()
-                    Picker("Chart mode", selection: $history.chartsCombined) {
-                        Text("Split").tag(false)
-                        Text("Combined").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .fixedSize()
-                    .disabled(history.chartGrouping2 == nil)
-                }
-
                 if let (outer, inner) = combinedGroupings {
-                    // Combined: one donut of "outer · inner" pairs on the
-                    // left; the right column keeps its picker but its donut
-                    // slot explains the nesting instead.
-                    HStack(alignment: .top, spacing: 20) {
-                        combinedColumn(outer: outer, inner: inner,
-                                       selection: $history.chartGrouping)
-                        Divider()
-                        combinedCaptionColumn(outer: outer, inner: inner,
-                                              selection: $history.chartGrouping2)
-                    }
+                    combinedBody(outer: outer, inner: inner,
+                                 outerSelection: $history.chartGrouping,
+                                 innerSelection: $history.chartGrouping2)
                 } else {
                     // Two columns, each a "Group by" picker over its donut. The
                     // second compares another breakdown of the same week; until
@@ -162,63 +164,46 @@ struct HistoryChartsView: View {
         return "Total \(formatDuration(model.history.weekTotalSeconds))"
     }
 
-    /// The left column in combined mode: the outer grouping's picker over one
-    /// donut of the combined pair series and its two-level breakdown.
+    /// Combined mode, full width (#151): the old caption sentence is now the
+    /// header, with both grouping pickers embedded in it — "Counting time by
+    /// [outer] across all [inner] values" — so the selectors and the
+    /// explanation of the nesting are one thing. Below it the donut and its
+    /// two-level breakdown get the whole window width instead of half.
     @ViewBuilder
-    private func combinedColumn(outer: ChartGrouping, inner: ChartGrouping,
-                                selection: Binding<ChartGrouping?>) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            groupingPicker("Group by", selection: selection, includeNone: false)
-            let totals = folded(model.history.combinedTotals(outer: outer, inner: inner))
-            if totals.isEmpty {
-                // Strict pairing: only spans carrying BOTH dimensions count.
-                placeholderDonut("No time labelled with both groupings")
-            } else {
-                let colors = paletteSlots(for: totals)
-                let grand = totals.reduce(0) { $0 + $1.seconds }
-                HStack(alignment: .center, spacing: 16) {
-                    // Strict pairing excludes spans missing either dimension,
-                    // so this total can undershoot the week's — "matched"
-                    // keeps it from contradicting the footer's "tracked".
-                    donut(totals: totals, colors: colors, grand: grand,
-                          caption: "matched")
-                    combinedBreakdownList(totals: totals, colors: colors, grand: grand)
-                }
-            }
+    private func combinedBody(outer: ChartGrouping, inner: ChartGrouping,
+                              outerSelection: Binding<ChartGrouping?>,
+                              innerSelection: Binding<ChartGrouping?>) -> some View {
+        // labelsHidden: the sentence provides the pickers' context, so their
+        // own labels would read "Counting time by Group by [type]…"; the
+        // label strings stay for accessibility.
+        HStack(spacing: 6) {
+            Text("Counting time by")
+            groupingPicker("Group by", selection: outerSelection, includeNone: false)
+                .labelsHidden()
+            Text("across all")
+            // Picking None here drops back to the split layout (see
+            // `combinedGroupings`), same as it did from the old right column.
+            groupingPicker("Across", selection: innerSelection, includeNone: true)
+                .labelsHidden()
+            Text("values")
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// The right column in combined mode: its picker still chooses the inner
-    /// grouping, but the donut slot explains the nesting instead — centered
-    /// in the same 160pt-tall region so toggling modes doesn't shift layout.
-    @ViewBuilder
-    private func combinedCaptionColumn(outer: ChartGrouping, inner: ChartGrouping,
-                                       selection: Binding<ChartGrouping?>) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            groupingPicker("Group by", selection: selection, includeNone: true)
-            let caption = "Counting time by **\(groupingName(outer))** "
-                + "across all **\(groupingName(inner))** values."
-            Text((try? AttributedString(markdown: caption)) ?? AttributedString(caption))
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 220)
+        let totals = folded(model.history.combinedTotals(outer: outer, inner: inner))
+        if totals.isEmpty {
+            // Strict pairing: only spans carrying BOTH dimensions count.
+            placeholderDonut("No time labelled with both groupings")
                 .frame(maxWidth: .infinity)
-                .frame(height: 160)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// A grouping's display name for the combined caption — the tag key, or
-    /// the tag set's name (same "Untitled" fallback as the picker).
-    private func groupingName(_ grouping: ChartGrouping) -> String {
-        switch grouping {
-        case .key(let key):
-            return key
-        case .tagSet(let id):
-            let set = model.tagSets.first(where: { $0.id == id })
-            return set.map { $0.name.isEmpty ? "Untitled" : $0.name } ?? "?"
+        } else {
+            let colors = paletteSlots(for: totals)
+            let grand = totals.reduce(0) { $0 + $1.seconds }
+            HStack(alignment: .center, spacing: 16) {
+                // Strict pairing excludes spans missing either dimension,
+                // so this total can undershoot the week's — "matched"
+                // keeps it from contradicting the footer's "tracked".
+                donut(totals: totals, colors: colors, grand: grand,
+                      caption: "matched")
+                combinedBreakdownList(totals: totals, colors: colors, grand: grand)
+                Spacer(minLength: 0)
+            }
         }
     }
 

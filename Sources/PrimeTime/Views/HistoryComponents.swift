@@ -6,9 +6,17 @@ import PrimeTimeCore
 // MARK: - Week navigator
 
 /// `‹ Today ›  Jan 26 – Feb 1, 2026` — drives `HistoryModel.weekStart`, shown
-/// at the top of every history tab so they all stay on the same week.
-struct WeekNavigatorView: View {
+/// at the top of every history tab so they all stay on the same week. A tab
+/// can slot its own controls into the row's trailing space (before the
+/// refresh button) via `accessory` — the History tab's mode toggle lives
+/// there (#151).
+struct WeekNavigatorView<Accessory: View>: View {
     @Environment(AppModel.self) private var model
+    private let accessory: Accessory
+
+    init(@ViewBuilder accessory: () -> Accessory) {
+        self.accessory = accessory()
+    }
 
     var body: some View {
         let history = model.history
@@ -29,6 +37,8 @@ struct WeekNavigatorView: View {
 
             Spacer()
 
+            accessory
+
             if history.isLoading {
                 ProgressView().controlSize(.small)
             }
@@ -42,6 +52,10 @@ struct WeekNavigatorView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
+}
+
+extension WeekNavigatorView where Accessory == EmptyView {
+    init() { self.init { EmptyView() } }
 }
 
 // MARK: - Timespan editor
