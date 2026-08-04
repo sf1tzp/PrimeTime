@@ -42,6 +42,38 @@ import Testing
         #expect(rows.labels == [SpanLabel(key: "a", value: "b")])
     }
 
+    // MARK: Reordering (moveRow(_:onto:))
+
+    @Test func moveRowDownTakesTargetsPlace() {
+        var rows = [TagRow(key: "a"), TagRow(key: "b"), TagRow(key: "c")]
+        let moved = rows.moveRow(rows[0].id, onto: rows[2].id)
+        #expect(moved)
+        #expect(rows.map(\.key) == ["b", "c", "a"])
+    }
+
+    @Test func moveRowUpTakesTargetsPlace() {
+        var rows = [TagRow(key: "a"), TagRow(key: "b"), TagRow(key: "c")]
+        let moved = rows.moveRow(rows[2].id, onto: rows[0].id)
+        #expect(moved)
+        #expect(rows.map(\.key) == ["c", "a", "b"])
+    }
+
+    @Test func moveRowOntoItselfIsAcceptedNoOp() {
+        var rows = [TagRow(key: "a"), TagRow(key: "b")]
+        let moved = rows.moveRow(rows[0].id, onto: rows[0].id)
+        #expect(moved)
+        #expect(rows.map(\.key) == ["a", "b"])
+    }
+
+    @Test func moveRowFromAnotherListBouncesBack() {
+        // A labels row dropped on a quick-labels row (or vice versa) carries
+        // an id the receiving list doesn't know — refuse, change nothing.
+        var rows = [TagRow(key: "a"), TagRow(key: "b")]
+        let moved = rows.moveRow(UUID(), onto: rows[1].id)
+        #expect(!moved)
+        #expect(rows.map(\.key) == ["a", "b"])
+    }
+
     // MARK: Quick labels (labels(applying:))
 
     @Test func applyingQuickLabelAppends() {

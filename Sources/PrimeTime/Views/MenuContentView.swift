@@ -17,6 +17,9 @@ struct MenuContentView: View {
         case key(UUID), value(UUID), note
     }
     @FocusState private var focusedField: EditorField?
+    /// Measured height of a timer-editor label row, for the gesture-driven
+    /// reorder's slot math — see GestureReorderGrip in RowReorder.swift.
+    @State private var editorRowHeight: CGFloat = 24
 
     /// The quick-start row whose quick-label chips are expanded — set only
     /// after the pointer *rests* on the row (hover intent, below), so the
@@ -399,6 +402,18 @@ struct MenuContentView: View {
                         Image(systemName: "minus.circle")
                     }
                     .buttonStyle(.borderless)
+                }
+                .background(GeometryReader { geo in
+                    Color.clear.onAppear { editorRowHeight = geo.size.height }
+                })
+                // The grip hangs into the leading margin, half off the row,
+                // instead of taking a column of these narrow rows. Reorders
+                // persist through the same commit funnel as every other
+                // popover edit.
+                .overlay(alignment: .leading) {
+                    GestureReorderGrip(tag: tag, rows: $session.tagDrafts,
+                                       stride: editorRowHeight + 4) { commit() }
+                        .offset(x: -18)
                 }
             }
             Button {

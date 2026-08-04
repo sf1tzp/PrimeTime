@@ -409,6 +409,8 @@ struct TagSetDetailView: View {
     @Environment(AppModel.self) private var model
     @Binding var tagSet: TagSet
     @FocusState private var nameFocused: Bool
+    /// The row being drag-reordered — see RowReorder.swift.
+    @State private var dragged: UUID?
 
     var body: some View {
         Form {
@@ -421,6 +423,7 @@ struct TagSetDetailView: View {
             Section("Labels") {
                 ForEach($tagSet.tags) { $tag in
                     HStack(spacing: 6) {
+                        RowReorderGrip(tag: tag, dragged: $dragged)
                         // With no effective labels every row is keyless, so
                         // instead of a disabled swatch each row offers the
                         // set's fallback card colour — the first place a
@@ -457,6 +460,7 @@ struct TagSetDetailView: View {
                         }
                         .buttonStyle(.borderless)
                     }
+                    .rowReorderDrop(tag, rows: $tagSet.tags, dragged: $dragged)
                 }
                 HStack(spacing: 6) {
                     // A set with no rows at all (quick labels do the work)
@@ -492,8 +496,9 @@ struct TagSetDetailView: View {
             }
         }
         .formStyle(.grouped)
-        // Added rows are otherwise unreachable by Tab — see KeyViewLoopRefresher.
-        .refreshesKeyViewLoop(on: "\(tagSet.id)/\(tagSet.tags.count)/\(quickRows.wrappedValue.count)")
+        // Added (or reordered, #155) rows otherwise leave Tab unreachable or
+        // walking the old order — see KeyViewLoopRefresher.
+        .refreshesKeyViewLoop(on: "\(tagSet.id)/\(tagSet.tags.map(\.id))/\(quickRows.wrappedValue.map(\.id))")
         // A freshly created set lands here unnamed: put the cursor in the
         // empty Name field so typing the name is the next keystroke (#134).
         // onChange too — the editor keeps its structural identity when the
@@ -510,6 +515,7 @@ struct TagSetDetailView: View {
         Section {
             ForEach(quickRows) { $tag in
                 HStack(spacing: 6) {
+                    RowReorderGrip(tag: tag, dragged: $dragged)
                     TagColorPicker(key: tag.key, value: tag.value)
                     TextField("key", text: $tag.key, prompt: Text("key"))
                         .textFieldStyle(.roundedBorder)
@@ -534,6 +540,7 @@ struct TagSetDetailView: View {
                     }
                     .buttonStyle(.borderless)
                 }
+                .rowReorderDrop(tag, rows: quickRows, dragged: $dragged)
             }
             Button {
                 quickRows.wrappedValue.append(TagRow())

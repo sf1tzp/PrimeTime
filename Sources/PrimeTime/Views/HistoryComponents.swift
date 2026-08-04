@@ -363,11 +363,14 @@ private struct RunningSessionEditor: View {
 /// swatch, key, value, remove) plus the add-label button.
 private struct LabelRowsEditor: View {
     @Binding var rows: [TagRow]
+    /// The row being drag-reordered — see RowReorder.swift.
+    @State private var dragged: UUID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach($rows) { $tag in
                 HStack(spacing: 6) {
+                    RowReorderGrip(tag: tag, dragged: $dragged)
                     TagColorPicker(key: tag.key, value: tag.value)
                     TextField("key", text: $tag.key)
                         .autocorrectionDisabled()
@@ -386,6 +389,7 @@ private struct LabelRowsEditor: View {
                     }
                     .buttonStyle(.borderless)
                 }
+                .rowReorderDrop(tag, rows: $rows, dragged: $dragged)
             }
             Button {
                 rows.append(TagRow())

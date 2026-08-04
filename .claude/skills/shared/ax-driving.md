@@ -104,6 +104,22 @@ skills, so the two don't drift.
   close). The sample still lands — the callback fires and writes through
   the model, and the edit session survives — so verify by reopening the
   popover afterwards, not by watching for it to stay up.
+- **cliclick drives SwiftUI drags reliably** (2026-08-04, verifying #155 row
+  reorder): `cliclick -e 120 dd:x,y w:250 m:… m:… w:400 du:x2,y2` — a few
+  intermediate `m:` moves plus the waits are what make the drag register;
+  a bare `dd`/`du` pair does not. Works for `onDrag`/`onDrop` (and
+  `.draggable`) in regular windows and for plain `DragGesture`s anywhere.
+  The grip images themselves don't enumerate via AX — compute their screen
+  points from a screenshot (or from a sibling `AXColorWell`'s position) and
+  drag by coordinates, app frontmost. Mid-drag screenshots race the
+  reshuffle animation — trust the end state, not the mid-drag frame.
+- **The MenuBarExtra popover never delivers internal drag-and-drop**
+  (2026-08-04): an `onDrag` from a popover row starts a session (the
+  preview appears, then sticks) but no `onDrop`/`DropDelegate` in the same
+  popover ever fires, and the stuck session eats the next click — send
+  Escape to clear it. That's why the popover's row reorder is a plain
+  `DragGesture` (`GestureReorderGrip`), not the system drag the window
+  editors use.
 
 ## Screenshots & recordings
 

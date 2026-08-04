@@ -94,4 +94,17 @@ package extension [TagRow] {
             .map { SpanLabel(key: normalizeKey($0.key),
                              value: $0.value.trimmingCharacters(in: .whitespaces)) }
     }
+
+    /// Drag-to-reorder (#155): the row with `id` takes the drop target's
+    /// position, shifting the rows between them. Returns false when either
+    /// row is missing — a row dragged in from a different editor list — so
+    /// the drop can bounce back instead of landing.
+    @discardableResult
+    mutating func moveRow(_ id: UUID, onto targetID: UUID) -> Bool {
+        guard let from = firstIndex(where: { $0.id == id }),
+              let to = firstIndex(where: { $0.id == targetID })
+        else { return false }
+        if from != to { insert(remove(at: from), at: to) }
+        return true
+    }
 }

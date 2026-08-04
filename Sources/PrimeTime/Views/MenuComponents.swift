@@ -272,7 +272,7 @@ struct TagColorChip: View {
     var body: some View {
         Capsule()
             .fill(color)
-            .frame(width: 48, height: 20)
+            .frame(width: 18, height: 18)
             .overlay(Capsule().strokeBorder(.quaternary))
     }
 }
