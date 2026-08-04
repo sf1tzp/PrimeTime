@@ -291,6 +291,35 @@ import Testing
         #expect(members == 1)
     }
 
+    @Test func cardColorRoundTripsWithoutDirtyingSync() async throws {
+        let backend = try makeBackend()
+        var set = TagSet(name: "Gaming", colorHex: "#aabbcc")
+        try backend.saveTagSets([set])
+        #expect(try backend.loadTagSets().first?.colorHex == "#aabbcc")
+
+        // Mark the row clean (as a sync would), then recolour: the colour
+        // persists, but the row must stay clean — the card colour is
+        // local-only and never part of the sync payload.
+        try await backend.dbQueue.write { db in
+            try db.execute(sql: "UPDATE label_set SET dirty = 0")
+        }
+        set.colorHex = "#112233"
+        try backend.saveTagSets([set])
+        #expect(try backend.loadTagSets().first?.colorHex == "#112233")
+        let dirty = try await backend.dbQueue.read { db in
+            try Bool.fetchOne(db, sql: "SELECT dirty FROM label_set")!
+        }
+        #expect(!dirty)
+
+        // A rename alongside it still dirties the row as before.
+        set.name = "Games"
+        try backend.saveTagSets([set])
+        let redirty = try await backend.dbQueue.read { db in
+            try Bool.fetchOne(db, sql: "SELECT dirty FROM label_set")!
+        }
+        #expect(redirty)
+    }
+
     @Test func valueColorsRoundTripThroughRealColumns() throws {
         let backend = try makeBackend()
         // Values may contain ":" — the composite key's whole reason to exist.

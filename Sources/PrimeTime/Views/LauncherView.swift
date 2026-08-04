@@ -57,7 +57,9 @@ private struct NewTagSetCard: View {
 }
 
 /// One launcher card: the set's icon and name on a tile tinted with the first
-/// tag's colour (accent when the set has no tags). Clicking starts the set —
+/// tag's colour (the set's own fallback colour when it has no tags — the
+/// quick-labels-only case — and accent when that isn't picked either).
+/// Clicking starts the set —
 /// alongside any running timers (overlapping timespans are supported). A set
 /// that is itself running dims instead; hovering it reveals a stop square,
 /// and clicking stops that timer. Hovering a startable card also floats the
@@ -72,7 +74,7 @@ private struct TagSetCard: View {
         if let first = set.labels.first {
             return model.tagColor(for: first.key, value: first.value)
         }
-        return .accentColor
+        return set.colorHex.flatMap(Color.init(hex:)) ?? .accentColor
     }
 
     private var isRunning: Bool { model.isRunning(set) }

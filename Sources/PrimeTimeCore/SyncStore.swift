@@ -709,8 +709,12 @@ package extension LocalBackend {
 
     private static func insertCleanLabelSet(_ remote: RemoteLabelSet, localId: String,
                                             position: Int, _ db: Database) throws {
+        // color: nil — the card colour is local-only, so the server has
+        // nothing to say about it. (The merge's *update* path keeps the
+        // local colour the same way: it never assigns `row.color`.)
         try LabelSetRow(id: localId, name: remote.name, symbol: remote.symbolName,
-                        position: position, dirty: false, modifiedAt: nil).insert(db)
+                        color: nil, position: position, dirty: false,
+                        modifiedAt: nil).insert(db)
         try insert(members: remote.labels, setId: localId, db)
     }
 

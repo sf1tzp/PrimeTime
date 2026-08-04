@@ -26,13 +26,19 @@ package struct TagSet: Identifiable, Codable, Hashable {
     /// SF Symbol shown on the set's launcher card. Optional so sets saved
     /// before icons existed keep decoding; `symbol` supplies the default.
     package var symbolName: String?
+    /// "#rrggbb" fallback colour for the set's launcher card, used only when
+    /// the set has no labels to borrow a colour from (a quick-labels-only
+    /// set). Local-only, like quick labels — not part of the sync payload.
+    /// Optional so older saves keep decoding; nil means the accent colour.
+    package var colorHex: String?
 
     package init(id: UUID = UUID(), name: String = "", tags: [TagRow] = [],
-                 symbolName: String? = nil) {
+                 symbolName: String? = nil, colorHex: String? = nil) {
         self.id = id
         self.name = name
         self.tags = tags
         self.symbolName = symbolName
+        self.colorHex = colorHex
     }
 
     /// The symbol to render for this set.

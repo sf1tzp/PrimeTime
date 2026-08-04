@@ -87,12 +87,15 @@ struct LabelSetRow: Codable, FetchableRecord, PersistableRecord {
     var id: String
     var name: String
     var symbol: String?
+    /// Fallback launcher-card colour ("#rrggbb"). Local-only: excluded from
+    /// the dirty computation and the sync payload, and merges leave it alone.
+    var color: String?
     var position: Int
     var dirty = true
     var modifiedAt: Date?
 
     enum CodingKeys: String, CodingKey {
-        case id, name, symbol, position, dirty, modifiedAt = "modified_at"
+        case id, name, symbol, color, position, dirty, modifiedAt = "modified_at"
     }
 }
 
@@ -330,6 +333,15 @@ package final class LocalBackend: Backend {
             }
         }
 
+        // Fallback launcher-card colour for sets with no labels. Local-only —
+        // deliberately not part of the sync payload (like quick labels), so
+        // it neither participates in the dirty flag nor rides `LabelSetPush`.
+        migrator.registerMigration("v4-label-set-color") { db in
+            try db.alter(table: "label_set") { t in
+                t.add(column: "color", .text)              // nil = accent
+            }
+        }
+
         return migrator
     }
 
@@ -481,7 +493,8 @@ package final class LocalBackend: Backend {
                 TagSet(id: UUID(uuidString: row.id) ?? UUID(),
                        name: row.name,
                        tags: (bySet[row.id] ?? []).map { TagRow(key: $0.key, value: $0.value) },
-                       symbolName: row.symbol)
+                       symbolName: row.symbol,
+                       colorHex: row.color)
             }
         }
     }
@@ -510,6 +523,10 @@ package final class LocalBackend: Backend {
                 }
                 if var row = byId[id] {
                     let oldMembers = membersBySet[id] ?? []
+                    // `color` is deliberately absent: it isn't synced, so a
+                    // recolour alone must not dirty the row (that would push
+                    // an otherwise-unchanged set). The update below still
+                    // persists it.
                     let changed = row.name != set.name
                         || row.symbol != set.symbolName
                         || row.position != position
@@ -519,6 +536,7 @@ package final class LocalBackend: Backend {
                         }
                     row.name = set.name
                     row.symbol = set.symbolName
+                    row.color = set.colorHex
                     row.position = position
                     if changed {
                         row.dirty = true
@@ -527,8 +545,8 @@ package final class LocalBackend: Backend {
                     try row.update(db)
                 } else {
                     try LabelSetRow(id: id, name: set.name, symbol: set.symbolName,
-                                    position: position, dirty: true,
-                                    modifiedAt: now).insert(db)
+                                    color: set.colorHex, position: position,
+                                    dirty: true, modifiedAt: now).insert(db)
                 }
                 try LabelSetMemberRow.filter(Column("set_id") == id).deleteAll(db)
                 for member in newMembers {

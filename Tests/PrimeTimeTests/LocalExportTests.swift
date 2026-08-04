@@ -33,7 +33,10 @@ import Testing
         try backend.saveValueColors([ValueColorKey.join("repo", "primetime"): "#123456"])
         let set = TagSet(name: "Review", tags: [TagRow(key: "repo", value: "primetime")],
                          symbolName: "hammer")
-        try backend.saveTagSets([set])
+        // A quick-labels-only set: no members, card colour of its own.
+        let gaming = TagSet(name: "Gaming", symbolName: "gamecontroller",
+                            colorHex: "#aabbcc")
+        try backend.saveTagSets([set, gaming])
 
         let export = try backend.exportData(at: date(2_000_000))
 
@@ -60,8 +63,11 @@ import Testing
         ])
         #expect(export.labelSets == [
             LocalExport.LabelSet(id: set.id.uuidString, name: "Review",
-                                 symbol: "hammer",
+                                 symbol: "hammer", color: nil,
                                  labels: [.init(key: "repo", value: "primetime")]),
+            LocalExport.LabelSet(id: gaming.id.uuidString, name: "Gaming",
+                                 symbol: "gamecontroller", color: "#aabbcc",
+                                 labels: []),
         ])
     }
 

@@ -10,6 +10,18 @@ import Testing
         #expect(normalizeKey("My Key") == "my-key")
     }
 
+    @Test func decodesSavesThatPredateCardColor() throws {
+        // Sets persisted before `colorHex` existed (the legacy UserDefaults
+        // JSON the v1 import reads) must keep decoding, colourless.
+        let json = """
+        {"id":"6F1D2C3B-0000-0000-0000-000000000000","name":"Gaming",
+         "tags":[{"id":"6F1D2C3B-0000-0000-0000-000000000001","key":"","value":""}]}
+        """
+        let set = try JSONDecoder().decode(TagSet.self, from: Data(json.utf8))
+        #expect(set.name == "Gaming")
+        #expect(set.colorHex == nil)
+    }
+
     @Test func normalizeKeyTrimsBeforeDashing() {
         // Surrounding whitespace is a typo, not intent — " repo " must not
         // become "-repo-".

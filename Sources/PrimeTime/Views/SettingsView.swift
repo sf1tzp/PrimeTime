@@ -421,7 +421,16 @@ struct TagSetDetailView: View {
             Section("Labels") {
                 ForEach($tagSet.tags) { $tag in
                     HStack(spacing: 6) {
-                        TagColorPicker(key: tag.key, value: tag.value)
+                        // With no effective labels every row is keyless, so
+                        // instead of a disabled swatch each row offers the
+                        // set's fallback card colour — the first place a
+                        // quick-labels-only set's owner looks for it. The
+                        // first typed key swaps it back to the tag picker.
+                        if tagSet.labels.isEmpty {
+                            CardColorPicker(colorHex: $tagSet.colorHex)
+                        } else {
+                            TagColorPicker(key: tag.key, value: tag.value)
+                        }
                         // labelsHidden + prompt: the grouped Form would
                         // otherwise render the titles as row labels — the
                         // editors use in-field hints instead.
@@ -449,18 +458,31 @@ struct TagSetDetailView: View {
                         .buttonStyle(.borderless)
                     }
                 }
-                Button {
-                    tagSet.tags.append(TagRow())
-                } label: {
-                    Label("Add Label", systemImage: "plus")
+                HStack(spacing: 6) {
+                    // A set with no rows at all (quick labels do the work)
+                    // still needs somewhere to pick its card colour — the
+                    // swatch sits where the first row's would.
+                    if tagSet.tags.isEmpty {
+                        CardColorPicker(colorHex: $tagSet.colorHex)
+                    }
+                    Button {
+                        tagSet.tags.append(TagRow())
+                    } label: {
+                        Label("Add Label", systemImage: "plus")
+                    }
+                    .buttonStyle(.borderless)
                 }
-                .buttonStyle(.borderless)
                 Text("Keys are lower-cased with spaces turned into “-”. Missing keys are created automatically.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(colorCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if tagSet.labels.isEmpty {
+                    Text("With no labels, the swatch picks this set’s Launcher card colour instead. Saved on this Mac (syncing is #92).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             quickLabelsSection
             // Last deliberately: the icon is cosmetic next to the labels and
@@ -559,6 +581,28 @@ struct TagSetDetailView: View {
         model.colorTagsByValue
             ? "Colours are saved per key: value pair and override the key’s colour. Right-click a swatch to go back to the key colour."
             : "Colours are saved per label key, so recolouring a key here also changes it in every other label set that uses it."
+    }
+}
+
+/// The fallback-colour swatch for a set's launcher card, shown in place of
+/// `TagColorPicker` when the set has no labels to borrow a colour from (a
+/// quick-labels-only set). Binds straight to `TagSet.colorHex` — a per-set,
+/// local-only colour, unlike the shared tag palette the other swatches edit.
+/// Right-click to go back to the accent colour.
+private struct CardColorPicker: View {
+    @Binding var colorHex: String?
+
+    var body: some View {
+        ColorPicker("", selection: Binding(
+            get: { colorHex.flatMap(Color.init(hex:)) ?? .accentColor },
+            set: { colorHex = $0.hexString }
+        ), supportsOpacity: false)
+        .labelsHidden()
+        .contextMenu {
+            Button("Use accent colour") { colorHex = nil }
+                .disabled(colorHex == nil)
+        }
+        .help("Launcher card colour")
     }
 }
 

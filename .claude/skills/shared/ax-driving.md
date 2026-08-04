@@ -77,6 +77,22 @@ skills, so the two don't drift.
 - SwiftUI segmented controls (`AXRadioGroup`) click fine via
   `radio button N`, but a disabled control silently no-ops — read the
   values back to confirm the switch took.
+- **`button N` and `UI element N` index differently** (learned 2026-08-03
+  driving the popover): `button 24` counts only buttons and fails with
+  "Invalid index" past their count, while an element enumeration that showed
+  a button as the 24th child needs `UI element 24`. When a click errors
+  -1719 on an element you just enumerated, re-address it by element index.
+  Coercing `position of e as string` concatenates x,y with no separator
+  ("1137612" = 1137,612) — fetch coordinates separately if you need math.
+- The popover's **Settings… row switches the main "PrimeTime" window to its
+  Settings tab** — no separate settings window exists, and ⌘, does nothing.
+  Onboarding's unnamed footer buttons are the last three of `group 1`
+  (Back / Skip Tour / Next); pick "Skip Tour" as the ~85pt-wide one.
+- **Colour pickers drive fine end-to-end** (2026-08-03, card-colour verify):
+  click the `AXColorWell` swatch → panel appears as `window "Colors"` of the
+  app process; a `cliclick` inside the wheel applies live to the SwiftUI
+  binding (no OK step — unlike text fields, this path is trustworthy).
+  Close it via `button 1 of window "Colors"` before driving on.
 
 ## Screenshots & recordings
 

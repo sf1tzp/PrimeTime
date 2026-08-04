@@ -60,6 +60,10 @@ package struct LocalExport: Codable, Equatable {
         package var id: String
         package var name: String
         package var symbol: String?
+        /// Fallback launcher-card colour ("#rrggbb") for a set with no
+        /// labels. Nil (and omitted from the JSON, like `filter`) when unset,
+        /// so colourless exports encode exactly as before the field existed.
+        package var color: String?
         package var labels: [Label]
     }
 
@@ -140,6 +144,7 @@ package extension LocalBackend {
             let sets = setRows.map { row in
                 LocalExport.LabelSet(
                     id: row.id, name: row.name, symbol: row.symbol,
+                    color: row.color,
                     labels: (membersBySet[row.id] ?? []).map {
                         LocalExport.Label(key: $0.key, value: $0.value)
                     })

@@ -239,7 +239,9 @@ private struct HelpSection: Identifiable {
             symbol: "square.grid.2x2",
             body: """
             Every tag set as a clickable card — tinted with its first tag's colour and \
-            showing the icon picked in Label Sets. Click to start the set; a card whose \
+            showing the icon picked in Label Sets. A set with no tags of its own (say, \
+            quick labels do all the work) is tinted with the fallback colour picked \
+            there instead. Click to start the set; a card whose \
             set is currently running is dimmed until it stops (other cards keep \
             working, since timespans may overlap). The dashed **＋** card creates a new \
             tag set.

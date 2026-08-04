@@ -316,6 +316,24 @@ import Testing
         #expect(try store.loadTagSets().isEmpty)
     }
 
+    @Test func cardColorSurvivesRemoteLabelSetUpdate() async throws {
+        let (store, server, engine) = try makeConnected()
+        try store.saveTagSets([TagSet(name: "Gaming", colorHex: "#aabbcc")])
+        try await sync(engine)
+
+        // Renamed on the server (another device) later: the merge takes the
+        // synced fields but must leave the local-only card colour alone.
+        let serverId = server.sets.keys.first!
+        server.now = Date().addingTimeInterval(3600)
+        try await server.updateLabelSet(id: serverId, name: "Games",
+                                        symbolName: "gamecontroller",
+                                        labels: [], position: 0)
+        try await sync(engine)
+        let merged = try store.loadTagSets()
+        #expect(merged.map(\.name) == ["Games"])
+        #expect(merged.first?.colorHex == "#aabbcc")
+    }
+
     // MARK: Offline queue
 
     @Test func offlineEditsQueueAndPushOnReconnect() async throws {
