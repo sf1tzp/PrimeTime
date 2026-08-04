@@ -263,7 +263,7 @@ private struct HelpSection: Identifiable {
             body: """
             The same week as a time grid, timespans as coloured blocks (overlapping \
             spans share the column; spans crossing midnight draw one block per day). \
-            Click a block to edit it in a popover.
+            Click a block to open it in the Log, where it expands for editing.
             """),
         HelpSection(
             title: "History",

@@ -3,13 +3,11 @@ import PrimeTimeCore
 
 /// The Calendar tab: a 7-day week grid with a vertical time axis, timespans as
 /// coloured blocks (like the web UI's calendar). Overlapping spans share the
-/// column width via lane packing; clicking a block opens the editor in a
-/// popover. Spans crossing midnight render one segment per day they touch.
+/// column width via lane packing; clicking a block jumps to the Log tab with
+/// that span open for editing (#130 — the grid is too dense for a popover).
+/// Spans crossing midnight render one segment per day they touch.
 struct CalendarView: View {
     @Environment(AppModel.self) private var model
-    /// Which block's popover is open, identified by segment (a span can have
-    /// two segments if it crosses midnight).
-    @State private var editingSegmentID: String?
 
     private let hourHeight: CGFloat = 40
     private let gutterWidth: CGFloat = 46
@@ -130,12 +128,10 @@ struct CalendarView: View {
         let color = blockColor(segment.span)
 
         Button {
-            editingSegmentID = segment.id
-            // Opening a running block's editor claims the shared edit
-            // session, same as expanding a running Log row.
-            if segment.span.isRunning {
-                Task { await model.beginEditing(segment.span) }
-            }
+            // Hand the span to the Log tab and switch over — it scrolls to
+            // the row and expands it.
+            model.history.requestLogEdit(of: segment.span)
+            SettingsWindowManager.shared.show(model: model, tab: .log)
         } label: {
             VStack(alignment: .leading, spacing: 1) {
                 Text(segment.span.timeRangeLabel)
@@ -165,18 +161,8 @@ struct CalendarView: View {
         .padding(.leading, x)
         .padding(.top, y)
         .help("\(segment.span.timeRangeLabel)  \(tagText(segment.span))"
-              + (segment.span.note.isEmpty ? "" : "\n\(segment.span.note)"))
-        .popover(isPresented: popoverBinding(segment), arrowEdge: .trailing) {
-            TimeSpanEditorView(span: segment.span) { editingSegmentID = nil }
-                .frame(width: 340)
-        }
-    }
-
-    private func popoverBinding(_ segment: CalendarSegment) -> Binding<Bool> {
-        Binding(
-            get: { editingSegmentID == segment.id },
-            set: { if !$0 { editingSegmentID = nil } }
-        )
+              + (segment.span.note.isEmpty ? "" : "\n\(segment.span.note)")
+              + "\nClick to edit in the Log")
     }
 
     private func tagText(_ span: TimeSpan) -> String {

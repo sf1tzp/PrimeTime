@@ -523,6 +523,18 @@ final class AppModel {
         await commit(previous)
     }
 
+    /// `beginEditing` for non-async callers that need the claim in place
+    /// before anything else renders (#130: the Calendar→Log hand-off, where
+    /// the tab switch lays out the Log synchronously — a claim deferred into
+    /// a Task would land after the running row's editor has already rendered
+    /// unclaimed and collapsed itself). Claims now, flushes the previous
+    /// session's drafts in the background.
+    func claimEditingNow(_ span: TimeSpan) {
+        let previous = editSession
+        editSession = SpanEditSession(span: span)
+        Task { await commit(previous) }
+    }
+
     /// Write the session's drafts to its timespan if they changed, staying in
     /// edit mode — the live path behind Return, focus moves, and the popover
     /// closing. Returns false when the write failed (the session stays put so

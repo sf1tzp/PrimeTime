@@ -59,6 +59,22 @@ final class HistoryModel {
     /// breakdown — the first grouping split by the second — instead of two
     /// side-by-side donuts. Session-only, like the groupings.
     var chartsCombined: Bool = false
+    /// A one-shot hand-off from the Calendar tab (#130): the id of a span the
+    /// Log tab should scroll to and open for editing when it next appears.
+    /// The Log view clears it once consumed.
+    var pendingLogEditID: Int?
+
+    /// Ask the Log tab to open this span's editor (#130). For a running span
+    /// this also claims the shared edit session — synchronously, before the
+    /// caller triggers the tab switch: the Log can render its expanded row in
+    /// the same pass, and an unclaimed running editor collapses itself (see
+    /// `TimeSpanEditorView.runningBody`).
+    func requestLogEdit(of span: TimeSpan) {
+        pendingLogEditID = span.id
+        if span.isRunning {
+            app.claimEditingNow(span)
+        }
+    }
 
     /// True once a load has completed, so mutations elsewhere in the app (e.g.
     /// stopping the timer from the popover) know a reload is worthwhile.
@@ -134,6 +150,7 @@ final class HistoryModel {
         chartGrouping = nil     // re-derived from the new backend's data
         chartGrouping2 = nil
         chartsCombined = false
+        pendingLogEditID = nil  // span ids mean nothing in the new store
     }
 
     func reload() async {

@@ -12,45 +12,68 @@ struct LogView: View {
 
     var body: some View {
         let history = model.history
-        VStack(spacing: 0) {
-            WeekNavigatorView()
-            filterField
-            Divider()
+        ScrollViewReader { proxy in
+            VStack(spacing: 0) {
+                WeekNavigatorView()
+                filterField
+                Divider()
 
-            if let error = history.errorMessage {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .lineLimit(2)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 6)
-            }
+                if let error = history.errorMessage {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .lineLimit(2)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 6)
+                }
 
-            if history.spans.isEmpty && !history.isLoading {
-                emptyState
-            } else if filteredSpans.isEmpty && !history.isLoading {
-                // The week has spans; the filter just matches none of them.
-                noMatchState
-            } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0,
-                               pinnedViews: .sectionHeaders) {
-                        // Newest day first, matching the newest-first span order.
-                        ForEach(daysWithSpans, id: \.day.start) { group in
-                            Section {
-                                ForEach(group.spans) { span in
-                                    row(for: span)
-                                    Divider().padding(.leading, 12)
+                if history.spans.isEmpty && !history.isLoading {
+                    emptyState
+                } else if filteredSpans.isEmpty && !history.isLoading {
+                    // The week has spans; the filter just matches none of them.
+                    noMatchState
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0,
+                                   pinnedViews: .sectionHeaders) {
+                            // Newest day first, matching the newest-first span order.
+                            ForEach(daysWithSpans, id: \.day.start) { group in
+                                Section {
+                                    ForEach(group.spans) { span in
+                                        row(for: span)
+                                            .id(span.id)
+                                        Divider().padding(.leading, 12)
+                                    }
+                                } header: {
+                                    dayHeader(group.day)
                                 }
-                            } header: {
-                                dayHeader(group.day)
                             }
                         }
                     }
                 }
             }
+            // The Calendar redirects here instead of editing in place (#130):
+            // onAppear covers the tab switch, onChange the already-visible case.
+            .onAppear { consumePendingEdit(proxy) }
+            .onChange(of: model.history.pendingLogEditID) { consumePendingEdit(proxy) }
         }
         .task { await history.loadIfNeeded() }
+    }
+
+    /// Open the span another tab handed off (#130): drop a filter that would
+    /// hide it, expand its editor, and scroll its row into view.
+    private func consumePendingEdit(_ proxy: ScrollViewProxy) {
+        guard let id = model.history.pendingLogEditID else { return }
+        model.history.pendingLogEditID = nil
+        guard let span = model.history.spans.first(where: { $0.id == id }) else { return }
+        if !filter.isEmpty, !filter.matches(span) { filterText = "" }
+        // No session claim here — for a running span, `requestLogEdit(of:)`
+        // claimed it back at the sender, ahead of this render.
+        editingID = id
+        // Scroll once the row list (and the expanded editor) has laid out.
+        DispatchQueue.main.async {
+            withAnimation { proxy.scrollTo(id, anchor: .center) }
+        }
     }
 
     // MARK: Filtering (#51)
