@@ -149,7 +149,7 @@ package extension Backend {
     @discardableResult
     func ensureLabelDefinitions(for tags: [SpanLabel],
                                 defaultColor: String) async throws -> [LabelDefinition] {
-        var definitions = try await labelDefinitions()
+        let definitions = try await labelDefinitions()
         var known = Set(definitions.map(\.key))
         var createdAny = false
         for tag in tags where known.insert(tag.key).inserted {
