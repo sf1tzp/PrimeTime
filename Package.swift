@@ -1,5 +1,22 @@
 // swift-tools-version:6.0
+import Foundation
 import PackageDescription
+
+// Mac App Store variant (#115): `PRIMETIME_MAS=1 swift build` builds the
+// store flavour. Sparkle must not merely be unused but unlinked — shipping
+// an updater framework in a store build is a rejection — so the product
+// dependency drops out of the app target and MAS_BUILD gates the sources
+// (Updater.swift keeps a no-op stub half). The Sparkle *package* stays
+// declared either way so Package.resolved never churns between variants;
+// SwiftPM's "dependency 'Sparkle' is not used" warning in MAS builds is the
+// accepted cost. Always give the variant its own scratch path
+// (bundle-app.sh uses .build/mas) so object files built with different
+// flags never mix.
+let masBuild = ProcessInfo.processInfo.environment["PRIMETIME_MAS"] == "1"
+
+let appDependencies: [Target.Dependency] = masBuild
+    ? ["PrimeTimeCore"]
+    : ["PrimeTimeCore", .product(name: "Sparkle", package: "Sparkle")]
 
 let package = Package(
     name: "PrimeTime",
@@ -40,10 +57,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "PrimeTime",
-            dependencies: [
-                "PrimeTimeCore",
-                .product(name: "Sparkle", package: "Sparkle")
-            ],
+            dependencies: appDependencies,
             path: "Sources/PrimeTime",
             // The brand font (OFL text rides alongside) and the icon the
             // onboarding masthead draws. Resolved via Brand.resources, which
@@ -55,6 +69,8 @@ let package = Package(
                 .copy("Resources/BricolageGrotesque-OFL.txt"),
                 .copy("Resources/AppIcon.icns")
             ],
+            // MAS_BUILD switches Updater.swift to its Sparkle-free stub.
+            swiftSettings: masBuild ? [.define("MAS_BUILD")] : [],
             linkerSettings: [
                 // Sparkle.framework rides in the .app at Contents/Frameworks;
                 // SwiftPM only adds an rpath into .build/artifacts (which also

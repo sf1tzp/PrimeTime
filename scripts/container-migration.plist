@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Container migration manifest (#115). The first time the sandboxed
+	     app launches, macOS creates its container
+	     (~/Library/Containers/tools.primetime.PrimeTime) and processes this
+	     manifest — bundle-app.sh puts it at Contents/Resources/
+	     container-migration.plist, the filename the OS looks for. Each Move
+	     entry names a pre-sandbox path relative to the home folder
+	     (${ApplicationSupport} = ~/Library/Application Support); a single
+	     string means "move to the same relative path inside the container".
+	     It is a *move*, not a copy: after migration the old path is empty
+	     and the data lives under the container's Data/Library/... mirror.
+	     UserDefaults need no entry — the OS migrates the preferences plist
+	     by itself. Runs once, only when the container is first created; to
+	     re-test, delete the container folder and relaunch. -->
+	<key>Move</key>
+	<array>
+		<!-- The whole app-data folder: primetime.sqlite plus its -wal/-shm
+		     journal siblings, and demo.sqlite (#39) if one exists. -->
+		<string>${ApplicationSupport}/tools.primetime.PrimeTime</string>
+	</array>
+</dict>
+</plist>

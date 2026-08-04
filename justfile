@@ -29,10 +29,14 @@ export-captures *flags:
 bundle:
   scripts/bundle-app.sh
 
-# Sign the bundle for distribution: hardened runtime + secure timestamp, with
-# Sparkle's nested executables signed first (see scripts/sign-app.sh).
+# Sign the bundle for distribution: hardened runtime + secure timestamp + App
+# Sandbox entitlements (#115), with Sparkle's nested executables signed first
+# (see scripts/sign-app.sh).
 # Run `just sign-dist "TraggoMenuApp Dev"` for a local pipeline check without
 # the Developer ID cert (spctl will reject it, codesign --verify still passes).
+# NB the sandbox activates for dev-signed builds too: the first launch moves
+# real app data into ~/Library/Containers/tools.primetime.PrimeTime (see
+# scripts/container-migration.plist).
 sign-dist identity="Developer ID Application: Steven Fitzpatrick (2GY54R95TD)": bundle
   scripts/sign-app.sh dist/PrimeTime.app "{{identity}}"
 
@@ -75,6 +79,22 @@ tag version:
 # stop after the appcast.
 release *flags:
   scripts/release.sh {{flags}}
+
+# --- Mac App Store variant (#115) ---
+
+# Assemble dist/mas/PrimeTime.app: the store build — sandboxed like the
+# direct one, but with no Sparkle (the store owns updates), no bundled CLI
+# (that stays a cask concept), and the store-only Info.plist keys.
+bundle-mas:
+  VARIANT=mas scripts/bundle-app.sh
+
+# Sign the MAS bundle and wrap it in the signed installer .pkg that App Store
+# Connect ingests (upload via Transporter). Needs the store cert pair —
+# "Apple Distribution" + "Mac Installer Distribution" — and a Mac App Store
+# provisioning profile (MAS_PROFILE=path/to/profile). App Review replaces
+# notarization on this channel, so the pkg uploads as-is.
+package-mas app_id="Apple Distribution" pkg_id="Mac Installer Distribution": bundle-mas
+  scripts/package-mas.sh dist/mas/PrimeTime.app "{{app_id}}" "{{pkg_id}}"
 
 # --- Server distribution (#75) ---
 

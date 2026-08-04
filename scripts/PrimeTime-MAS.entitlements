@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Sandbox (#115), Mac App Store variant: the direct file minus the
+	     Sparkle mach-lookup exceptions — the store owns updates, and
+	     temporary-exception entitlements invite App Review questions. The
+	     App Store identity keys (com.apple.application-identifier,
+	     com.apple.developer.team-identifier) that Xcode would inject are
+	     added at sign time by package-mas.sh, keeping this file free of
+	     team-specific values. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- Outgoing connections: sync with a self-hosted PrimeTime Server and
+	     the one-shot Traggo import. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Powerbox: the JSON export writes to the NSSavePanel's chosen path. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+</dict>
+</plist>

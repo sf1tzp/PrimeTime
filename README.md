@@ -109,6 +109,10 @@ To remove local data and get a fresh install:
 rm -rf ~/Library/Application\ Support/PrimeTime && defaults delete PrimeTime
 ```
 
+Installed builds are sandboxed and keep everything inside their container
+instead — remove `~/Library/Containers/tools.primetime.PrimeTime` to reset
+one of those.
+
 ## Provenance
 
 The `server/` tree is derived from [traggo/server](https://github.com/traggo/server); its provenance and licensing are documented in [server/README.md](server/README.md).

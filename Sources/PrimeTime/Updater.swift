@@ -1,6 +1,28 @@
 import Foundation
 import PrimeTimeCore
 import Combine
+
+#if MAS_BUILD
+
+/// Mac App Store variant (#115): the store owns updates, so Sparkle isn't
+/// linked (Package.swift drops the product under PRIMETIME_MAS=1) and this
+/// stub takes the real model's place. `isAvailable` stays false, so every
+/// update surface — the menu's "Check for Updates…", the Settings toggle —
+/// hides itself exactly as it does in dev builds and demos.
+@Observable
+final class UpdaterModel {
+    private(set) var canCheckForUpdates = false
+    var automaticallyChecksForUpdates = false
+
+    var isAvailable: Bool { false }
+
+    init(demo: Bool = DemoMode.isActive) {}
+
+    func checkForUpdates() {}
+}
+
+#else
+
 import Sparkle
 
 /// Sparkle wiring (#46): owns the app's one `SPUStandardUpdaterController`
@@ -55,3 +77,5 @@ final class UpdaterModel {
         controller?.checkForUpdates(nil)
     }
 }
+
+#endif

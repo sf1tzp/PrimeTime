@@ -25,6 +25,13 @@
 # scripts/release-server.sh (`just release-server`; #75) — same versioning,
 # independent execution (that side needs docker/helm, not a Mac).
 #
+# The Mac App Store variant (#115) ships through its own, shorter path:
+# `just package-mas` (scripts/package-mas.sh) builds the Sparkle-free,
+# CLI-free bundle and the signed .pkg, uploaded via Transporter. App Review
+# replaces the notarize/staple/assess steps on that channel, and the
+# appcast/cask publishing here plays no part. Both channels are sandboxed
+# with the same containment (scripts/PrimeTime*.entitlements).
+#
 # Secrets stay in the login keychain — the "Developer ID Application"
 # identity and the notarytool profile ("primetime-notary"; one-time setup:
 # xcrun notarytool store-credentials primetime-notary). Publishing needs the

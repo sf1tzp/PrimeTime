@@ -48,20 +48,28 @@ struct StoreOptions: ParsableArguments {
                                    + "then a dev build's; PRIMETIME_DB overrides."))
     var db: String?
 
-    /// The store paths the app can be using: the bundled app resolves its
-    /// Application Support directory from its bundle identifier, an
-    /// unbundled dev build falls back to the target name (see
-    /// `LocalBackend.defaultDatabaseURL`). The CLI has no bundle either, so
-    /// it names the app's directory explicitly rather than inheriting the
-    /// dev fallback.
+    /// The store paths the app can be using: the sandboxed installed app
+    /// (#115) keeps its data inside its container — the CLI runs unsandboxed
+    /// (it's a plain terminal tool, see sign-app.sh) so it reaches straight
+    /// into that folder; an unbundled dev build has no sandbox and falls
+    /// back to the plain Application Support paths, bundle-id first then the
+    /// target-name fallback (see `LocalBackend.defaultDatabaseURL`). The
+    /// container comes first because the sandboxed app *moves* the store
+    /// there on first launch (container-migration.plist) — anything left at
+    /// the old path afterwards is another build's, not stale data.
     static func candidateURLs() throws -> [URL] {
+        let bundleId = "tools.primetime.PrimeTime"
         let support = try FileManager.default.url(for: .applicationSupportDirectory,
                                                   in: .userDomainMask,
                                                   appropriateFor: nil, create: false)
-        return ["tools.primetime.PrimeTime", "PrimeTime"].map {
-            support.appendingPathComponent($0, isDirectory: true)
-                .appendingPathComponent("primetime.sqlite")
-        }
+        let containerSupport = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Containers/\(bundleId)"
+                + "/Data/Library/Application Support", isDirectory: true)
+        return [
+            containerSupport.appendingPathComponent(bundleId, isDirectory: true),
+            support.appendingPathComponent(bundleId, isDirectory: true),
+            support.appendingPathComponent("PrimeTime", isDirectory: true),
+        ].map { $0.appendingPathComponent("primetime.sqlite") }
     }
 
     /// Resolve to an *existing* store. The CLI never creates one: a fresh
