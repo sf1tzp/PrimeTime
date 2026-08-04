@@ -114,6 +114,24 @@ struct LabelSetMemberRow: Codable, FetchableRecord, PersistableRecord {
     }
 }
 
+/// One quick label of a set (`label_set_quick_member`, v5) — the one-click
+/// refinements offered on hover (#61), shaped exactly like
+/// `label_set_member`. A separate table rather than a kind column so the
+/// existing member queries stay untouched; like members, quick rows carry
+/// no sync metadata of their own — the owning set's `dirty`/`modified_at`
+/// covers them (#92).
+struct LabelSetQuickMemberRow: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "label_set_quick_member"
+    var setId: String
+    var position: Int
+    var key: String
+    var value: String
+
+    enum CodingKeys: String, CodingKey {
+        case setId = "set_id", position, key, value
+    }
+}
+
 // MARK: - LocalBackend
 
 /// The serverless `Backend`: a single SQLite file under Application Support,
@@ -185,6 +203,7 @@ package final class LocalBackend: Backend {
         // and UserDefaults isn't, but the plain values it yields are.
         let legacyPresets = legacyDefaults?.data(forKey: "presets")
         let legacyColors = legacyDefaults?.dictionary(forKey: "valueColors") as? [String: String]
+        let legacyQuickLabels = legacyDefaults?.data(forKey: "quickLabelsBySet")
 
         var migrator = DatabaseMigrator()
 
@@ -334,11 +353,43 @@ package final class LocalBackend: Backend {
         }
 
         // Fallback launcher-card colour for sets with no labels. Local-only —
-        // deliberately not part of the sync payload (like quick labels), so
-        // it neither participates in the dirty flag nor rides `LabelSetPush`.
+        // deliberately not part of the sync payload, so it neither
+        // participates in the dirty flag nor rides `LabelSetPush`.
         migrator.registerMigration("v4-label-set-color") { db in
             try db.alter(table: "label_set") { t in
                 t.add(column: "color", .text)              // nil = accent
+            }
+        }
+
+        // Quick labels (#92) move from the AppModel's UserDefaults JSON blob
+        // into the store, next to label_set_member, so the label-set sync
+        // machinery covers them. The import follows the v1 precedent —
+        // copied, not cleared, so nothing regresses if an old build runs
+        // again. Migrated quick labels have never been pushed, so their
+        // owning sets go dirty; blob entries for sets that no longer exist
+        // (deletions left them lingering harmlessly) are dropped.
+        migrator.registerMigration("v5-quick-labels") { db in
+            try db.create(table: "label_set_quick_member") { t in
+                t.column("set_id", .text).notNull().indexed()
+                    .references("label_set", onDelete: .cascade)
+                t.column("position", .integer).notNull()
+                t.column("key", .text).notNull()
+                t.column("value", .text).notNull()
+            }
+            guard let data = legacyQuickLabels,
+                  let decoded = try? JSONDecoder().decode([String: [TagRow]].self, from: data)
+            else { return }
+            let setIds = Set(try String.fetchAll(db, sql: "SELECT id FROM label_set"))
+            let now = Date()
+            for (setId, rows) in decoded where setIds.contains(setId) && !rows.isEmpty {
+                for (position, row) in rows.enumerated() {
+                    try db.execute(
+                        sql: "INSERT INTO label_set_quick_member (set_id, position, key, value) VALUES (?, ?, ?, ?)",
+                        arguments: [setId, position, row.key, row.value])
+                }
+                try db.execute(
+                    sql: "UPDATE label_set SET dirty = 1, modified_at = ? WHERE id = ?",
+                    arguments: [now, setId])
             }
         }
 
@@ -557,6 +608,49 @@ package final class LocalBackend: Backend {
             for row in existing where !kept.contains(row.id) {
                 try Self.tombstoneIfMapped(entity: .labelSet, localId: row.id, db)
                 _ = try row.delete(db)   // members cascade
+            }
+        }
+    }
+
+    /// Quick labels per set, in AppModel's dictionary form (set UUID string
+    /// → ordered rows), so the in-memory representation matches what the
+    /// UserDefaults blob held.
+    package func loadQuickLabels() throws -> [String: [TagRow]] {
+        try dbQueue.read { db in
+            let rows = try LabelSetQuickMemberRow.order(Column("position")).fetchAll(db)
+            var quickLabels: [String: [TagRow]] = [:]
+            for row in rows {
+                quickLabels[row.setId, default: []].append(TagRow(key: row.key, value: row.value))
+            }
+            return quickLabels
+        }
+    }
+
+    /// Snapshot save with per-set diffing, like `saveTagSets`: quick labels
+    /// ride the owning set's sync record, so a set whose quick list changed
+    /// goes dirty (and pushes) while untouched sets keep their sync state.
+    /// Entries for set ids not in the store are ignored — the in-memory
+    /// dictionary keeps entries for deleted sets, harmlessly.
+    package func saveQuickLabels(_ quickLabels: [String: [TagRow]]) throws {
+        try dbQueue.write { db in
+            let now = Date()
+            let setIds = try String.fetchAll(db, sql: "SELECT id FROM label_set")
+            let existing = try LabelSetQuickMemberRow.order(Column("position")).fetchAll(db)
+            let bySet = Dictionary(grouping: existing, by: \.setId)
+            for setId in setIds {
+                let old = bySet[setId] ?? []
+                let new = quickLabels[setId] ?? []
+                let changed = old.count != new.count
+                    || !zip(old, new).allSatisfy { $0.key == $1.key && $0.value == $1.value }
+                guard changed else { continue }
+                try LabelSetQuickMemberRow.filter(Column("set_id") == setId).deleteAll(db)
+                for (position, row) in new.enumerated() {
+                    try LabelSetQuickMemberRow(setId: setId, position: position,
+                                               key: row.key, value: row.value).insert(db)
+                }
+                try db.execute(
+                    sql: "UPDATE label_set SET dirty = 1, modified_at = ? WHERE id = ?",
+                    arguments: [now, setId])
             }
         }
     }

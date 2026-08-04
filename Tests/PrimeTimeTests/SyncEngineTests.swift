@@ -327,11 +327,70 @@ import Testing
         server.now = Date().addingTimeInterval(3600)
         try await server.updateLabelSet(id: serverId, name: "Games",
                                         symbolName: "gamecontroller",
-                                        labels: [], position: 0)
+                                        labels: [], quickLabels: [], position: 0)
         try await sync(engine)
         let merged = try store.loadTagSets()
         #expect(merged.map(\.name) == ["Games"])
         #expect(merged.first?.colorHex == "#aabbcc")
+    }
+
+    // MARK: Quick labels (#92) — they ride the label-set snapshot
+
+    @Test func quickLabelsPushWithTheirSet() async throws {
+        let (store, server, engine) = try makeConnected()
+        let set = TagSet(name: "Deep Work", symbolName: "brain")
+        try store.saveTagSets([set])
+        try store.saveQuickLabels([set.id.uuidString: [TagRow(key: "type", value: "review"),
+                                                       TagRow(key: "type", value: "debugging")]])
+        try await sync(engine)
+        #expect(server.sets.values.first?.quickLabels
+            == [SpanLabel(key: "type", value: "review"),
+                SpanLabel(key: "type", value: "debugging")])
+
+        // A quick-label edit alone dirties the set and pushes as an update.
+        try store.saveQuickLabels([set.id.uuidString: [TagRow(key: "type", value: "review")]])
+        try await sync(engine)
+        #expect(server.sets.count == 1)
+        #expect(server.sets.values.first?.quickLabels == [SpanLabel(key: "type", value: "review")])
+    }
+
+    @Test func quickLabelsPullWithTheirSet() async throws {
+        let (store, server, engine) = try makeConnected()
+        try store.saveTagSets([])
+        let serverId = server.seedSet(name: "Deep Work", symbol: "brain",
+                                      quickLabels: [SpanLabel(key: "type", value: "review")])
+
+        try await sync(engine)
+        let localId = try #require(try store.loadTagSets().first?.id.uuidString)
+        #expect(try store.loadQuickLabels()[localId]?.map(\.value) == ["review"])
+
+        // Edited elsewhere later: the newer server list replaces the local
+        // one — including a clear.
+        server.now = Date().addingTimeInterval(3600)
+        try await server.updateLabelSet(id: serverId, name: "Deep Work",
+                                        symbolName: "brain", labels: [],
+                                        quickLabels: [], position: 0)
+        try await sync(engine)
+        #expect(try store.loadQuickLabels()[localId] == nil)
+    }
+
+    @Test func newerLocalQuickLabelsWinOverRemoteSet() async throws {
+        let (store, server, engine) = try makeConnected()
+        let set = TagSet(name: "Deep Work", symbolName: "brain")
+        try store.saveTagSets([set])
+        try await sync(engine)
+
+        // Concurrent edits: the server copy first (older), then the local
+        // quick-label edit (newer wall clock). Local wins and pushes.
+        let serverId = server.sets.keys.first!
+        try await server.updateLabelSet(id: serverId, name: "Deep Work",
+                                        symbolName: "brain", labels: [],
+                                        quickLabels: [SpanLabel(key: "type", value: "stale")],
+                                        position: 0)
+        try store.saveQuickLabels([set.id.uuidString: [TagRow(key: "type", value: "fresh")]])
+        try await sync(engine)
+        #expect(server.sets.values.first?.quickLabels == [SpanLabel(key: "type", value: "fresh")])
+        #expect(try store.loadQuickLabels()[set.id.uuidString]?.map(\.value) == ["fresh"])
     }
 
     // MARK: Offline queue

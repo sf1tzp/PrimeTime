@@ -29,8 +29,13 @@ type LabelSet struct {
 // LabelSetMember is one label (key/value pair) inside a label set.
 type LabelSetMember struct {
 	LabelSetID int `gorm:"type:int REFERENCES label_sets(id) ON DELETE CASCADE"`
-	// Position orders the members within the set (ascending).
+	// Position orders the members within the set (ascending), separately
+	// for regular and quick members.
 	Position    int
 	Key         string
 	StringValue string
+	// Quick marks a quick label — a one-click refinement offered when
+	// hovering the set in the app — rather than a regular member. Rows
+	// that predate the column are backfilled to false (see database.New).
+	Quick bool
 }

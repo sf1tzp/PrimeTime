@@ -74,23 +74,36 @@ type LabelSet {
     name: String!
     symbolName: String!    # SF Symbol for the launcher card
     labels: [Label!]!      # ordered members
+    quickLabels: [Label!]! # ordered quick labels (one-click refinements)
 }
 ```
 
 - `labelSets: [LabelSet!]` — the current user's sets in launcher order.
-- `createLabelSet(name, symbolName, labels, position)` — appends to the
-  launcher order, or inserts at the optional 0-based `position` (clamped).
-  Member order is the input order.
-- `updateLabelSet(id, name, symbolName, labels, position)` — replaces name,
-  symbol, and members wholesale; the optional `position` also moves the set
-  (omitted = stays put).
+- `createLabelSet(name, symbolName, labels, quickLabels, position)` —
+  appends to the launcher order, or inserts at the optional 0-based
+  `position` (clamped). Member order is the input order.
+- `updateLabelSet(id, name, symbolName, labels, quickLabels, position)` —
+  replaces name, symbol, and members wholesale; the optional `position`
+  also moves the set (omitted = stays put).
 - `moveLabelSet(id, position)` — move a set to a 0-based position
   (clamped); returns all sets in their new order.
-- `removeLabelSet(id)` — deletes the set and its members.
+- `removeLabelSet(id)` — deletes the set and its members (quick ones
+  included).
 
-Set members are *not* required to reference existing label definitions —
-sets are launcher conveniences; definitions are enforced where labels
-attach to timespans.
+**Quick labels** are a set's one-click refinements — the chips the mac app
+offers when hovering the set. They belong to the set and sync with it, but
+they are a separate ordered list from `labels`. On `createLabelSet` /
+`updateLabelSet` the `quickLabels` argument is *optional*, and that is the
+whole backward-compatibility story (there is no runtime API version
+negotiation): a client that omits it — any client predating quick labels —
+leaves the set's existing quick labels untouched (`createLabelSet`: the set
+starts with none), while an explicit empty list clears them. Old clients
+are also unaffected on the read side: GraphQL only returns the fields a
+query requests.
+
+Set members (quick ones included) are *not* required to reference existing
+label definitions — sets are launcher conveniences; definitions are
+enforced where labels attach to timespans.
 
 ### The default collection
 
@@ -209,12 +222,16 @@ record the client knew as synced that is absent from the next snapshot
 was deleted on the server.
 
 Low-cardinality entities — `labelDefinitions` (key and value colours ride
-along), `labelSets`, `userPreferences` — sync by whole snapshot each
-pass; their `updatedAt` values drive the same last-writer-wins rule. The
-optional `position` argument on `createLabelSet` / `updateLabelSet`
-exists so a sync client can push a set's launcher slot in the same call.
-A launcher reorder bumps `updatedAt` only on sets whose position actually
-changed.
+along), `labelSets` (quick labels ride along), `userPreferences` — sync
+by whole snapshot each pass; their `updatedAt` values drive the same
+last-writer-wins rule. The optional `position` argument on
+`createLabelSet` / `updateLabelSet` exists so a sync client can push a
+set's launcher slot in the same call. A launcher reorder bumps
+`updatedAt` only on sets whose position actually changed. A set's quick
+labels have no timestamps of their own: writing them (when the
+`quickLabels` argument is present — see "Label sets") bumps the set's
+`updatedAt` like any other set edit, so the set snapshot wins or loses as
+one record, both lists included.
 
 ## Renames from the traggo wire (for importers)
 

@@ -102,6 +102,7 @@ package struct LabelSetPush {
     package let name: String
     package let symbolName: String
     package let labels: [SpanLabel]
+    package let quickLabels: [SpanLabel]
     package let position: Int
     package let modifiedAt: Date?
 }
@@ -555,15 +556,18 @@ package extension LocalBackend {
                             localId: row.id, serverId: remoteSet.id,
                             name: row.name, symbolName: row.symbol ?? "tag",
                             labels: try Self.members(of: row.id, db),
+                            quickLabels: try Self.quickMembers(of: row.id, db),
                             position: row.position, modifiedAt: row.modifiedAt))
                         continue
                     }
                     let localMembers = try Self.members(of: row.id, db)
+                    let localQuick = try Self.quickMembers(of: row.id, db)
                     changed = changed
                         || row.name != remoteSet.name
                         || (row.symbol ?? "tag") != remoteSet.symbolName
                         || row.position != position
                         || localMembers != remoteSet.labels
+                        || localQuick != remoteSet.quickLabels
                     row.name = remoteSet.name
                     row.symbol = remoteSet.symbolName
                     row.position = position
@@ -571,6 +575,8 @@ package extension LocalBackend {
                     try row.update(db)
                     try LabelSetMemberRow.filter(Column("set_id") == row.id).deleteAll(db)
                     try Self.insert(members: remoteSet.labels, setId: row.id, db)
+                    try LabelSetQuickMemberRow.filter(Column("set_id") == row.id).deleteAll(db)
+                    try Self.insert(quickMembers: remoteSet.quickLabels, setId: row.id, db)
                 } else {
                     // Unmapped tombstones can't exist (the mapping is what
                     // names the server id), so this is new from the server.
@@ -594,6 +600,7 @@ package extension LocalBackend {
                             localId: row.id, serverId: nil,
                             name: row.name, symbolName: row.symbol ?? "tag",
                             labels: try Self.members(of: row.id, db),
+                            quickLabels: try Self.quickMembers(of: row.id, db),
                             position: row.position, modifiedAt: row.modifiedAt))
                     } else {
                         _ = try row.delete(db)
@@ -605,6 +612,7 @@ package extension LocalBackend {
                         localId: row.id, serverId: nil,
                         name: row.name, symbolName: row.symbol ?? "tag",
                         labels: try Self.members(of: row.id, db),
+                        quickLabels: try Self.quickMembers(of: row.id, db),
                         position: row.position, modifiedAt: row.modifiedAt))
                 }
             }
@@ -716,6 +724,7 @@ package extension LocalBackend {
                         color: nil, position: position, dirty: false,
                         modifiedAt: nil).insert(db)
         try insert(members: remote.labels, setId: localId, db)
+        try insert(quickMembers: remote.quickLabels, setId: localId, db)
     }
 
     private static func members(of setId: String, _ db: Database) throws -> [SpanLabel] {
@@ -726,10 +735,25 @@ package extension LocalBackend {
             .map { SpanLabel(key: $0.key, value: $0.value) }
     }
 
+    private static func quickMembers(of setId: String, _ db: Database) throws -> [SpanLabel] {
+        try LabelSetQuickMemberRow
+            .filter(Column("set_id") == setId)
+            .order(Column("position"))
+            .fetchAll(db)
+            .map { SpanLabel(key: $0.key, value: $0.value) }
+    }
+
     private static func insert(members: [SpanLabel], setId: String, _ db: Database) throws {
         for (position, member) in members.enumerated() {
             try LabelSetMemberRow(setId: setId, position: position,
                                   key: member.key, value: member.value).insert(db)
+        }
+    }
+
+    private static func insert(quickMembers: [SpanLabel], setId: String, _ db: Database) throws {
+        for (position, member) in quickMembers.enumerated() {
+            try LabelSetQuickMemberRow(setId: setId, position: position,
+                                       key: member.key, value: member.value).insert(db)
         }
     }
 }

@@ -81,21 +81,26 @@ package struct RemoteLabelDefinition: Equatable {
     }
 }
 
-/// A label set as the server holds it; `labels` are the ordered members.
+/// A label set as the server holds it; `labels` are the ordered members and
+/// `quickLabels` the ordered quick labels (#92), which ride the set's
+/// snapshot — the set's `updatedAt` covers both lists.
 /// Position on the server is the index in the `labelSets()` array.
 package struct RemoteLabelSet: Equatable {
     package let id: Int
     package let name: String
     package let symbolName: String
     package let labels: [SpanLabel]
+    package let quickLabels: [SpanLabel]
     package let updatedAt: Date
 
     package init(id: Int, name: String, symbolName: String,
-                 labels: [SpanLabel], updatedAt: Date) {
+                 labels: [SpanLabel], quickLabels: [SpanLabel] = [],
+                 updatedAt: Date) {
         self.id = id
         self.name = name
         self.symbolName = symbolName
         self.labels = labels
+        self.quickLabels = quickLabels
         self.updatedAt = updatedAt
     }
 }
@@ -149,8 +154,10 @@ package protocol SyncServerAPI {
     func clearLabelValueColor(key: String, value: String) async throws
 
     // Push — label sets (position rides along, see the v1 position args)
-    func createLabelSet(name: String, symbolName: String, labels: [SpanLabel], position: Int) async throws -> Int
-    func updateLabelSet(id: Int, name: String, symbolName: String, labels: [SpanLabel], position: Int) async throws
+    func createLabelSet(name: String, symbolName: String, labels: [SpanLabel],
+                        quickLabels: [SpanLabel], position: Int) async throws -> Int
+    func updateLabelSet(id: Int, name: String, symbolName: String, labels: [SpanLabel],
+                        quickLabels: [SpanLabel], position: Int) async throws
     func removeLabelSet(id: Int) async throws
 
     // Push — preferences

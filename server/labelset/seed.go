@@ -40,6 +40,7 @@ func SeedDefaultLabelSets(db *gorm.DB, userID int) error {
 				Position:    member.Position,
 				Key:         member.Key,
 				StringValue: member.StringValue,
+				Quick:       member.Quick,
 			})
 		}
 		if err := db.Create(&set).Error; err != nil {

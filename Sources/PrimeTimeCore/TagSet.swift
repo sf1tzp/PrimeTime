@@ -28,8 +28,8 @@ package struct TagSet: Identifiable, Codable, Hashable {
     package var symbolName: String?
     /// "#rrggbb" fallback colour for the set's launcher card, used only when
     /// the set has no labels to borrow a colour from (a quick-labels-only
-    /// set). Local-only, like quick labels — not part of the sync payload.
-    /// Optional so older saves keep decoding; nil means the accent colour.
+    /// set). Local-only — not part of the sync payload. Optional so older
+    /// saves keep decoding; nil means the accent colour.
     package var colorHex: String?
 
     package init(id: UUID = UUID(), name: String = "", tags: [TagRow] = [],

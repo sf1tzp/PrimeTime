@@ -135,11 +135,13 @@ struct PrimeTimeClient: SyncServerAPI {
         let name: String
         let symbolName: String
         let labels: [WireLabel]?
+        let quickLabels: [WireLabel]?
         let updatedAt: TraggoTime
 
         var remote: RemoteLabelSet {
             RemoteLabelSet(id: id, name: name, symbolName: symbolName,
                            labels: (labels ?? []).map(\.domain),
+                           quickLabels: (quickLabels ?? []).map(\.domain),
                            updatedAt: updatedAt.date)
         }
     }
@@ -219,7 +221,7 @@ struct PrimeTimeClient: SyncServerAPI {
     func labelSets() async throws -> [RemoteLabelSet] {
         struct Payload: Decodable { let labelSets: [WireLabelSet]? }
         let query = """
-        query { labelSets { id name symbolName updatedAt labels { key value } } }
+        query { labelSets { id name symbolName updatedAt labels { key value } quickLabels { key value } } }
         """
         return try await run(query, variables: NoVariables(), as: Payload.self)
             .labelSets.map { $0.map(\.remote) } ?? []
@@ -342,42 +344,55 @@ struct PrimeTimeClient: SyncServerAPI {
 
     // MARK: Push — label sets
 
-    func createLabelSet(name: String, symbolName: String, labels: [SpanLabel], position: Int) async throws -> Int {
+    // Quick labels are always sent, empty included: this client owns the
+    // full list, and on the wire an *absent* `quickLabels` means "leave
+    // them alone" (the pre-#92 client compat path) while an empty list
+    // clears them — see api-v1.md.
+
+    func createLabelSet(name: String, symbolName: String, labels: [SpanLabel],
+                        quickLabels: [SpanLabel], position: Int) async throws -> Int {
         struct Variables: Encodable {
             let name: String
             let symbolName: String
             let labels: [WireLabel]
+            let quickLabels: [WireLabel]
             let position: Int
         }
         struct Created: Decodable { let id: Int }
         struct Payload: Decodable { let createLabelSet: Created }
         let query = """
-        mutation CreateSet($name: String!, $symbolName: String!, $labels: [InputLabel!]!, $position: Int) {
-          createLabelSet(name: $name, symbolName: $symbolName, labels: $labels, position: $position) { id }
+        mutation CreateSet($name: String!, $symbolName: String!, $labels: [InputLabel!]!, $quickLabels: [InputLabel!], $position: Int) {
+          createLabelSet(name: $name, symbolName: $symbolName, labels: $labels, quickLabels: $quickLabels, position: $position) { id }
         }
         """
         let vars = Variables(name: name, symbolName: symbolName,
-                             labels: labels.map(WireLabel.init), position: position)
+                             labels: labels.map(WireLabel.init),
+                             quickLabels: quickLabels.map(WireLabel.init),
+                             position: position)
         return try await run(query, variables: vars, as: Payload.self).createLabelSet.id
     }
 
-    func updateLabelSet(id: Int, name: String, symbolName: String, labels: [SpanLabel], position: Int) async throws {
+    func updateLabelSet(id: Int, name: String, symbolName: String, labels: [SpanLabel],
+                        quickLabels: [SpanLabel], position: Int) async throws {
         struct Variables: Encodable {
             let id: Int
             let name: String
             let symbolName: String
             let labels: [WireLabel]
+            let quickLabels: [WireLabel]
             let position: Int
         }
         struct Updated: Decodable { let id: Int }
         struct Payload: Decodable { let updateLabelSet: Updated }
         let query = """
-        mutation UpdateSet($id: Int!, $name: String!, $symbolName: String!, $labels: [InputLabel!]!, $position: Int) {
-          updateLabelSet(id: $id, name: $name, symbolName: $symbolName, labels: $labels, position: $position) { id }
+        mutation UpdateSet($id: Int!, $name: String!, $symbolName: String!, $labels: [InputLabel!]!, $quickLabels: [InputLabel!], $position: Int) {
+          updateLabelSet(id: $id, name: $name, symbolName: $symbolName, labels: $labels, quickLabels: $quickLabels, position: $position) { id }
         }
         """
         let vars = Variables(id: id, name: name, symbolName: symbolName,
-                             labels: labels.map(WireLabel.init), position: position)
+                             labels: labels.map(WireLabel.init),
+                             quickLabels: quickLabels.map(WireLabel.init),
+                             position: position)
         _ = try await run(query, variables: vars, as: Payload.self)
     }
 

@@ -55,9 +55,10 @@ final class AppModel {
     /// the focus area (`repo:`, `feat:`) and a quick label hones in
     /// (`type: review`). Per-set rather than global so e.g. a Workout set
     /// isn't offered `type: programming`; the copy/paste clipboard below
-    /// spreads one list across sets without retyping. Stored as JSON in
-    /// UserDefaults, per-Mac until server sync exists (#92). Entries for
-    /// deleted sets linger harmlessly.
+    /// spreads one list across sets without retyping. Persisted in the local
+    /// store next to the set members, so they ride label-set sync and follow
+    /// the user across Macs (#92). Entries for deleted sets linger
+    /// harmlessly (in memory only — the store drops them with the set).
     var quickLabels: [String: [TagRow]] {
         didSet { persistQuickLabels() }
     }
@@ -187,7 +188,6 @@ final class AppModel {
         static let deviceName = "deviceName"
         // Stored under the legacy "presets" key so existing saved sets survive.
         static let tagSets = "presets"
-        static let quickLabels = "quickLabelsBySet"
         static let colorTagsByValue = "colorTagsByValue"
         static let valueColors = "valueColors"
         static let menuTagSetLimit = "menuTagSetLimit"
@@ -221,12 +221,7 @@ final class AppModel {
         token = demo ? nil : Keychain.get(account: Keys.traggoToken)
         tagSets = []          // loaded by activateStore()
         valueColors = [:]
-        if let data = defaults.data(forKey: Keys.quickLabels),
-           let rows = try? JSONDecoder().decode([String: [TagRow]].self, from: data) {
-            quickLabels = rows
-        } else {
-            quickLabels = [:]   // demo seeding needs set ids — activateStore()
-        }
+        quickLabels = [:]
 
         activateStore()
         startSyncIfConfigured()
@@ -261,17 +256,22 @@ final class AppModel {
         if let store = localStore {
             tagSets = (try? store.loadTagSets()) ?? []
             valueColors = (try? store.loadValueColors()) ?? [:]
+            quickLabels = (try? store.loadQuickLabels()) ?? [:]
             user = LocalBackend.localUser   // no login; ready immediately
             // Demo quick labels are keyed by the set ids minted during this
             // launch's reseed, so they can only be attached here, after the
-            // sets load. The scratch defaults suite is wiped each launch, so
-            // the check against existing entries never blocks the seed.
-            if isDemo && quickLabels.isEmpty {
+            // sets load. The store write is explicit because the load-time
+            // observer suppression is in effect; the reseeded demo store
+            // always starts with none, so the seed never overwrites edits.
+            if isDemo {
+                var seeded: [String: [TagRow]] = [:]
                 for set in tagSets {
                     if let rows = DemoSeed.quickLabels(forSetNamed: set.name) {
-                        quickLabels[set.id.uuidString] = rows
+                        seeded[set.id.uuidString] = rows
                     }
                 }
+                quickLabels = seeded
+                try? store.saveQuickLabels(seeded)
             }
         }
     }
@@ -380,14 +380,16 @@ final class AppModel {
         syncSoon()
     }
 
-    /// Re-read the state a sync pull may have rewritten (tag sets, value
-    /// colours) without echoing the loads back as writes.
+    /// Re-read the state a sync pull may have rewritten (tag sets, quick
+    /// labels, value colours) without echoing the loads back as writes.
     private func reloadFromStore() {
         guard let store = localStore else { return }
         isRestoringState = true
         defer { isRestoringState = false }
         let loaded = withCurrentRowIds((try? store.loadTagSets()) ?? [])
         if loaded != tagSets { tagSets = loaded }
+        let loadedQuick = withCurrentQuickRowIds((try? store.loadQuickLabels()) ?? [:])
+        if loadedQuick != quickLabels { quickLabels = loadedQuick }
         valueColors = (try? store.loadValueColors()) ?? [:]
     }
 
@@ -407,6 +409,21 @@ final class AppModel {
             }
             return set
         }
+    }
+
+    /// The quick-label counterpart of `withCurrentRowIds`, for the same
+    /// reason: the editor's quick rows are a `ForEach` over these `TagRow`s.
+    private func withCurrentQuickRowIds(_ loaded: [String: [TagRow]]) -> [String: [TagRow]] {
+        var result = loaded
+        for (setId, rows) in loaded {
+            guard let oldRows = quickLabels[setId] else { continue }
+            result[setId] = rows.enumerated().map { index, row in
+                var row = row
+                if index < oldRows.count { row.id = oldRows[index].id }
+                return row
+            }
+        }
+        return result
     }
 
     // MARK: Import from traggo (#30)
@@ -878,8 +895,9 @@ final class AppModel {
     }
 
     private func persistQuickLabels() {
-        if let data = try? JSONEncoder().encode(quickLabels) {
-            defaults.set(data, forKey: Keys.quickLabels)
-        }
+        guard !isRestoringState else { return }
+        do { try localStore?.saveQuickLabels(quickLabels) }
+        catch { errorMessage = error.localizedDescription }
+        syncSoon()
     }
 }

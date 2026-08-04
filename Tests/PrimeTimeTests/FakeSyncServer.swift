@@ -63,11 +63,13 @@ final class FakeSyncServer: SyncServerAPI {
     }
 
     @discardableResult
-    func seedSet(name: String, symbol: String = "tag", labels: [SpanLabel] = []) -> Int {
+    func seedSet(name: String, symbol: String = "tag", labels: [SpanLabel] = [],
+                 quickLabels: [SpanLabel] = []) -> Int {
         let id = nextSetId
         nextSetId += 1
         sets[id] = RemoteLabelSet(id: id, name: name, symbolName: symbol,
-                                  labels: labels, updatedAt: now)
+                                  labels: labels, quickLabels: quickLabels,
+                                  updatedAt: now)
         positions[id] = (positions.values.max() ?? -1) + 1
         return id
     }
@@ -202,24 +204,28 @@ final class FakeSyncServer: SyncServerAPI {
 
     // MARK: SyncServerAPI — label sets
 
-    func createLabelSet(name: String, symbolName: String, labels: [SpanLabel], position: Int) async throws -> Int {
+    func createLabelSet(name: String, symbolName: String, labels: [SpanLabel],
+                        quickLabels: [SpanLabel], position: Int) async throws -> Int {
         try checkOnline()
         let id = nextSetId
         nextSetId += 1
         sets[id] = RemoteLabelSet(id: id, name: name, symbolName: symbolName,
-                                  labels: labels, updatedAt: now)
+                                  labels: labels, quickLabels: quickLabels,
+                                  updatedAt: now)
         positions[id] = (positions.values.max() ?? -1) + 1
         reposition(id: id, to: position)
         return id
     }
 
-    func updateLabelSet(id: Int, name: String, symbolName: String, labels: [SpanLabel], position: Int) async throws {
+    func updateLabelSet(id: Int, name: String, symbolName: String, labels: [SpanLabel],
+                        quickLabels: [SpanLabel], position: Int) async throws {
         try checkOnline()
         guard sets[id] != nil else {
             throw Rejection(message: "label set with id \(id) does not exist")
         }
         sets[id] = RemoteLabelSet(id: id, name: name, symbolName: symbolName,
-                                  labels: labels, updatedAt: now)
+                                  labels: labels, quickLabels: quickLabels,
+                                  updatedAt: now)
         reposition(id: id, to: position)
     }
 
@@ -246,7 +252,9 @@ final class FakeSyncServer: SyncServerAPI {
             if let set = sets[setId], setId != id {
                 sets[setId] = RemoteLabelSet(id: set.id, name: set.name,
                                              symbolName: set.symbolName,
-                                             labels: set.labels, updatedAt: now)
+                                             labels: set.labels,
+                                             quickLabels: set.quickLabels,
+                                             updatedAt: now)
             }
         }
     }

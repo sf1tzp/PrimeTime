@@ -479,7 +479,7 @@ struct TagSetDetailView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if tagSet.labels.isEmpty {
-                    Text("With no labels, the swatch picks this set’s Launcher card colour instead. Saved on this Mac (syncing is #92).")
+                    Text("With no labels, the swatch picks this set’s Launcher card colour instead. Card colours are saved on this Mac.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -542,9 +542,6 @@ struct TagSetDetailView: View {
             }
             .buttonStyle(.borderless)
             Text("Offered as one-click chips when hovering this set in the menu or Launcher: click one to start the set plus that label. If the set already carries the same key, the quick label’s value wins.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text("Saved on this Mac (syncing is #92).")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         } header: {

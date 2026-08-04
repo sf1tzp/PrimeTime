@@ -25,8 +25,11 @@ type RootMutation {
     setLabelValueColor(key: String!, value: String!, color: String!): LabelDefinition @hasRole(role: USER)
     clearLabelValueColor(key: String!, value: String!): LabelDefinition @hasRole(role: USER)
 
-    createLabelSet(name: String!, symbolName: String!, labels: [InputLabel!]!, position: Int): LabelSet @hasRole(role: USER)
-    updateLabelSet(id: Int!, name: String!, symbolName: String!, labels: [InputLabel!]!, position: Int): LabelSet @hasRole(role: USER)
+    # `quickLabels` is optional for backward compatibility: a client that
+    # omits it (or sends null) leaves the set's quick labels untouched
+    # (create: none); an empty list clears them.
+    createLabelSet(name: String!, symbolName: String!, labels: [InputLabel!]!, quickLabels: [InputLabel!], position: Int): LabelSet @hasRole(role: USER)
+    updateLabelSet(id: Int!, name: String!, symbolName: String!, labels: [InputLabel!]!, quickLabels: [InputLabel!], position: Int): LabelSet @hasRole(role: USER)
     moveLabelSet(id: Int!, position: Int!): [LabelSet!] @hasRole(role: USER)
     removeLabelSet(id: Int!): LabelSet @hasRole(role: USER)
 
@@ -188,6 +191,10 @@ type LabelSet {
     name: String!
     symbolName: String!
     labels: [Label!]!
+    # Quick labels (#92): ordered one-click refinements the app offers when
+    # hovering the set. They ride the set for sync purposes — writing them
+    # bumps `updatedAt` like any other set edit.
+    quickLabels: [Label!]!
     updatedAt: Time!
 }
 

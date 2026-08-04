@@ -184,6 +184,7 @@ final class SyncEngine {
                     try await server.updateLabelSet(id: serverId, name: push.name,
                                                     symbolName: push.symbolName,
                                                     labels: push.labels,
+                                                    quickLabels: push.quickLabels,
                                                     position: push.position)
                     try await store.recordLabelSetPushed(localId: push.localId,
                                                          serverId: serverId,
@@ -193,7 +194,8 @@ final class SyncEngine {
                     // wins — re-create under a fresh id.
                     let newId = try await server.createLabelSet(
                         name: push.name, symbolName: push.symbolName,
-                        labels: push.labels, position: push.position)
+                        labels: push.labels, quickLabels: push.quickLabels,
+                        position: push.position)
                     try await store.recordLabelSetPushed(localId: push.localId,
                                                          serverId: newId,
                                                          modifiedAt: push.modifiedAt)
@@ -201,7 +203,8 @@ final class SyncEngine {
             } else {
                 let newId = try await server.createLabelSet(
                     name: push.name, symbolName: push.symbolName,
-                    labels: push.labels, position: push.position)
+                    labels: push.labels, quickLabels: push.quickLabels,
+                    position: push.position)
                 try await store.recordLabelSetPushed(localId: push.localId,
                                                      serverId: newId,
                                                      modifiedAt: push.modifiedAt)

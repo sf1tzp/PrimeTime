@@ -76,10 +76,14 @@ import Testing
         try await macA.store.createLabelDefinition(key: key, color: "#123456")
         try macA.store.saveValueColors([ValueColorKey.join(key, "live"): "#654321"])
         var setsA = try macA.store.loadTagSets()
-        setsA.append(TagSet(name: "Set \(marker)",
-                            tags: [TagRow(key: key, value: "live")],
-                            symbolName: "bolt"))
+        let setA = TagSet(name: "Set \(marker)",
+                          tags: [TagRow(key: key, value: "live")],
+                          symbolName: "bolt")
+        setsA.append(setA)
         try macA.store.saveTagSets(setsA)
+        var quickA = try macA.store.loadQuickLabels()
+        quickA[setA.id.uuidString] = [TagRow(key: key, value: "quick")]
+        try macA.store.saveQuickLabels(quickA)
         let started = try await macA.store.startTimeSpan(
             start: Date(timeIntervalSince1970: 1_753_000_000),
             labels: [SpanLabel(key: key, value: "live")],
@@ -93,6 +97,10 @@ import Testing
         #expect(arrived.first?.isRunning == true)
         #expect(arrived.first?.labels == [SpanLabel(key: key, value: "live")])
         #expect(try macB.store.loadTagSets().contains { $0.name == "Set \(marker)" })
+        let setOnB = try macB.store.loadTagSets().first { $0.name == "Set \(marker)" }
+        // Compare key/value pairs — TagRow equality includes its view-local id.
+        #expect(try macB.store.loadQuickLabels()[setOnB?.id.uuidString ?? ""]?
+            .map { ($0.key, $0.value) == (key, "quick") } == [true])
         #expect(try macB.store.loadValueColors()[ValueColorKey.join(key, "live")] == "#654321")
         #expect(try await macB.store.labelDefinitions().contains {
             $0.key == key && $0.color == "#123456"

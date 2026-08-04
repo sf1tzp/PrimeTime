@@ -388,4 +388,79 @@ import Testing
             #expect(loaded.map(\.name) == ["Original"])
         }
     }
+
+    // MARK: Quick labels (#92)
+
+    /// The dirty flags of every label_set row, keyed by set id.
+    private func setDirtyFlags(_ backend: LocalBackend) throws -> [String: Bool] {
+        try backend.dbQueue.read { db in
+            var flags: [String: Bool] = [:]
+            for row in try Row.fetchAll(db, sql: "SELECT id, dirty FROM label_set") {
+                flags[row["id"]] = row["dirty"]
+            }
+            return flags
+        }
+    }
+
+    @Test func quickLabelsImportFromUserDefaultsBlob() throws {
+        let sets = [TagSet(name: "Deep Work"), TagSet(name: "Email")]
+        let quick = [sets[0].id.uuidString: [TagRow(key: "type", value: "review"),
+                                             TagRow(key: "type", value: "debugging")],
+                     // A set deleted before the migration: its entry lingered
+                     // in the blob and must be dropped, not imported.
+                     UUID().uuidString: [TagRow(key: "ghost", value: "x")]]
+
+        try withDefaults { defaults in
+            defaults.set(try! JSONEncoder().encode(sets), forKey: "presets")
+            defaults.set(try! JSONEncoder().encode(quick), forKey: "quickLabelsBySet")
+        } _: { defaults in
+            let backend = try makeBackend(defaults: defaults)
+            let loaded = try backend.loadQuickLabels()
+            #expect(Set(loaded.keys) == [sets[0].id.uuidString])
+            #expect(loaded[sets[0].id.uuidString]?.map(\.value) == ["review", "debugging"])
+            // Imported quick labels were never pushed: their set goes dirty
+            // (it was born dirty anyway, but the migration must not rely on
+            // that) while the untouched set's state is left alone.
+            #expect(try setDirtyFlags(backend)[sets[0].id.uuidString] == true)
+            // The v1 precedent: copied, not cleared.
+            #expect(defaults.data(forKey: "quickLabelsBySet") != nil)
+        }
+    }
+
+    @Test func saveQuickLabelsDirtiesOnlyChangedSets() throws {
+        let backend = try makeBackend()
+        let sets = [TagSet(name: "A"), TagSet(name: "B")]
+        try backend.saveTagSets(sets)
+        let aId = sets[0].id.uuidString
+        let bId = sets[1].id.uuidString
+        try backend.saveQuickLabels([aId: [TagRow(key: "type", value: "review")]])
+        // Everything clean, as if a sync had pushed it all.
+        try backend.dbQueue.write { db in
+            try db.execute(sql: "UPDATE label_set SET dirty = 0")
+        }
+
+        // Same snapshot again: a no-op must not re-dirty anything.
+        try backend.saveQuickLabels([aId: [TagRow(key: "type", value: "review")]])
+        #expect(try setDirtyFlags(backend) == [aId: false, bId: false])
+
+        // Editing one set's quick labels dirties that set only.
+        try backend.saveQuickLabels([aId: [TagRow(key: "type", value: "debugging")]])
+        #expect(try setDirtyFlags(backend) == [aId: true, bId: false])
+        #expect(try backend.loadQuickLabels()[aId]?.map(\.value) == ["debugging"])
+
+        // Entries for unknown sets are ignored, not persisted.
+        try backend.saveQuickLabels([aId: [TagRow(key: "type", value: "debugging")],
+                                     UUID().uuidString: [TagRow(key: "ghost", value: "x")]])
+        #expect(Set(try backend.loadQuickLabels().keys) == [aId])
+    }
+
+    @Test func deletingASetCascadesItsQuickLabels() throws {
+        let backend = try makeBackend()
+        let sets = [TagSet(name: "A")]
+        try backend.saveTagSets(sets)
+        try backend.saveQuickLabels([sets[0].id.uuidString: [TagRow(key: "k", value: "v")]])
+
+        try backend.saveTagSets([])
+        #expect(try backend.loadQuickLabels().isEmpty)
+    }
 }

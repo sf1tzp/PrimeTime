@@ -58,6 +58,13 @@ func New(dialect, connection string) (*gorm.DB, error) {
 			Update("updated_at_utc", epoch)
 	}
 
+	// Same idea for the quick flag on label-set members (#92): AutoMigrate
+	// adds the column as NULL, and every row that predates it is a regular
+	// member.
+	db.Table("label_set_members").
+		Where("quick IS NULL").
+		Update("quick", false)
+
 	log.Debug().Msg("Database initialized")
 	return db, nil
 }

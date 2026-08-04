@@ -35,8 +35,10 @@ func (r *ResolverForLabelSet) LabelSets(ctx context.Context) ([]*gqlmodel.LabelS
 }
 
 // CreateLabelSet creates a label set — at the end of the user's launcher
-// order, or at `position` (0-based, clamped) when given.
-func (r *ResolverForLabelSet) CreateLabelSet(ctx context.Context, name string, symbolName string, labels []*gqlmodel.InputLabel, position *int) (*gqlmodel.LabelSet, error) {
+// order, or at `position` (0-based, clamped) when given. A nil `quickLabels`
+// (a client that predates quick labels, or one that omits them) creates the
+// set without any.
+func (r *ResolverForLabelSet) CreateLabelSet(ctx context.Context, name string, symbolName string, labels []*gqlmodel.InputLabel, quickLabels []*gqlmodel.InputLabel, position *int) (*gqlmodel.LabelSet, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, fmt.Errorf("label set name must not be empty")
 	}
@@ -53,7 +55,7 @@ func (r *ResolverForLabelSet) CreateLabelSet(ctx context.Context, name string, s
 		Name:         name,
 		SymbolName:   symbolName,
 		Position:     appendPosition,
-		Members:      membersFromInput(labels),
+		Members:      append(membersFromInput(labels, false), membersFromInput(quickLabels, true)...),
 		UpdatedAtUTC: syncNow(),
 	}
 	if err := r.DB.Create(&set).Error; err != nil {
@@ -69,8 +71,11 @@ func (r *ResolverForLabelSet) CreateLabelSet(ctx context.Context, name string, s
 }
 
 // UpdateLabelSet replaces a label set's name, symbol and members — and,
-// when `position` is given, moves it there (0-based, clamped).
-func (r *ResolverForLabelSet) UpdateLabelSet(ctx context.Context, id int, name string, symbolName string, labels []*gqlmodel.InputLabel, position *int) (*gqlmodel.LabelSet, error) {
+// when `position` is given, moves it there (0-based, clamped). Quick
+// members are replaced only when `quickLabels` is present: nil (a client
+// that predates the argument) preserves the existing ones, an empty list
+// clears them.
+func (r *ResolverForLabelSet) UpdateLabelSet(ctx context.Context, id int, name string, symbolName string, labels []*gqlmodel.InputLabel, quickLabels []*gqlmodel.InputLabel, position *int) (*gqlmodel.LabelSet, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, fmt.Errorf("label set name must not be empty")
 	}
@@ -82,8 +87,6 @@ func (r *ResolverForLabelSet) UpdateLabelSet(ctx context.Context, id int, name s
 	}
 
 	tx := r.DB.Begin()
-	set.Name = name
-	set.SymbolName = symbolName
 	set.UpdatedAtUTC = syncNow()
 	if err := tx.Model(new(model.LabelSet)).Where("id = ?", id).
 		Updates(map[string]interface{}{
@@ -94,14 +97,21 @@ func (r *ResolverForLabelSet) UpdateLabelSet(ctx context.Context, id int, name s
 		tx.Rollback()
 		return nil, err
 	}
-	if err := tx.Where("label_set_id = ?", id).Delete(new(model.LabelSetMember)).Error; err != nil {
+	remove := tx.Where("label_set_id = ?", id)
+	if quickLabels == nil {
+		remove = remove.Where("quick = ?", false)
+	}
+	if err := remove.Delete(new(model.LabelSetMember)).Error; err != nil {
 		tx.Rollback()
 		return nil, err
 	}
-	set.Members = membersFromInput(labels)
-	for i := range set.Members {
-		set.Members[i].LabelSetID = id
-		if err := tx.Create(&set.Members[i]).Error; err != nil {
+	members := membersFromInput(labels, false)
+	if quickLabels != nil {
+		members = append(members, membersFromInput(quickLabels, true)...)
+	}
+	for i := range members {
+		members[i].LabelSetID = id
+		if err := tx.Create(&members[i]).Error; err != nil {
 			tx.Rollback()
 			return nil, err
 		}
@@ -113,9 +123,13 @@ func (r *ResolverForLabelSet) UpdateLabelSet(ctx context.Context, id int, name s
 		if err := move(r.DB, userID, id, *position); err != nil {
 			return nil, err
 		}
-		set.Position = *position
 	}
-	return toExternal(set), nil
+	// Reload with members so preserved quick labels appear in the reply.
+	updated := model.LabelSet{}
+	if err := preloadMembers(r.DB).Where("id = ?", id).Find(&updated).Error; err != nil {
+		return nil, err
+	}
+	return toExternal(updated), nil
 }
 
 // MoveLabelSet moves a label set to a new position (0-based) in the user's

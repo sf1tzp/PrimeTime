@@ -65,6 +65,9 @@ package struct LocalExport: Codable, Equatable {
         /// so colourless exports encode exactly as before the field existed.
         package var color: String?
         package var labels: [Label]
+        /// The set's quick labels (#92), in offer order. Nil (and omitted,
+        /// like `color`) when the set has none.
+        package var quickLabels: [Label]?
     }
 
     // MARK: Wire format
@@ -141,13 +144,19 @@ package extension LocalBackend {
             let setRows = try LabelSetRow.order(Column("position")).fetchAll(db)
             let memberRows = try LabelSetMemberRow.order(Column("position")).fetchAll(db)
             let membersBySet = Dictionary(grouping: memberRows, by: \.setId)
+            let quickRows = try LabelSetQuickMemberRow.order(Column("position")).fetchAll(db)
+            let quickBySet = Dictionary(grouping: quickRows, by: \.setId)
             let sets = setRows.map { row in
-                LocalExport.LabelSet(
+                let quick = (quickBySet[row.id] ?? []).map {
+                    LocalExport.Label(key: $0.key, value: $0.value)
+                }
+                return LocalExport.LabelSet(
                     id: row.id, name: row.name, symbol: row.symbol,
                     color: row.color,
                     labels: (membersBySet[row.id] ?? []).map {
                         LocalExport.Label(key: $0.key, value: $0.value)
-                    })
+                    },
+                    quickLabels: quick.isEmpty ? nil : quick)
             }
 
             return LocalExport(exportedAt: now, timeSpans: spans,
