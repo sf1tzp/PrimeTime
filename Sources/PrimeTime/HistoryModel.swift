@@ -10,6 +10,14 @@ enum ChartGrouping: Hashable {
     case tagSet(TagSet.ID)
 }
 
+/// A chart grouping resolved to plain data — the tag key, or a tag set's
+/// member labels in stored order — so the aggregation decisions below can be
+/// pure functions, unit-testable without a model or backend.
+enum GroupingDefinition: Hashable {
+    case key(String)
+    case tagSetMembers([SpanLabel])
+}
+
 /// One aggregated series slice: a label ("infra", "proj: infra") and a duration.
 struct SeriesTotal: Identifiable {
     var id: String { label }
@@ -47,6 +55,10 @@ final class HistoryModel {
     /// Optional second grouping, rendered as a second donut beside the first
     /// for comparing two breakdowns of the same week. Nil = off.
     var chartGrouping2: ChartGrouping?
+    /// When true (and a second grouping is set) the charts render one combined
+    /// breakdown — the first grouping split by the second — instead of two
+    /// side-by-side donuts. Session-only, like the groupings.
+    var chartsCombined: Bool = false
 
     /// True once a load has completed, so mutations elsewhere in the app (e.g.
     /// stopping the timer from the popover) know a reload is worthwhile.
@@ -121,6 +133,7 @@ final class HistoryModel {
         errorMessage = nil
         chartGrouping = nil     // re-derived from the new backend's data
         chartGrouping2 = nil
+        chartsCombined = false
     }
 
     func reload() async {
@@ -221,13 +234,32 @@ final class HistoryModel {
     /// one series per member tag the span carries (a span matching several
     /// member tags counts toward each).
     private func seriesLabels(for span: TimeSpan, grouping: ChartGrouping) -> [String] {
-        let tags = span.labels
+        guard let definition = definition(of: grouping) else { return [] }
+        return Self.seriesLabels(tags: span.labels, definition: definition)
+    }
+
+    /// A grouping resolved to plain data (tag-set ids looked up in the app's
+    /// stored sets), or nil for a since-deleted set.
+    private func definition(of grouping: ChartGrouping) -> GroupingDefinition? {
         switch grouping {
         case .key(let key):
-            return tags.first(where: { $0.key == key }).map { [$0.value.isEmpty ? "(no value)" : $0.value] } ?? []
+            return .key(key)
         case .tagSet(let id):
-            guard let set = app.tagSets.first(where: { $0.id == id }) else { return [] }
-            return set.labels
+            guard let set = app.tagSets.first(where: { $0.id == id }) else { return nil }
+            return .tagSetMembers(set.labels)
+        }
+    }
+
+    /// Pure core of `seriesLabels(for:grouping:)`, shared with the combined
+    /// pair mapping below. Tag-set matches come back in the set's stored
+    /// label order.
+    nonisolated static func seriesLabels(tags: [SpanLabel],
+                                         definition: GroupingDefinition) -> [String] {
+        switch definition {
+        case .key(let key):
+            return tags.first(where: { $0.key == key }).map { [$0.value.isEmpty ? "(no value)" : $0.value] } ?? []
+        case .tagSetMembers(let members):
+            return members
                 .filter { tags.contains($0) }
                 .map { $0.value.isEmpty ? $0.key : "\($0.key): \($0.value)" }
         }
@@ -257,6 +289,79 @@ final class HistoryModel {
                 let seconds = clippedSeconds(of: span, in: day)
                 guard seconds > 0 else { continue }
                 for label in seriesLabels(for: span, grouping: grouping) {
+                    sums[label, default: 0] += seconds
+                }
+            }
+            for (label, seconds) in sums {
+                result.append(DailyTotal(day: day.start, label: label, seconds: seconds))
+            }
+        }
+        return result
+    }
+
+    // MARK: Combined aggregation (#109)
+
+    /// Separator inside a combined pair label. `HistoryChartsView` splits on
+    /// its first occurrence to regroup pairs by outer value.
+    nonisolated static let pairSeparator = " · "
+
+    /// The single "outer · inner" pair series a span contributes to in the
+    /// combined view, or nil to exclude it. Strict semantics — every span
+    /// lands in exactly one cell or none:
+    /// - A span missing either dimension is excluded entirely, so the
+    ///   combined donut's total can undershoot the split view's left donut
+    ///   for the same week.
+    /// - A span matching several members of a tag-set dimension counts only
+    ///   toward the FIRST matched member in the set's stored label order —
+    ///   no cross-product, sums never exceed tracked time.
+    nonisolated static func pairLabel(tags: [SpanLabel],
+                                      outer: GroupingDefinition,
+                                      inner: GroupingDefinition) -> String? {
+        guard let outerLabel = seriesLabels(tags: tags, definition: outer).first,
+              let innerLabel = seriesLabels(tags: tags, definition: inner).first
+        else { return nil }
+        return "\(outerLabel)\(pairSeparator)\(innerLabel)"
+    }
+
+    /// The pair series a span contributes to in the combined view — [] or one
+    /// element under the strict semantics, which live in `pairLabel` above.
+    private func pairLabels(for span: TimeSpan,
+                            outer: ChartGrouping, inner: ChartGrouping) -> [String] {
+        guard let outerDefinition = definition(of: outer),
+              let innerDefinition = definition(of: inner),
+              let label = Self.pairLabel(tags: span.labels,
+                                         outer: outerDefinition,
+                                         inner: innerDefinition)
+        else { return [] }
+        return [label]
+    }
+
+    /// Week totals of the outer grouping broken down by the inner one — one
+    /// series per "outer · inner" pair, largest first.
+    func combinedTotals(outer: ChartGrouping, inner: ChartGrouping) -> [SeriesTotal] {
+        var sums: [String: TimeInterval] = [:]
+        let interval = weekInterval
+        for span in spans {
+            let seconds = clippedSeconds(of: span, in: interval)
+            guard seconds > 0 else { continue }
+            for label in pairLabels(for: span, outer: outer, inner: inner) {
+                sums[label, default: 0] += seconds
+            }
+        }
+        return sums.map { SeriesTotal(label: $0.key, seconds: $0.value) }
+            .sorted { $0.seconds > $1.seconds }
+    }
+
+    /// Per-day, per-pair totals across the week — `dailyTotals(for:)` for the
+    /// combined view.
+    func combinedDailyTotals(outer: ChartGrouping, inner: ChartGrouping) -> [DailyTotal] {
+        var result: [DailyTotal] = []
+        for day in days {
+            var sums: [String: TimeInterval] = [:]
+            for span in spans {
+                let seconds = clippedSeconds(of: span, in: day)
+                guard seconds > 0 else { continue }
+                for label in pairLabels(for: span, outer: outer, inner: inner) {
                     sums[label, default: 0] += seconds
                 }
             }

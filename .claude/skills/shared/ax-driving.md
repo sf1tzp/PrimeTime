@@ -60,6 +60,23 @@ skills, so the two don't drift.
   their presence/absence also doubles as a check that the hover reveal
   works. Buttons identify nicely by their `help` attribute (read it per
   element inside a `try`; some elements throw).
+- **Duplicate pop-up buttons alias the same control** (learned 2026-08-03 on
+  the History tab): both "Group by" pickers enumerate as `AXPopUpButton`s,
+  but `pop up button 2 of scroll area 1` reports picker 1's position/value
+  and clicking it opens picker 1's menu — the right picker is unreachable
+  through the tree. Workaround: read the right column's "Group by"
+  `AXStaticText` position, `cliclick c:<x+95>,<y+6>` to open the real
+  picker, then select by *menu type-select* (`keystroke "<item name>"`,
+  `key code 36`). Typing the full item name wins over shorter siblings
+  ("project" beats "proj") because a menu item can't prefix-match a buffer
+  longer than itself.
+- After `click` on a (working) pop up button, poll for `menu 1` *and* the
+  target menu item — items populate late. A script that dies mid-menu
+  leaves it open, and the next click toggles it shut: send Escape
+  (`key code 53`) before retrying.
+- SwiftUI segmented controls (`AXRadioGroup`) click fine via
+  `radio button N`, but a disabled control silently no-ops — read the
+  values back to confirm the switch took.
 
 ## Screenshots & recordings
 

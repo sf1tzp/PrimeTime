@@ -6,6 +6,8 @@ import Charts
 /// flexibility lives in the grouping controls: two side-by-side donut columns,
 /// each with its own "Group by" picker (any tag key, or a Tag Set — one series
 /// per member tag), so two breakdowns of the same week sit next to each other.
+/// A Split/Combined toggle (#109) can instead nest the first grouping inside
+/// the second: one donut and one daily stack of strict "outer · inner" pairs.
 struct HistoryChartsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var colorScheme
@@ -40,21 +42,50 @@ struct HistoryChartsView: View {
         @Bindable var history = model.history
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                // Two columns, each a "Group by" picker over its donut. The
-                // second compares another breakdown of the same week; until
-                // one is picked (or it has no data) a placeholder ring holds
-                // its place.
-                HStack(alignment: .top, spacing: 20) {
-                    donutColumn(selection: $history.chartGrouping, includeNone: false)
-                    Divider()
-                    donutColumn(selection: $history.chartGrouping2, includeNone: true)
+                // Split shows two independent breakdowns side by side;
+                // Combined groups the first by the second in a single donut.
+                // Meaningless with one grouping, so the toggle is disabled
+                // (and split rendered) until a second grouping is picked.
+                HStack {
+                    Spacer()
+                    Picker("Chart mode", selection: $history.chartsCombined) {
+                        Text("Split").tag(false)
+                        Text("Combined").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                    .disabled(history.chartGrouping2 == nil)
+                }
+
+                if let (outer, inner) = combinedGroupings {
+                    // Combined: one donut of "outer · inner" pairs on the
+                    // left; the right column keeps its picker but its donut
+                    // slot explains the nesting instead.
+                    HStack(alignment: .top, spacing: 20) {
+                        combinedColumn(outer: outer, inner: inner,
+                                       selection: $history.chartGrouping)
+                        Divider()
+                        combinedCaptionColumn(outer: outer, inner: inner,
+                                              selection: $history.chartGrouping2)
+                    }
+                } else {
+                    // Two columns, each a "Group by" picker over its donut. The
+                    // second compares another breakdown of the same week; until
+                    // one is picked (or it has no data) a placeholder ring holds
+                    // its place.
+                    HStack(alignment: .top, spacing: 20) {
+                        donutColumn(selection: $history.chartGrouping, includeNone: false)
+                        Divider()
+                        donutColumn(selection: $history.chartGrouping2, includeNone: true)
+                    }
                 }
 
                 HStack {
                     Text("Per day")
                         .font(.subheadline.weight(.semibold))
                     Spacer()
-                    Text("Total \(formatDuration(model.history.weekTotalSeconds))")
+                    Text(perDayTotalLabel)
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
@@ -108,9 +139,95 @@ struct HistoryChartsView: View {
             }
     }
 
+    /// The (outer, inner) groupings when the combined layout applies: the
+    /// toggle is on and both groupings are picked. Nil renders the split
+    /// layout — with no second grouping there is nothing to combine, whatever
+    /// the flag says.
+    private var combinedGroupings: (outer: ChartGrouping, inner: ChartGrouping)? {
+        guard model.history.chartsCombined,
+              let outer = model.history.chartGrouping,
+              let inner = model.history.chartGrouping2 else { return nil }
+        return (outer, inner)
+    }
+
+    /// "Total 25h 20m" for the week — except in combined mode, where the bars
+    /// only chart pair-matched time, so the header echoes the donut's
+    /// "matched" figure instead of contradicting it.
+    private var perDayTotalLabel: String {
+        if let (outer, inner) = combinedGroupings {
+            let matched = model.history.combinedTotals(outer: outer, inner: inner)
+                .reduce(0) { $0 + $1.seconds }
+            return "Matched \(formatDuration(matched))"
+        }
+        return "Total \(formatDuration(model.history.weekTotalSeconds))"
+    }
+
+    /// The left column in combined mode: the outer grouping's picker over one
+    /// donut of the combined pair series and its two-level breakdown.
+    @ViewBuilder
+    private func combinedColumn(outer: ChartGrouping, inner: ChartGrouping,
+                                selection: Binding<ChartGrouping?>) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            groupingPicker("Group by", selection: selection, includeNone: false)
+            let totals = folded(model.history.combinedTotals(outer: outer, inner: inner))
+            if totals.isEmpty {
+                // Strict pairing: only spans carrying BOTH dimensions count.
+                placeholderDonut("No time tagged with both groupings")
+            } else {
+                let colors = paletteSlots(for: totals)
+                let grand = totals.reduce(0) { $0 + $1.seconds }
+                HStack(alignment: .center, spacing: 16) {
+                    // Strict pairing excludes spans missing either dimension,
+                    // so this total can undershoot the week's — "matched"
+                    // keeps it from contradicting the footer's "tracked".
+                    donut(totals: totals, colors: colors, grand: grand,
+                          caption: "matched")
+                    combinedBreakdownList(totals: totals, colors: colors, grand: grand)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The right column in combined mode: its picker still chooses the inner
+    /// grouping, but the donut slot explains the nesting instead — centered
+    /// in the same 160pt-tall region so toggling modes doesn't shift layout.
+    @ViewBuilder
+    private func combinedCaptionColumn(outer: ChartGrouping, inner: ChartGrouping,
+                                       selection: Binding<ChartGrouping?>) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            groupingPicker("Group by", selection: selection, includeNone: true)
+            let caption = "Counting time by **\(groupingName(outer))** "
+                + "across all **\(groupingName(inner))** values."
+            Text((try? AttributedString(markdown: caption)) ?? AttributedString(caption))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 220)
+                .frame(maxWidth: .infinity)
+                .frame(height: 160)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// A grouping's display name for the combined caption — the tag key, or
+    /// the tag set's name (same "Untitled" fallback as the picker).
+    private func groupingName(_ grouping: ChartGrouping) -> String {
+        switch grouping {
+        case .key(let key):
+            return key
+        case .tagSet(let id):
+            let set = model.tagSets.first(where: { $0.id == id })
+            return set.map { $0.name.isEmpty ? "Untitled" : $0.name } ?? "?"
+        }
+    }
+
     /// The daily bars mirror the donut columns: one stack per grouping,
     /// side by side within each day. Two stacks rather than one combined —
     /// a span matching both groupings would double-count in a single stack.
+    /// In combined mode that risk is gone (strict pairing lands each span in
+    /// at most one pair), so the day collapses to a single stack of the same
+    /// folded pair series and colours as the combined donut.
     @ViewBuilder
     private var dailyBody: some View {
         let marks = dailyMarks
@@ -120,7 +237,7 @@ struct HistoryChartsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
         } else {
-            dailyChart(marks)
+            dailyChart(marks, splitColumns: combinedGroupings == nil)
         }
     }
 
@@ -136,8 +253,16 @@ struct HistoryChartsView: View {
     }
 
     /// Marks for every active grouping, ordered so each stack keeps its
-    /// biggest series at the baseline (same rule as before).
+    /// biggest series at the baseline (same rule as before). Combined mode
+    /// yields a single column of pair series instead.
     private var dailyMarks: [DailyMark] {
+        if let (outer, inner) = combinedGroupings {
+            let totals = folded(model.history.combinedTotals(outer: outer, inner: inner))
+            guard !totals.isEmpty else { return [] }
+            return marks(column: "1", totals: totals,
+                         daily: model.history.combinedDailyTotals(outer: outer, inner: inner),
+                         colors: paletteSlots(for: totals))
+        }
         let groupings: [(String, ChartGrouping)] = [
             model.history.chartGrouping.map { ("1", $0) },
             model.history.chartGrouping2.map { ("2", $0) },
@@ -147,19 +272,25 @@ struct HistoryChartsView: View {
         for (column, grouping) in groupings {
             let totals = folded(model.history.totals(for: grouping))
             guard !totals.isEmpty else { continue }
-            let colors = colorMap(for: totals, grouping: grouping)
-            let rank = Dictionary(uniqueKeysWithValues:
-                totals.map(\.label).enumerated().map { ($1, $0) })
-            let daily = foldedDaily(model.history.dailyTotals(for: grouping),
-                                    keeping: Set(totals.map(\.label)))
-                .sorted { (rank[$0.label] ?? .max, $0.day) < (rank[$1.label] ?? .max, $1.day) }
-            result += daily.map {
+            result += marks(column: column, totals: totals,
+                            daily: model.history.dailyTotals(for: grouping),
+                            colors: colorMap(for: totals, grouping: grouping))
+        }
+        return result
+    }
+
+    /// Fold, rank, and colour one stack's daily series into marks.
+    private func marks(column: String, totals: [SeriesTotal],
+                       daily: [DailyTotal], colors: [String: Color]) -> [DailyMark] {
+        let rank = Dictionary(uniqueKeysWithValues:
+            totals.map(\.label).enumerated().map { ($1, $0) })
+        return foldedDaily(daily, keeping: Set(totals.map(\.label)))
+            .sorted { (rank[$0.label] ?? .max, $0.day) < (rank[$1.label] ?? .max, $1.day) }
+            .map {
                 DailyMark(id: "\(column)-\($0.id)", day: $0.day,
                           seconds: $0.seconds,
                           color: colors[$0.label] ?? .gray, column: column)
             }
-        }
-        return result
     }
 
     private func groupingPicker(_ label: String,
@@ -189,7 +320,8 @@ struct HistoryChartsView: View {
 
     // MARK: Charts
 
-    private func donut(totals: [SeriesTotal], colors: [String: Color], grand: TimeInterval) -> some View {
+    private func donut(totals: [SeriesTotal], colors: [String: Color], grand: TimeInterval,
+                       caption: String = "tracked") -> some View {
         Chart(totals) { item in
             SectorMark(angle: .value("Time", item.seconds),
                        innerRadius: .ratio(0.62),
@@ -203,7 +335,7 @@ struct HistoryChartsView: View {
             VStack(spacing: 0) {
                 Text(formatDuration(grand))
                     .font(.headline.monospacedDigit())
-                Text("tracked")
+                Text(caption)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -236,15 +368,123 @@ struct HistoryChartsView: View {
         }
     }
 
-    private func dailyChart(_ marks: [DailyMark]) -> some View {
+    // MARK: Combined breakdown (two-level legend)
+
+    /// One inner row of the combined breakdown: the full pair label (which
+    /// keys the colour map) plus the inner part shown under its heading.
+    private struct CombinedRow: Identifiable {
+        var id: String { pair }
+        let pair: String
+        let inner: String
+        let seconds: TimeInterval
+    }
+
+    /// One outer section: heading label, subtotal, and its inner rows —
+    /// empty for the folded "Other", which stays a single top-level row.
+    private struct CombinedSection: Identifiable {
+        var id: String { label }
+        let label: String
+        let seconds: TimeInterval
+        let rows: [CombinedRow]
+    }
+
+    /// Regroup the folded pair series by outer value: sections by subtotal
+    /// descending, rows descending within (already true of `totals`), and
+    /// "Other" last as its own row, matching its donut position. Labels split
+    /// at the first pair separator — an outer value containing " · " itself
+    /// would mis-split, which we accept.
+    private func combinedSections(from totals: [SeriesTotal]) -> [CombinedSection] {
+        var order: [String] = []
+        var rows: [String: [CombinedRow]] = [:]
+        var otherSeconds: TimeInterval?
+        for item in totals {
+            if item.label == Self.otherLabel { otherSeconds = item.seconds; continue }
+            let separator = item.label.range(of: HistoryModel.pairSeparator)
+            let outer = separator.map { String(item.label[..<$0.lowerBound]) } ?? item.label
+            let inner = separator.map { String(item.label[$0.upperBound...]) } ?? ""
+            if rows[outer] == nil { order.append(outer) }
+            rows[outer, default: []].append(
+                CombinedRow(pair: item.label, inner: inner, seconds: item.seconds))
+        }
+        var sections = order.map { outer in
+            CombinedSection(label: outer,
+                            seconds: rows[outer]!.reduce(0) { $0 + $1.seconds },
+                            rows: rows[outer]!)
+        }
+        .sorted { $0.seconds > $1.seconds }
+        if let otherSeconds {
+            sections.append(CombinedSection(label: Self.otherLabel,
+                                            seconds: otherSeconds, rows: []))
+        }
+        return sections
+    }
+
+    /// Two-level legend for the combined donut: an outer heading (subtotal
+    /// and share of the grand total, slightly heavier weight) over indented
+    /// inner rows whose dots match the donut's pair slices.
+    private func combinedBreakdownList(totals: [SeriesTotal], colors: [String: Color],
+                                       grand: TimeInterval) -> some View {
+        Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 5) {
+            ForEach(combinedSections(from: totals)) { section in
+                GridRow {
+                    HStack(spacing: 6) {
+                        if section.rows.isEmpty {
+                            // The folded "Other" is itself a slice, so it
+                            // keeps a dot; real headings aren't slices.
+                            Circle()
+                                .fill(colors[section.label] ?? .gray)
+                                .frame(width: 8, height: 8)
+                        }
+                        Text(section.label)
+                            .lineLimit(1)
+                    }
+                    Text(formatDuration(section.seconds))
+                        .monospacedDigit()
+                        .gridColumnAlignment(.trailing)
+                    Text(grand > 0
+                         ? (section.seconds / grand).formatted(.percent.precision(.fractionLength(0)))
+                         : "")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .gridColumnAlignment(.trailing)
+                }
+                .font(.callout.weight(.medium))
+                ForEach(section.rows) { row in
+                    GridRow {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(colors[row.pair] ?? .gray)
+                                .frame(width: 8, height: 8)
+                            Text(row.inner)
+                                .lineLimit(1)
+                        }
+                        .padding(.leading, 14)
+                        Text(formatDuration(row.seconds))
+                            .monospacedDigit()
+                            .gridColumnAlignment(.trailing)
+                        Text("")    // per-pair shares would just be noise
+                    }
+                    .font(.callout)
+                }
+            }
+        }
+    }
+
+    private func dailyChart(_ marks: [DailyMark], splitColumns: Bool) -> some View {
         Chart(marks) { item in
-            BarMark(x: .value("Day", item.day, unit: .day),
-                    y: .value("Hours", item.seconds / 3600))
+            let bar = BarMark(x: .value("Day", item.day, unit: .day),
+                              y: .value("Hours", item.seconds / 3600))
+            if splitColumns {
                 // With one grouping the single band spans the day; with two,
                 // each day shows the groupings' stacks side by side.
-                .position(by: .value("Grouping", item.column))
-                .foregroundStyle(item.color)
-                .cornerRadius(2)
+                bar.position(by: .value("Grouping", item.column))
+                    .foregroundStyle(item.color)
+                    .cornerRadius(2)
+            } else {
+                // Combined mode: one stack of pair segments, no column split.
+                bar.foregroundStyle(item.color)
+                    .cornerRadius(2)
+            }
         }
         // Pin the domain to the whole week, or a single day of data would
         // stretch its bar across the full plot width.
@@ -260,12 +500,22 @@ struct HistoryChartsView: View {
                 AxisGridLine()
                 if let hours = value.as(Double.self) {
                     AxisValueLabel {
-                        Text("\(hours.formatted(.number.precision(.fractionLength(0...1))))h")
+                        Text(axisLabel(hours: hours))
                     }
                 }
             }
         }
         .frame(height: 200)
+    }
+
+    /// "2h", "45m", "1h 30m" — y-axis ticks in whichever unit reads cleanly.
+    /// The chart's y values are decimal hours, which the default formatting
+    /// showed as-is ("0.8h") once a small matched total shrank the scale.
+    private func axisLabel(hours: Double) -> String {
+        let minutes = Int((hours * 60).rounded())
+        if minutes % 60 == 0 { return "\(minutes / 60)h" }
+        if minutes < 60 { return "\(minutes)m" }
+        return "\(minutes / 60)h \(minutes % 60)m"
     }
 
     // MARK: Series colours (validated palette, fixed assignment)
@@ -283,16 +533,25 @@ struct HistoryChartsView: View {
         return hexes.compactMap { Color(hex: $0) }
     }
 
-    private func colorMap(for totals: [SeriesTotal], grouping: ChartGrouping) -> [String: Color] {
+    /// Palette slots by alphabetical label order (plus the gray "Other") —
+    /// the base assignment for both maps below, and the whole map for the
+    /// combined pair series: per-value override colours never apply to a
+    /// pair, since it spans two values and neither one's colour can claim it.
+    private func paletteSlots(for totals: [SeriesTotal]) -> [String: Color] {
         let labels = totals.map(\.label).filter { $0 != Self.otherLabel }.sorted()
         var map: [String: Color] = [Self.otherLabel: .gray]
         for (index, label) in labels.enumerated() {
             map[label] = palette[index % palette.count]
         }
+        return map
+    }
+
+    private func colorMap(for totals: [SeriesTotal], grouping: ChartGrouping) -> [String: Color] {
+        var map = paletteSlots(for: totals)
         // With "colour by value" on, user-picked overrides beat palette slots
         // so the charts match the tag pills elsewhere in the app.
         if model.colorTagsByValue {
-            for label in labels {
+            for label in totals.map(\.label) where label != Self.otherLabel {
                 if let override = overrideColor(for: label, grouping: grouping) {
                     map[label] = override
                 }
