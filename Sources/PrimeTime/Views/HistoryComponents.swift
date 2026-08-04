@@ -377,6 +377,9 @@ private struct LabelRowsEditor: View {
             .buttonStyle(.borderless)
             .font(.callout)
         }
+        // Covers both the expand-in-place appearance of the whole editor and
+        // rows added/removed while it's open.
+        .refreshesKeyViewLoop(on: rows.count)
     }
 }
 

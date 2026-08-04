@@ -386,8 +386,27 @@ final class AppModel {
         guard let store = localStore else { return }
         isRestoringState = true
         defer { isRestoringState = false }
-        tagSets = (try? store.loadTagSets()) ?? []
+        let loaded = withCurrentRowIds((try? store.loadTagSets()) ?? [])
+        if loaded != tagSets { tagSets = loaded }
         valueColors = (try? store.loadValueColors()) ?? [:]
+    }
+
+    /// Loaded sets with `TagRow` ids grafted back from the in-memory sets.
+    /// Row ids are view-local and never stored, so a plain reload hands every
+    /// row a fresh identity — tearing down whichever field is being edited
+    /// and dumping keyboard focus back on the set's Name field (#134).
+    private func withCurrentRowIds(_ loaded: [TagSet]) -> [TagSet] {
+        let current = Dictionary(uniqueKeysWithValues: tagSets.map { ($0.id, $0.tags) })
+        return loaded.map { set in
+            guard let oldTags = current[set.id] else { return set }
+            var set = set
+            set.tags = set.tags.enumerated().map { index, tag in
+                var tag = tag
+                if index < oldTags.count { tag.id = oldTags[index].id }
+                return tag
+            }
+            return set
+        }
     }
 
     // MARK: Import from traggo (#30)
@@ -706,10 +725,11 @@ final class AppModel {
 
     /// Append a fresh tag set — seeded from existing tags when given — and
     /// mark it for selection in the Tag Sets pane, where the user names it.
+    /// The name starts empty so the editor's Name field is genuinely blank
+    /// under its placeholder, not prefilled text to clear first (#134).
     @discardableResult
     func newTagSet(from tags: [SpanLabel] = []) -> TagSet {
-        let set = TagSet(name: "New tag set",
-                         tags: tags.map { TagRow(key: $0.key, value: $0.value) })
+        let set = TagSet(tags: tags.map { TagRow(key: $0.key, value: $0.value) })
         tagSets.append(set)
         pendingTagSetSelection = set.id
         return set

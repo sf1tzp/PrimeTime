@@ -372,9 +372,9 @@ struct TagSetsSettingsView: View {
                 Divider()
                 HStack {
                     Button {
-                        let set = TagSet(name: "New tag set")
-                        model.tagSets.append(set)
-                        selection = set.id
+                        // Selection arrives via pendingTagSetSelection — the
+                        // same route the Launcher ＋ card and Log ＋ use.
+                        model.newTagSet()
                     } label: { Image(systemName: "plus") }
                     Button {
                         if let selection,
@@ -408,11 +408,15 @@ struct TagSetsSettingsView: View {
 struct TagSetDetailView: View {
     @Environment(AppModel.self) private var model
     @Binding var tagSet: TagSet
+    @FocusState private var nameFocused: Bool
 
     var body: some View {
         Form {
             Section("Label set") {
-                TextField("Name", text: $tagSet.name)
+                // "Untitled" matches the fallback shown wherever an unnamed
+                // set is listed, so the placeholder tells the truth (#134).
+                TextField("Name", text: $tagSet.name, prompt: Text("Untitled"))
+                    .focused($nameFocused)
             }
             Section("Labels") {
                 ForEach($tagSet.tags) { $tag in
@@ -462,6 +466,14 @@ struct TagSetDetailView: View {
             }
         }
         .formStyle(.grouped)
+        // Added rows are otherwise unreachable by Tab — see KeyViewLoopRefresher.
+        .refreshesKeyViewLoop(on: "\(tagSet.id)/\(tagSet.tags.count)/\(quickRows.wrappedValue.count)")
+        // A freshly created set lands here unnamed: put the cursor in the
+        // empty Name field so typing the name is the next keystroke (#134).
+        // onChange too — the editor keeps its structural identity when the
+        // sidebar selection moves, so onAppear alone misses set switches.
+        .onAppear { if tagSet.name.isEmpty { nameFocused = true } }
+        .onChange(of: tagSet.id) { if tagSet.name.isEmpty { nameFocused = true } }
     }
 
     /// This set's quick labels (#61): hovering the set in the popover or

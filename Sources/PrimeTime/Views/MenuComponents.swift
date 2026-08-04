@@ -203,6 +203,44 @@ enum LabelEditorStyle {
     static let compactKeyFieldWidth: CGFloat = 72
 }
 
+/// Rebuilds the window's key-view loop (the Tab order) when `token` changes.
+///
+/// The PrimeTime window computes the loop once and never revisits it when
+/// SwiftUI inserts fields later — an "+ Add Label" row, or a whole editor
+/// expanding in place — so those fields are unreachable by Tab (resizing the
+/// window doesn't recompute it either). NSPopover's window evidently does
+/// recalculate on its own, which is why the popover editor never shows this.
+/// Attach with `refreshesKeyViewLoop(on:)`, keyed by whatever the field set
+/// derives from (row counts, the selected set's id).
+private struct KeyViewLoopRefresher: NSViewRepresentable {
+    let token: AnyHashable
+
+    final class Coordinator {
+        var lastToken: AnyHashable?
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        guard context.coordinator.lastToken != token else { return }
+        context.coordinator.lastToken = token
+        // After the current update commits, so the new fields are in the
+        // window's view tree when the loop is recomputed.
+        DispatchQueue.main.async { [weak view] in
+            view?.window?.recalculateKeyViewLoop()
+        }
+    }
+}
+
+extension View {
+    /// Recompute the containing window's Tab order whenever `token` changes
+    /// (and once when this view first lands in the window).
+    func refreshesKeyViewLoop(on token: some Hashable) -> some View {
+        background(KeyViewLoopRefresher(token: AnyHashable(token)))
+    }
+}
+
 /// A non-interactive stand-in for `TagColorPicker`'s chip-shaped well, for
 /// editors that must not read or write the user's palette (the walkthrough's
 /// mock editor).

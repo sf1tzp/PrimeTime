@@ -44,6 +44,16 @@ skills, so the two don't drift.
 - Collective element queries on the popover (`buttons of group 1 of
   window 1`) can fail wholesale with `-10000` even when the elements exist —
   iterate `UI elements of …` and filter on `role` instead.
+- **Tab-order tracing works** (2026-08-03, found the #134 key-view-loop bug):
+  focus a field, then loop `keystroke tab` + read `value of attribute
+  "AXFocusedUIElement" of process` — reliable, unlike text entry. Caveats:
+  `set focused of <field> to true` only takes if that window is key (with two
+  windows the read silently returns the other window — `cliclick` into the
+  field instead), and a field-style date picker reports its *label's* static
+  text as focused while eating one Tab per date element.
+- A fresh demo launch opens onboarding: click `button 1 of group 1 of
+  window 1` repeatedly to advance, then close the walkthrough window it
+  hands off to (`AXCloseButton`) before driving anything else.
 - Views at `.opacity(0)` (e.g. hover-revealed controls) are absent from the
   AX tree entirely — not present-but-invisible. To reach them, hover with a
   real cursor move first (`cliclick m:x,y`, app frontmost), then re-query;
