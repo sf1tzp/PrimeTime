@@ -21,6 +21,13 @@ struct MenuContentView: View {
     /// reorder's slot math — see GestureReorderGrip in RowReorder.swift.
     @State private var editorRowHeight: CGFloat = 24
 
+    /// One-shot request from the quick-start path (#149): a set with a
+    /// value-less label (`issue:` — a key whose value is typed fresh each
+    /// start) opens the new span's editor, and the editor's appearance
+    /// consumes this to land focus on that value field. Focus can't be set
+    /// at start time — the field doesn't exist until the editor renders.
+    @State private var wantsValueFocusOnEditorAppear = false
+
     /// The quick-start row whose quick-label chips are expanded — set only
     /// after the pointer *rests* on the row (hover intent, below), so the
     /// list stays glanceable at rest and a quick sweep down the menu to the
@@ -222,7 +229,7 @@ struct MenuContentView: View {
         let expanded = hoveredQuickStartID == set.id
         return VStack(alignment: .leading, spacing: 2) {
             Button {
-                Task { await model.start(tagSet: set) }
+                Task { await quickStart(set) }
             } label: {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(set.name.isEmpty ? "Untitled" : set.name)
@@ -257,6 +264,22 @@ struct MenuContentView: View {
         .overlay(RoundedRectangle(cornerRadius: 8)
             .strokeBorder(expanded ? Color.accentColor : Color.clear, lineWidth: 1.5))
         .onHover { rowHovered(set, inside: $0) }
+    }
+
+    /// Start a set from its quick-start row. A set carrying a value-less
+    /// label (`issue:`) is a fill-in-the-value-per-start workflow, so the
+    /// created span opens straight into the row editor with that value field
+    /// focused — copy a number, click the set, paste (#149). Fully-valued
+    /// sets keep the fire-and-forget behaviour. The flag is raised before
+    /// `beginEditing` claims the session, so it's in place whenever the
+    /// editor's appearance consumes it.
+    private func quickStart(_ set: TagSet) async {
+        let labels = set.labels
+        guard let created = await model.start(tags: labels) else { return }
+        if labels.contains(where: { $0.value.isEmpty }) {
+            wantsValueFocusOnEditorAppear = true
+            await model.beginEditing(created)
+        }
     }
 
     /// Hover intent for a quick-start row: expansion waits until the pointer
@@ -435,6 +458,17 @@ struct MenuContentView: View {
             }
         }
         .onChange(of: focusedField) { _, _ in commit() }
+        .onAppear {
+            // Consume a quick-start focus request (#149): aim at the first
+            // value-less draft. Deferred a runloop hop — a @FocusState write
+            // in the same pass that inserts the field can be dropped.
+            guard wantsValueFocusOnEditorAppear else { return }
+            wantsValueFocusOnEditorAppear = false
+            guard let target = session.tagDrafts.first(where: {
+                !$0.key.isEmpty && $0.value.isEmpty
+            }) else { return }
+            DispatchQueue.main.async { focusedField = .value(target.id) }
+        }
     }
 
     private func commit() {

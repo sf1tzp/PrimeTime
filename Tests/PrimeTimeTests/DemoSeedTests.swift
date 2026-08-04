@@ -73,9 +73,9 @@ import Testing
         // Thu(A 6) + Fri(B 6) + Sat(W1 2) + Sun(W2 3) + Mon(C 5) + Tue(D 5)
         // + today(6).
         #expect(spans.count == 33)
-        #expect(DemoSeed.tagSets.count == 8)
-        #expect(Set(DemoSeed.tagSets.compactMap(\.symbolName)).count == 8)  // distinct symbols
-        #expect(DemoSeed.labelDefinitions.count == 7)
+        #expect(DemoSeed.tagSets.count == 9)
+        #expect(Set(DemoSeed.tagSets.compactMap(\.symbolName)).count == 9)  // distinct symbols
+        #expect(DemoSeed.labelDefinitions.count == 8)
         #expect(DemoSeed.valueColors.count == 17)
         // Notes on several spans, so Log and Calendar popovers have texture.
         #expect(spans.filter { !$0.note.isEmpty }.count >= 10)

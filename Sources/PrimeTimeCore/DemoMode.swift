@@ -83,6 +83,13 @@ package enum DemoSeed {
                tags: [TagRow(key: "project", value: "primetime"),
                       TagRow(key: "type", value: "programming")],
                symbolName: "brain"),
+        // The value-less `issue:` is the fill-in-per-start story (#149):
+        // quick-starting this set opens the popover editor with the value
+        // field focused, ready for a pasted issue number.
+        TagSet(name: "Bugfix",
+               tags: [TagRow(key: "project", value: "primetime"),
+                      TagRow(key: "issue", value: "")],
+               symbolName: "ladybug"),
         // The two app sets carry no `type:` on purpose — they're the surface
         // where the quick labels below add the honing label from scratch
         // (Deep Work shows the replace-same-key story instead).
@@ -150,6 +157,7 @@ package enum DemoSeed {
         LabelDefinition(key: "type", color: "#1e88e5"),
         LabelDefinition(key: "team", color: "#795548"),
         LabelDefinition(key: "topic", color: "#f4511e"),
+        LabelDefinition(key: "issue", color: "#fbc02d"),
     ]
 
     /// Per-pair overrides, one hue per value so the colour-by-value story
