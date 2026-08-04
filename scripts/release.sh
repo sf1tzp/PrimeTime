@@ -159,18 +159,26 @@ gh release create "$TAG" "$ARTIFACT" "$APPCAST_DIR/appcast.xml" \
 echo "==> published https://github.com/$MIRROR/releases/tag/$TAG"
 
 # --- cask bump (#47) -----------------------------------------------------------
-# Point the tap's cask at the release just published. Sparkle keeps installed
-# apps current either way, so a failed bump is an inconvenience, not an
-# outage — rerun these steps by hand if the push races another update.
+# Point the tap's cask at the release just published. The tap's main is
+# ruleset-protected (PRs only, squash merge, no required approvals), so the
+# bump lands as a branch → PR → immediate self-merge; --delete-branch keeps
+# merged branches from accumulating. Sparkle keeps installed apps current
+# either way, so a failed bump is an inconvenience, not an outage — rerun
+# these steps by hand if anything here fails.
 TAP="sf1tzp/homebrew-tap"
 SHA256="$(shasum -a 256 "$ARTIFACT" | cut -d' ' -f1)"
 TAP_DIR="$(mktemp -d)"
 gh repo clone "$TAP" "$TAP_DIR" -- --depth 1 --quiet
+git -C "$TAP_DIR" switch -qc "primetime-$VERSION"
 sed -i '' \
     -e "s/^  version .*/  version \"$VERSION\"/" \
     -e "s/^  sha256 .*/  sha256 \"$SHA256\"/" \
     "$TAP_DIR/Casks/primetime.rb"
 git -C "$TAP_DIR" commit -aqm "primetime $VERSION"
-git -C "$TAP_DIR" push -q
+git -C "$TAP_DIR" push -qu origin "primetime-$VERSION"
+gh pr create --repo "$TAP" --head "primetime-$VERSION" \
+    --title "primetime $VERSION" \
+    --body "Automated cask bump from PrimeTime's release pipeline ($TAG)."
+gh pr merge --repo "$TAP" "primetime-$VERSION" --squash --delete-branch
 rm -rf "$TAP_DIR"
 echo "==> cask bumped to $VERSION on $TAP"
