@@ -362,7 +362,11 @@ private struct LabelRowsEditor: View {
                     TextField("value", text: $tag.value)
                         .autocorrectionDisabled()
                     Button(role: .destructive) {
-                        rows.removeAll { $0.id == tag.id }
+                        // Read the id before removeAll — reading the `tag`
+                        // binding inside the predicate re-enters the array's
+                        // exclusive access and traps.
+                        let id = tag.id
+                        rows.removeAll { $0.id == id }
                     } label: {
                         Image(systemName: "minus.circle")
                     }

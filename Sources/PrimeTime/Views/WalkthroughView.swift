@@ -336,7 +336,11 @@ private struct SpanIsLabelsPage: View {
                         .focused($focusedField, equals: .value(tag.id))
                         .onSubmit(commitEdits)
                     Button(role: .destructive) {
-                        tagDrafts.removeAll { $0.id == tag.id }
+                        // Read the id before removeAll — reading the `tag`
+                        // binding inside the predicate re-enters the array's
+                        // exclusive access and traps.
+                        let id = tag.id
+                        tagDrafts.removeAll { $0.id == id }
                         commitEdits()
                     } label: {
                         Image(systemName: "minus.circle")
@@ -1114,7 +1118,11 @@ private struct LabelSetsPage: View {
                             return .handled
                         }
                     Button(role: .destructive) {
-                        draftRows.removeAll { $0.id == row.id }
+                        // Read the id before removeAll — reading the `row`
+                        // binding inside the predicate re-enters the array's
+                        // exclusive access and traps.
+                        let id = row.id
+                        draftRows.removeAll { $0.id == id }
                     } label: {
                         Image(systemName: "minus.circle")
                     }

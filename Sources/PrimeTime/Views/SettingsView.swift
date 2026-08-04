@@ -438,7 +438,11 @@ struct TagSetDetailView: View {
                             .multilineTextAlignment(.leading)
                             .autocorrectionDisabled()
                         Button(role: .destructive) {
-                            tagSet.tags.removeAll { $0.id == tag.id }
+                            // Read the id before removeAll — reading the
+                            // `tag` binding inside the predicate re-enters
+                            // the array's exclusive access and traps.
+                            let id = tag.id
+                            tagSet.tags.removeAll { $0.id == id }
                         } label: {
                             Image(systemName: "minus.circle")
                         }
@@ -498,7 +502,11 @@ struct TagSetDetailView: View {
                         .multilineTextAlignment(.leading)
                         .autocorrectionDisabled()
                     Button(role: .destructive) {
-                        quickRows.wrappedValue.removeAll { $0.id == tag.id }
+                        // Read the id before removeAll — reading the `tag`
+                        // binding inside the predicate re-enters the array's
+                        // exclusive access and traps.
+                        let id = tag.id
+                        quickRows.wrappedValue.removeAll { $0.id == id }
                     } label: {
                         Image(systemName: "minus.circle")
                     }

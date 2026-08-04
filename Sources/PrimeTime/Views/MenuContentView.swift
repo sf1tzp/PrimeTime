@@ -382,7 +382,12 @@ struct MenuContentView: View {
                         .focused($focusedField, equals: .value(tag.id))
                         .onSubmit { commit() }
                     Button(role: .destructive) {
-                        session.tagDrafts.removeAll { $0.id == tag.id }
+                        // Read the id before removeAll: `tag` is a binding
+                        // into the same array, and reading it inside the
+                        // predicate re-enters the array's exclusive access
+                        // and traps.
+                        let id = tag.id
+                        session.tagDrafts.removeAll { $0.id == id }
                         commit()
                     } label: {
                         Image(systemName: "minus.circle")
