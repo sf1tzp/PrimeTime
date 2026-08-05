@@ -2,13 +2,16 @@ import SwiftUI
 import Charts
 
 /// The History tab: a donut + totals breakdown and a daily stacked bar chart
-/// for the displayed week. Instead of the web UI's build-your-own dashboards,
-/// flexibility lives in the grouping controls: two side-by-side donut columns,
-/// each with its own "Group by" picker (any tag key, or a Tag Set — one series
-/// per member tag), so two breakdowns of the same week sit next to each other.
-/// A "Count labels" toggle (#109) in the navigator row can instead nest the
-/// first grouping inside the second ("in Groups"): one full-width donut and
-/// one daily stack of strict "outer · inner" pairs (#151).
+/// for the displayed window — the shared week by default, or a trailing
+/// range picked like the Label Review's scan window (#163), with the bars
+/// widening from days to weeks to months as the window grows. Instead of the
+/// web UI's build-your-own dashboards, flexibility lives in the grouping
+/// controls: two side-by-side donut columns, each with its own "Group by"
+/// picker (any tag key, or a Tag Set — one series per member tag), so two
+/// breakdowns of the same window sit next to each other. A "Count labels"
+/// toggle (#109) in the header row can instead nest the first grouping
+/// inside the second ("in Groups"): one full-width donut and one daily stack
+/// of strict "outer · inner" pairs (#151).
 struct HistoryChartsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorScheme) private var colorScheme
@@ -16,7 +19,7 @@ struct HistoryChartsView: View {
     var body: some View {
         let history = model.history
         VStack(spacing: 0) {
-            WeekNavigatorView { modeToggle }
+            header
             Divider()
 
             if let error = history.errorMessage {
@@ -35,11 +38,59 @@ struct HistoryChartsView: View {
                 history.chartGrouping = history.defaultGrouping()
             }
         }
+        // Covers both first appearance and every range change; switching
+        // back to a still-loaded range is a no-op inside.
+        .task(id: history.chartRange) {
+            await history.loadRangeIfNeeded()
+        }
     }
 
     // MARK: Layout
 
-    /// The mode toggle, slotted into the week navigator row (#151):
+    /// The charts' own date row, in place of the shared `WeekNavigatorView`
+    /// (#163): the range picker leads — Week keeps the `‹ Today ›` stepping
+    /// cluster, a trailing range swaps it for the window's concrete dates.
+    /// The trailing side mirrors the navigator (mode toggle, progress,
+    /// refresh) so the three history tabs keep one row shape.
+    private var header: some View {
+        @Bindable var history = model.history
+        return HStack(spacing: 8) {
+            Picker("Range", selection: $history.chartRange) {
+                Text("Week").tag(TrailingRange?.none)
+                ForEach(TrailingRange.allCases) { range in
+                    Text(range.label).tag(TrailingRange?.some(range))
+                }
+            }
+            .fixedSize()
+
+            if history.chartRange == nil {
+                WeekControlsView()
+                Text(history.weekLabel)
+                    .font(.headline)
+            } else {
+                Text(history.chartRangeLabel)
+                    .font(.headline)
+            }
+
+            Spacer()
+
+            modeToggle
+
+            if history.isLoading || history.isLoadingRange {
+                ProgressView().controlSize(.small)
+            }
+            Button {
+                Task { await history.reloadChartWindow() }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+            .help("Refresh")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    /// The mode toggle, slotted into the header row (#151):
     /// "Separately" shows two independent breakdowns side by side; "in
     /// Groups" counts the first grouping split by the second in a single
     /// donut. Meaningless with one grouping, so it's disabled (and split
@@ -73,7 +124,7 @@ struct HistoryChartsView: View {
                                  innerSelection: $history.chartGrouping2)
                 } else {
                     // Two columns, each a "Group by" picker over its donut. The
-                    // second compares another breakdown of the same week; until
+                    // second compares another breakdown of the same window; until
                     // one is picked (or it has no data) a placeholder ring holds
                     // its place.
                     HStack(alignment: .top, spacing: 20) {
@@ -84,7 +135,7 @@ struct HistoryChartsView: View {
                 }
 
                 HStack {
-                    Text("Per day")
+                    Text(bucketHeaderLabel)
                         .font(.subheadline.weight(.semibold))
                     Spacer()
                     Text(perDayTotalLabel)
@@ -152,16 +203,26 @@ struct HistoryChartsView: View {
         return (outer, inner)
     }
 
-    /// "Total 25h 20m" for the week — except in combined mode, where the bars
-    /// only chart pair-matched time, so the header echoes the donut's
-    /// "matched" figure instead of contradicting it.
+    /// "Total 25h 20m" for the chart window — except in combined mode, where
+    /// the bars only chart pair-matched time, so the header echoes the
+    /// donut's "matched" figure instead of contradicting it.
     private var perDayTotalLabel: String {
         if let (outer, inner) = combinedGroupings {
             let matched = model.history.combinedTotals(outer: outer, inner: inner)
                 .reduce(0) { $0 + $1.seconds }
             return "Matched \(formatDuration(matched))"
         }
-        return "Total \(formatDuration(model.history.weekTotalSeconds))"
+        return "Total \(formatDuration(model.history.chartTotalSeconds))"
+    }
+
+    /// "Per day" / "Per week" / "Per month", following the bar width the
+    /// range dictates.
+    private var bucketHeaderLabel: String {
+        switch model.history.chartBucketUnit {
+        case .weekOfYear: "Per week"
+        case .month: "Per month"
+        default: "Per day"
+        }
     }
 
     /// Combined mode, full width (#151): the old caption sentence is now the
@@ -217,7 +278,8 @@ struct HistoryChartsView: View {
     private var dailyBody: some View {
         let marks = dailyMarks
         if marks.isEmpty {
-            Text("No labelled time this week")
+            Text(model.history.chartRange == nil
+                 ? "No labelled time this week" : "No labelled time in this range")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
@@ -457,11 +519,11 @@ struct HistoryChartsView: View {
 
     private func dailyChart(_ marks: [DailyMark], splitColumns: Bool) -> some View {
         Chart(marks) { item in
-            let bar = BarMark(x: .value("Day", item.day, unit: .day),
+            let bar = BarMark(x: .value("Day", item.day, unit: model.history.chartBucketUnit),
                               y: .value("Hours", item.seconds / 3600))
             if splitColumns {
-                // With one grouping the single band spans the day; with two,
-                // each day shows the groupings' stacks side by side.
+                // With one grouping the single band spans the bucket; with
+                // two, each bucket shows the groupings' stacks side by side.
                 bar.position(by: .value("Grouping", item.column))
                     .foregroundStyle(item.color)
                     .cornerRadius(2)
@@ -471,13 +533,14 @@ struct HistoryChartsView: View {
                     .cornerRadius(2)
             }
         }
-        // Pin the domain to the whole week, or a single day of data would
-        // stretch its bar across the full plot width.
-        .chartXScale(domain: model.history.weekInterval.start...model.history.weekInterval.end)
+        // Pin the domain to the whole window, or a single bucket of data
+        // would stretch its bar across the full plot width.
+        .chartXScale(domain: model.history.chartInterval.start...model.history.chartInterval.end)
         .chartXAxis {
-            AxisMarks(values: .stride(by: .day)) { _ in
+            AxisMarks(values: xAxisValues) { _ in
                 AxisGridLine()
-                AxisValueLabel(format: .dateTime.weekday(.abbreviated), centered: true)
+                AxisValueLabel(format: xAxisFormat,
+                               centered: model.history.chartRange == nil)
             }
         }
         .chartYAxis {
@@ -491,6 +554,31 @@ struct HistoryChartsView: View {
             }
         }
         .frame(height: 200)
+    }
+
+    /// X-axis tick positions per range: the week marks every day; trailing
+    /// ranges mark calendar boundaries a step above their bar unit (weeks
+    /// over daily bars, months over weekly ones…) so labels stay sparse
+    /// however many bars the window holds.
+    private var xAxisValues: AxisMarkValues {
+        switch model.history.chartRange {
+        case nil: .stride(by: .day)
+        case .days30: .stride(by: .weekOfYear)
+        case .days90: .stride(by: .month)
+        case .year: .stride(by: .month, count: 2)
+        case .all: .automatic(desiredCount: 6)
+        }
+    }
+
+    /// Tick label style matching `xAxisValues`: weekday initials for the
+    /// week, dates or months beyond it.
+    private var xAxisFormat: Date.FormatStyle {
+        switch model.history.chartRange {
+        case nil: .dateTime.weekday(.abbreviated)
+        case .days30: .dateTime.day().month(.abbreviated)
+        case .days90, .year: .dateTime.month(.abbreviated)
+        case .all: .dateTime.month(.abbreviated).year()
+        }
     }
 
     /// "2h", "45m", "1h 30m" — y-axis ticks in whichever unit reads cleanly.

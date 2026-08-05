@@ -6,38 +6,22 @@ import PrimeTimeCore
 // MARK: - Week navigator
 
 /// `‹ Today ›  Jan 26 – Feb 1, 2026` — drives `HistoryModel.weekStart`, shown
-/// at the top of every history tab so they all stay on the same week. A tab
-/// can slot its own controls into the row's trailing space (before the
-/// refresh button) via `accessory` — the History tab's mode toggle lives
-/// there (#151).
-struct WeekNavigatorView<Accessory: View>: View {
+/// at the top of the Log and Calendar tabs so they stay on the same week.
+/// The History/charts tab renders its own header (`HistoryChartsView`): its
+/// range picker can swap the week controls out entirely (#163), but it reuses
+/// `WeekControlsView` so the stepping cluster stays one implementation.
+struct WeekNavigatorView: View {
     @Environment(AppModel.self) private var model
-    private let accessory: Accessory
-
-    init(@ViewBuilder accessory: () -> Accessory) {
-        self.accessory = accessory()
-    }
 
     var body: some View {
         let history = model.history
         HStack(spacing: 8) {
-            HStack(spacing: 2) {
-                Button { history.goToPreviousWeek() } label: {
-                    Image(systemName: "chevron.left")
-                }
-                Button("Today") { history.goToToday() }
-                    .disabled(history.isCurrentWeek)
-                Button { history.goToNextWeek() } label: {
-                    Image(systemName: "chevron.right")
-                }
-            }
+            WeekControlsView()
 
             Text(history.weekLabel)
                 .font(.headline)
 
             Spacer()
-
-            accessory
 
             if history.isLoading {
                 ProgressView().controlSize(.small)
@@ -54,8 +38,24 @@ struct WeekNavigatorView<Accessory: View>: View {
     }
 }
 
-extension WeekNavigatorView where Accessory == EmptyView {
-    init() { self.init { EmptyView() } }
+/// The `‹ Today ›` week-stepping cluster, shared by the week navigator and
+/// the charts header's week mode.
+struct WeekControlsView: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let history = model.history
+        HStack(spacing: 2) {
+            Button { history.goToPreviousWeek() } label: {
+                Image(systemName: "chevron.left")
+            }
+            Button("Today") { history.goToToday() }
+                .disabled(history.isCurrentWeek)
+            Button { history.goToNextWeek() } label: {
+                Image(systemName: "chevron.right")
+            }
+        }
+    }
 }
 
 // MARK: - Timespan editor

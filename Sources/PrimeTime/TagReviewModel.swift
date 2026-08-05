@@ -2,35 +2,6 @@ import Foundation
 import PrimeTimeCore
 import Observation
 
-/// How far back the tag review scans. Value stats can't come from the server
-/// (its tags query only returns key/colour), so the review pages through
-/// timespans client-side and the window bounds how much it pulls.
-enum ScanRange: String, CaseIterable, Identifiable {
-    case days30, days90, year, all
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .days30: "Last 30 days"
-        case .days90: "Last 90 days"
-        case .year: "Last 12 months"
-        case .all: "All history"
-        }
-    }
-
-    /// Lower bound of the scan. "All" uses 1970 — traggo needs a concrete
-    /// bound, and nothing predates the epoch.
-    var start: Date {
-        let calendar = Calendar.current
-        switch self {
-        case .days30: return calendar.date(byAdding: .day, value: -30, to: Date()) ?? .distantPast
-        case .days90: return calendar.date(byAdding: .day, value: -90, to: Date()) ?? .distantPast
-        case .year: return calendar.date(byAdding: .year, value: -1, to: Date()) ?? .distantPast
-        case .all: return Date(timeIntervalSince1970: 0)
-        }
-    }
-}
-
 /// Usage of one value under a key: how many scanned timespans carry it and
 /// how much tracked time they add up to.
 struct ValueStat: Identifiable {
@@ -73,7 +44,7 @@ struct StagedChange: Identifiable {
 final class TagReviewModel {
     @ObservationIgnored unowned let app: AppModel
 
-    var range: ScanRange = .days90
+    var range: TrailingRange = .days90
     /// Everything the last scan fetched (finished + running), deduplicated.
     private(set) var spans: [TimeSpan] = []
     private(set) var hasScanned = false

@@ -79,7 +79,7 @@ struct TagReviewView: View {
         @Bindable var review = model.review
         return HStack(spacing: 8) {
             Picker("Range", selection: $review.range) {
-                ForEach(ScanRange.allCases) { range in
+                ForEach(TrailingRange.allCases) { range in
                     Text(range.label).tag(range)
                 }
             }
