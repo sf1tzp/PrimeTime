@@ -94,13 +94,24 @@ struct QuickLabelChip: View {
     let quick: TagRow
     /// See `QuickLabelChipStyle.filled`.
     var filled = false
+    /// The popover routes chip starts through its quickStart so a set still
+    /// carrying a value-less label opens the editor, value focused (#162).
+    /// The Launcher has no editor at hand and keeps the plain-start default.
+    var start: (([SpanLabel]) async -> Void)? = nil
 
     private var key: String { normalizeKey(quick.key) }
     private var value: String { quick.value.trimmingCharacters(in: .whitespaces) }
 
     var body: some View {
         Button {
-            Task { await model.start(tags: set.labels(applying: quick)) }
+            Task {
+                let labels = set.labels(applying: quick)
+                if let start {
+                    await start(labels)
+                } else {
+                    await model.start(tags: labels)
+                }
+            }
         } label: {
             Text("+\(value.isEmpty ? key : value)")
         }

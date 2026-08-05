@@ -229,7 +229,7 @@ struct MenuContentView: View {
         let expanded = hoveredQuickStartID == set.id
         return VStack(alignment: .leading, spacing: 2) {
             Button {
-                Task { await quickStart(set) }
+                Task { await quickStart(labels: set.labels) }
             } label: {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(set.name.isEmpty ? "Untitled" : set.name)
@@ -251,7 +251,9 @@ struct MenuContentView: View {
             if expanded, !quicks.isEmpty {
                 FlowLayout(spacing: 4) {
                     ForEach(quicks) { quick in
-                        QuickLabelChip(set: set, quick: quick)
+                        QuickLabelChip(set: set, quick: quick) {
+                            await quickStart(labels: $0)
+                        }
                     }
                 }
                 .padding(.horizontal, 8)
@@ -266,15 +268,15 @@ struct MenuContentView: View {
         .onHover { rowHovered(set, inside: $0) }
     }
 
-    /// Start a set from its quick-start row. A set carrying a value-less
-    /// label (`issue:`) is a fill-in-the-value-per-start workflow, so the
-    /// created span opens straight into the row editor with that value field
-    /// focused — copy a number, click the set, paste (#149). Fully-valued
-    /// sets keep the fire-and-forget behaviour. The flag is raised before
-    /// `beginEditing` claims the session, so it's in place whenever the
-    /// editor's appearance consumes it.
-    private func quickStart(_ set: TagSet) async {
-        let labels = set.labels
+    /// Start a set from its quick-start row or one of its quick-label chips
+    /// (#162 — the chips pass `labels(applying:)`). A start still carrying a
+    /// value-less label (`issue:`) is a fill-in-the-value-per-start workflow,
+    /// so the created span opens straight into the row editor with that value
+    /// field focused — copy a number, click the set, paste (#149). Fully-
+    /// valued starts keep the fire-and-forget behaviour. The flag is raised
+    /// before `beginEditing` claims the session, so it's in place whenever
+    /// the editor's appearance consumes it.
+    private func quickStart(labels: [SpanLabel]) async {
         guard let created = await model.start(tags: labels) else { return }
         if labels.contains(where: { $0.value.isEmpty }) {
             wantsValueFocusOnEditorAppear = true

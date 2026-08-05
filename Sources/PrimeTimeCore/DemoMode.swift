@@ -126,11 +126,13 @@ package enum DemoSeed {
     /// Quick labels for the dev-flavoured sets, matched by name because the
     /// set ids are minted fresh on every reseed. The `type:` trio shows both
     /// stories: added from scratch on the app sets (no `type:` baked in) and
-    /// replace-same-key on Deep Work. Workout et al. get none — quick labels
-    /// are per-set precisely so they don't.
+    /// replace-same-key on Deep Work. On Bugfix it also makes the #162 story
+    /// drivable: a chip start on a set whose `issue:` is value-less still
+    /// opens the editor, value focused. Workout et al. get none — quick
+    /// labels are per-set precisely so they don't.
     package static func quickLabels(forSetNamed name: String) -> [TagRow]? {
         switch name {
-        case "Deep Work", "App Backend", "App Frontend", "Server Ops":
+        case "Deep Work", "App Backend", "App Frontend", "Server Ops", "Bugfix":
             return [TagRow(key: "type", value: "programming"),
                     TagRow(key: "type", value: "review"),
                     TagRow(key: "type", value: "debugging")]
