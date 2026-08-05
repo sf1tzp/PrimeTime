@@ -256,15 +256,22 @@ struct HistoryChartsView: View {
         } else {
             let colors = paletteSlots(for: totals)
             let grand = totals.reduce(0) { $0 + $1.seconds }
-            HStack(alignment: .center, spacing: 16) {
+            // Full width lets the pair go wider than a split column, so instead
+            // of hugging the left edge (a trailing Spacer left the right half
+            // empty, #151 follow-up) the donut and its legend centre as a unit,
+            // with flanking Spacers giving symmetric breathing room. A bigger
+            // donut than the split view's earns the extra prominence.
+            HStack(alignment: .center, spacing: 28) {
+                Spacer(minLength: 24)
                 // Strict pairing excludes spans missing either dimension,
                 // so this total can undershoot the week's — "matched"
                 // keeps it from contradicting the footer's "tracked".
                 donut(totals: totals, colors: colors, grand: grand,
-                      caption: "matched")
+                      caption: "matched", size: 200)
                 combinedBreakdownList(totals: totals, colors: colors, grand: grand)
-                Spacer(minLength: 0)
+                Spacer(minLength: 24)
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -368,7 +375,7 @@ struct HistoryChartsView: View {
     // MARK: Charts
 
     private func donut(totals: [SeriesTotal], colors: [String: Color], grand: TimeInterval,
-                       caption: String = "tracked") -> some View {
+                       caption: String = "tracked", size: CGFloat = 160) -> some View {
         Chart(totals) { item in
             SectorMark(angle: .value("Time", item.seconds),
                        innerRadius: .ratio(0.62),
@@ -377,7 +384,7 @@ struct HistoryChartsView: View {
                 .cornerRadius(2)
         }
         .chartLegend(.hidden)   // the breakdown list is the legend
-        .frame(width: 160, height: 160)
+        .frame(width: size, height: size)
         .overlay {
             VStack(spacing: 0) {
                 Text(formatDuration(grand))
