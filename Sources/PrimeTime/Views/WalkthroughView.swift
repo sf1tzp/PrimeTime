@@ -606,13 +606,13 @@ private struct LabelingSchemesPage: View {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: "stethoscope")
                         .foregroundStyle(.tint)
-                    Text("Label Review shows when notes develop a trend — problem: this, problem: that. If you notice that happening, it's okay to add to your your scheme. Decide what works best in your workflow.")
+                    Text("Label Review shows when notes develop a trend — problem: this, problem: that. If you notice that happening, it's okay to add to your scheme. Decide what works best in your workflow.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Text("PrimeTime lets you save custom labeling schemes as Label Sets — more on this later.")
+                Text("PrimeTime lets you save custom labeling schemes as Label Sets — even a label whose value you leave blank and fill in as the timer starts. More on this later.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -1306,7 +1306,7 @@ private struct QuickLabelsPage: View {
                     .frame(maxWidth: .infinity)
                 }
                 preview
-                Text("All three quick labels share the key type:, so they swap with each other — click between them as often as you like. Clicking the row anywhere else starts from just the set's own labels.")
+                Text("All three quick labels share the key type:, so they swap with each other — click between them as often as you like. Clicking the row anywhere else starts from just the set's own labels. A set can even be quick labels only — no baked-in labels at all — which makes a tidy home for hobbies: game:, book:, activity:.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }

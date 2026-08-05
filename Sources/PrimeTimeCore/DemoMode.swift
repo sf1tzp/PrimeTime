@@ -13,7 +13,7 @@ import GRDB
 /// Nothing a demo session does can touch real data: timespans, tag sets,
 /// definitions and value colours live in `demo.sqlite` beside the real
 /// database (rebuilt from scratch on every demo launch, dated relative to
-/// now so "the past week" always looks current), and settings reads/writes
+/// now so "the past month" always looks current), and settings reads/writes
 /// go to a scratch UserDefaults suite instead of the standard domain.
 package enum DemoMode {
     package static var isActive: Bool {
@@ -62,14 +62,28 @@ package extension LocalBackend {
 
 // MARK: - Seed content
 
-/// The demo dataset. Content is designed around the surfaces it has to
-/// photograph well: eight tag sets with distinct symbols for the Launcher
-/// grid and popover quick start; per-value colours so colour-by-value (on by
-/// default) visibly splits pairs like `repo: website` vs `repo: server`; a
-/// trailing week of spans with work-day clustering, overlaps, and notes for
-/// Log/Calendar/History; two running spans for the live-timer story; two
-/// unlabelled ad-hoc spans; and a deliberate `proj` vs `project` key drift
-/// for Tag Review to clean up.
+/// The demo dataset, renovated for the onboarding "Pro-Moves" examples
+/// (#172). Content is designed around the surfaces it has to photograph
+/// well, and the persona is a contractor whose scheme shows all three
+/// recommended patterns:
+///
+/// - **Quick-labels-only sets** (Gaming, Workout, Reading): no preset
+///   labels, one chip per game/activity/book — easy to add or remove
+///   without touching history.
+/// - **Value-less labels** (Frontend/Backend Work's `feature:`, the client
+///   sets' `repo:`/`issue:`): quick-starting one opens the popover editor
+///   with the empty value focused, ready for a pasted issue number (#149,
+///   #162).
+/// - **Multi-client, multi-project sets** (Blue Sky, Meridian, Lighthouse,
+///   Velocity Consulting): `client:` + `project:` presets with `type:` and
+///   `meeting:` quick labels, so History's combined view has real
+///   type × project, type × client and meeting × client axes to group by.
+///
+/// Spans cover a trailing month — enough for the History range selector's
+/// "Last 30 days" — with work-day clustering, overlaps, notes, evening and
+/// weekend leisure spans, two running spans, unlabelled ad-hoc spans, and a
+/// deliberate `proj:` vs `repo:` key drift for Label Review to move
+/// (`proj: company-website` → `repo: company-website`).
 ///
 /// Everything is deterministic given (`now`, `calendar`): past days carry
 /// fixed templates chosen by weekday/weekend, today is laid out backwards
@@ -79,63 +93,89 @@ package enum DemoSeed {
     // MARK: Tag sets (Launcher cards / popover quick start)
 
     static let tagSets: [TagSet] = [
-        TagSet(name: "Deep Work",
-               tags: [TagRow(key: "project", value: "primetime"),
-                      TagRow(key: "type", value: "programming")],
-               symbolName: "brain"),
-        // The value-less `issue:` is the fill-in-per-start story (#149):
-        // quick-starting this set opens the popover editor with the value
-        // field focused, ready for a pasted issue number.
-        TagSet(name: "Bugfix",
-               tags: [TagRow(key: "project", value: "primetime"),
-                      TagRow(key: "issue", value: "")],
-               symbolName: "ladybug"),
-        // The two app sets carry no `type:` on purpose — they're the surface
-        // where the quick labels below add the honing label from scratch
-        // (Deep Work shows the replace-same-key story instead).
-        TagSet(name: "App Backend",
-               tags: [TagRow(key: "repo", value: "website"),
-                      TagRow(key: "feat", value: "backend")],
-               symbolName: "hammer"),
-        TagSet(name: "Server Ops",
-               tags: [TagRow(key: "repo", value: "server"),
-                      TagRow(key: "type", value: "ops")],
-               symbolName: "terminal"),
-        TagSet(name: "App Frontend",
-               tags: [TagRow(key: "repo", value: "website"),
-                      TagRow(key: "feat", value: "frontend")],
+        // The "common work" pair: a shared value-less `feature:` links time
+        // across both repos, and quick-starting either opens the editor with
+        // the empty value focused (#149/#162).
+        TagSet(name: "Frontend Work",
+               tags: [TagRow(key: "repo", value: "company-website"),
+                      TagRow(key: "feature", value: "")],
                symbolName: "paintbrush"),
-        TagSet(name: "Standup",
-               tags: [TagRow(key: "team", value: "platform"),
-                      TagRow(key: "type", value: "meeting")],
-               symbolName: "person.2"),
-        TagSet(name: "Email & Admin",
-               tags: [TagRow(key: "type", value: "email")],
-               symbolName: "envelope"),
-        TagSet(name: "Reading",
-               tags: [TagRow(key: "topic", value: "swift"),
-                      TagRow(key: "type", value: "learning")],
-               symbolName: "book"),
-        TagSet(name: "Workout",
-               tags: [TagRow(key: "type", value: "exercise")],
-               symbolName: "figure.run"),
+        TagSet(name: "Backend Work",
+               tags: [TagRow(key: "repo", value: "company-server"),
+                      TagRow(key: "feature", value: "")],
+               symbolName: "terminal"),
+        // The multi-client pattern: `project:` + `client:` presets, with
+        // value-less `repo:`/`issue:` to fill in per start. Their quick
+        // labels below carry the `type:`/`meeting:` axes History's combined
+        // view groups by. `project:` leads so each launcher card borrows its
+        // *project's* colour — client-first would paint Blue Sky and
+        // Meridian the same client-a blue.
+        TagSet(name: "Blue Sky",
+               tags: [TagRow(key: "project", value: "blue-sky"),
+                      TagRow(key: "client", value: "client-a"),
+                      TagRow(key: "repo", value: ""),
+                      TagRow(key: "issue", value: "")],
+               symbolName: "cloud.sun"),
+        TagSet(name: "Meridian",
+               tags: [TagRow(key: "project", value: "meridian"),
+                      TagRow(key: "client", value: "client-a"),
+                      TagRow(key: "repo", value: ""),
+                      TagRow(key: "issue", value: "")],
+               symbolName: "globe"),
+        TagSet(name: "Lighthouse",
+               tags: [TagRow(key: "project", value: "lighthouse"),
+                      TagRow(key: "client", value: "client-b"),
+                      TagRow(key: "repo", value: ""),
+                      TagRow(key: "issue", value: "")],
+               symbolName: "light.beacon.max"),
+        // Meetings-only engagement: no repo/issue to fill in, just the
+        // `meeting:` chips.
+        TagSet(name: "Velocity Consulting",
+               tags: [TagRow(key: "project", value: "velocity-consulting"),
+                      TagRow(key: "client", value: "client-c")],
+               symbolName: "briefcase"),
+        // Quick-labels-only sets: no presets, so the card colour comes from
+        // `colorHex` (matched to the key's definition colour below).
+        TagSet(name: "Gaming", symbolName: "gamecontroller", colorHex: "#7e57c2"),
+        TagSet(name: "Workout", symbolName: "figure.run", colorHex: "#43a047"),
+        TagSet(name: "Reading", symbolName: "book", colorHex: "#f4511e"),
     ]
 
     // MARK: Quick labels (popover / Launcher hover chips)
 
-    /// Quick labels for the dev-flavoured sets, matched by name because the
-    /// set ids are minted fresh on every reseed. The `type:` trio shows both
-    /// stories: added from scratch on the app sets (no `type:` baked in) and
-    /// replace-same-key on Deep Work. On Bugfix it also makes the #162 story
-    /// drivable: a chip start on a set whose `issue:` is value-less still
-    /// opens the editor, value focused. Workout et al. get none — quick
-    /// labels are per-set precisely so they don't.
+    /// Quick labels for every set, matched by name because the set ids are
+    /// minted fresh on every reseed. The work sets carry the `type:` trio
+    /// (added from scratch — no `type:` is baked into any set); the client
+    /// sets add `meeting:` chips so one hover covers coding and ceremonies;
+    /// the leisure sets are chips *only* — the whole set is its quick
+    /// labels.
     package static func quickLabels(forSetNamed name: String) -> [TagRow]? {
+        let type = [TagRow(key: "type", value: "planning"),
+                    TagRow(key: "type", value: "coding"),
+                    TagRow(key: "type", value: "review")]
         switch name {
-        case "Deep Work", "App Backend", "App Frontend", "Server Ops", "Bugfix":
-            return [TagRow(key: "type", value: "programming"),
-                    TagRow(key: "type", value: "review"),
-                    TagRow(key: "type", value: "debugging")]
+        case "Frontend Work", "Backend Work":
+            return type
+        case "Blue Sky", "Meridian", "Lighthouse":
+            return type + [TagRow(key: "meeting", value: "roadmap"),
+                           TagRow(key: "meeting", value: "standup"),
+                           TagRow(key: "meeting", value: "handoff")]
+        case "Velocity Consulting":
+            return [TagRow(key: "meeting", value: "roadmap"),
+                    TagRow(key: "meeting", value: "standup"),
+                    TagRow(key: "meeting", value: "release-planning")]
+        case "Gaming":
+            return [TagRow(key: "game", value: "baldurs-gate"),
+                    TagRow(key: "game", value: "no-mans-sky"),
+                    TagRow(key: "game", value: "cyberpunk")]
+        case "Workout":
+            return [TagRow(key: "activity", value: "bike"),
+                    TagRow(key: "activity", value: "run"),
+                    TagRow(key: "activity", value: "gym")]
+        case "Reading":
+            return [TagRow(key: "book", value: "the-director"),
+                    TagRow(key: "book", value: "crux"),
+                    TagRow(key: "book", value: "the-wayfinder")]
         default:
             return nil
         }
@@ -144,45 +184,64 @@ package enum DemoSeed {
     // MARK: Colours
     //
     // Balanced warm/cool on purpose: the brand palette (oranges, reds, dark
-    // greys) carries the hero labels — `project:` and its spans dominate the
-    // demo, so it goes brand orange — while repo/type/feat keep their cool
+    // greys) carries the hero label — `project:` and its spans dominate the
+    // demo, so it goes brand orange — while client/repo/type keep their cool
     // hues as contrast anchors. Roughly half-and-half across the spectrum.
 
     static let labelDefinitions: [LabelDefinition] = [
+        LabelDefinition(key: "client", color: "#795548"),
         LabelDefinition(key: "project", color: "#d84315"),
-        // Same colour as `project` on purpose: the drifted key should look
-        // like what it is — the same concept, misspelled — so the difference
-        // shows up in Tag Review, not on every pill.
-        LabelDefinition(key: "proj", color: "#d84315"),
         LabelDefinition(key: "repo", color: "#00897b"),
-        LabelDefinition(key: "feat", color: "#8e24aa"),
-        LabelDefinition(key: "type", color: "#1e88e5"),
-        LabelDefinition(key: "team", color: "#795548"),
-        LabelDefinition(key: "topic", color: "#f4511e"),
+        // Same colour as `repo` on purpose: the drifted key should look
+        // like what it is — the same concept, misspelled — so the difference
+        // shows up in Label Review, not on every pill.
+        LabelDefinition(key: "proj", color: "#00897b"),
+        LabelDefinition(key: "feature", color: "#8e24aa"),
         LabelDefinition(key: "issue", color: "#fbc02d"),
+        LabelDefinition(key: "type", color: "#1e88e5"),
+        LabelDefinition(key: "meeting", color: "#e53935"),
+        LabelDefinition(key: "game", color: "#7e57c2"),
+        LabelDefinition(key: "activity", color: "#43a047"),
+        LabelDefinition(key: "book", color: "#f4511e"),
     ]
 
     /// Per-pair overrides, one hue per value so the colour-by-value story
-    /// reads at a glance — `repo: website` blue vs `repo: server` teal, and every
-    /// `type:` value its own slice colour in the History donuts.
+    /// reads at a glance — every `type:`/`meeting:` value its own slice in
+    /// the History donuts, and the combined view's type × client and
+    /// meeting × client pairings stay tellable-apart.
     static let valueColors: [String: String] = [
-        ValueColorKey.join("project", "primetime"): "#e64a19",
-        ValueColorKey.join("proj", "primetime"): "#e64a19",   // drift matches too
-        ValueColorKey.join("project", "website"): "#ec407a",
-        ValueColorKey.join("repo", "website"): "#42a5f5",
-        ValueColorKey.join("repo", "server"): "#26a69a",
-        ValueColorKey.join("feat", "backend"): "#00acc1",
-        ValueColorKey.join("feat", "frontend"): "#f06292",
-        ValueColorKey.join("type", "programming"): "#5c6bc0",
-        ValueColorKey.join("type", "review"): "#ffa726",
-        ValueColorKey.join("type", "meeting"): "#ef5350",
-        ValueColorKey.join("type", "email"): "#8d6e63",
-        ValueColorKey.join("type", "ops"): "#66bb6a",
-        ValueColorKey.join("type", "learning"): "#29b6f6",
-        ValueColorKey.join("type", "exercise"): "#9ccc65",
-        ValueColorKey.join("type", "support"): "#ffca28",
-        ValueColorKey.join("topic", "swift"): "#ff7043",
-        ValueColorKey.join("team", "platform"): "#a1887f",
+        ValueColorKey.join("project", "blue-sky"): "#039be5",
+        ValueColorKey.join("project", "meridian"): "#ec407a",
+        ValueColorKey.join("project", "lighthouse"): "#ffa726",
+        ValueColorKey.join("project", "velocity-consulting"): "#9ccc65",
+        ValueColorKey.join("client", "client-a"): "#29b6f6",
+        ValueColorKey.join("client", "client-b"): "#66bb6a",
+        ValueColorKey.join("client", "client-c"): "#8d6e63",
+        ValueColorKey.join("repo", "company-website"): "#42a5f5",
+        ValueColorKey.join("repo", "company-server"): "#26a69a",
+        // Drift matches too — see `proj` above.
+        ValueColorKey.join("proj", "company-website"): "#42a5f5",
+        ValueColorKey.join("feature", "checkout"): "#f06292",
+        ValueColorKey.join("feature", "search"): "#ba68c8",
+        ValueColorKey.join("feature", "billing"): "#ffb74d",
+        ValueColorKey.join("feature", "api"): "#4db6ac",
+        ValueColorKey.join("type", "planning"): "#ffca28",
+        ValueColorKey.join("type", "coding"): "#5c6bc0",
+        ValueColorKey.join("type", "review"): "#26c6da",
+        ValueColorKey.join("type", "support"): "#78909c",
+        ValueColorKey.join("meeting", "standup"): "#ef5350",
+        ValueColorKey.join("meeting", "roadmap"): "#ab47bc",
+        ValueColorKey.join("meeting", "handoff"): "#ff7043",
+        ValueColorKey.join("meeting", "release-planning"): "#d4e157",
+        ValueColorKey.join("game", "baldurs-gate"): "#d84315",
+        ValueColorKey.join("game", "no-mans-sky"): "#26a69a",
+        ValueColorKey.join("game", "cyberpunk"): "#fdd835",
+        ValueColorKey.join("activity", "bike"): "#66bb6a",
+        ValueColorKey.join("activity", "run"): "#ffa726",
+        ValueColorKey.join("activity", "gym"): "#ef5350",
+        ValueColorKey.join("book", "the-director"): "#8d6e63",
+        ValueColorKey.join("book", "crux"): "#5c6bc0",
+        ValueColorKey.join("book", "the-wayfinder"): "#26a69a",
     ]
 
     // MARK: Spans
@@ -206,105 +265,139 @@ package enum DemoSeed {
     }
 
     // Label shorthands for the templates.
-    private static let standup = [SpanLabel(key: "team", value: "platform"),
-                                  SpanLabel(key: "type", value: "meeting")]
-    private static let deepWork = [SpanLabel(key: "project", value: "primetime"),
-                                   SpanLabel(key: "type", value: "programming")]
-    private static let appWork = [SpanLabel(key: "repo", value: "website"),
-                                  SpanLabel(key: "type", value: "programming")]
-    private static let appReview = [SpanLabel(key: "repo", value: "website"),
-                                    SpanLabel(key: "type", value: "review")]
-    private static let serverOps = [SpanLabel(key: "repo", value: "server"),
-                                    SpanLabel(key: "type", value: "ops")]
-    private static let email = [SpanLabel(key: "type", value: "email")]
-    private static let exercise = [SpanLabel(key: "type", value: "exercise")]
-    private static let reading = [SpanLabel(key: "topic", value: "swift"),
-                                  SpanLabel(key: "type", value: "learning")]
+    private static func engagement(_ client: String, _ project: String,
+                                   _ key: String, _ value: String) -> [SpanLabel] {
+        [SpanLabel(key: "client", value: client),
+         SpanLabel(key: "project", value: project),
+         SpanLabel(key: key, value: value)]
+    }
+    private static let blueSkyStandup = engagement("client-a", "blue-sky", "meeting", "standup")
+    private static let blueSkyPlanning = engagement("client-a", "blue-sky", "type", "planning")
+    private static let blueSkyCoding = engagement("client-a", "blue-sky", "type", "coding")
+    private static let meridianRoadmap = engagement("client-a", "meridian", "meeting", "roadmap")
+    private static let lighthouseStandup = engagement("client-b", "lighthouse", "meeting", "standup")
+    private static let lighthouseHandoff = engagement("client-b", "lighthouse", "meeting", "handoff")
+    private static let lighthouseCoding = engagement("client-b", "lighthouse", "type", "coding")
+    private static let lighthousePlanning = engagement("client-b", "lighthouse", "type", "planning")
+    private static let velocityStandup = engagement("client-c", "velocity-consulting", "meeting", "standup")
+    private static let velocityRelease = engagement("client-c", "velocity-consulting",
+                                                    "meeting", "release-planning")
+    private static let frontendCoding = [SpanLabel(key: "repo", value: "company-website"),
+                                         SpanLabel(key: "feature", value: "checkout"),
+                                         SpanLabel(key: "type", value: "coding")]
+    private static let frontendReview = [SpanLabel(key: "repo", value: "company-website"),
+                                         SpanLabel(key: "feature", value: "checkout"),
+                                         SpanLabel(key: "type", value: "review")]
+    private static let backendCoding = [SpanLabel(key: "repo", value: "company-server"),
+                                        SpanLabel(key: "feature", value: "api"),
+                                        SpanLabel(key: "type", value: "coding")]
+    private static let backendBilling = [SpanLabel(key: "repo", value: "company-server"),
+                                         SpanLabel(key: "feature", value: "billing"),
+                                         SpanLabel(key: "type", value: "coding")]
+    // The drift pair: `proj:` where every other span says `repo:` — Label
+    // Review's move fixture (`proj: company-website` → `repo:`).
+    private static let driftCoding = [SpanLabel(key: "proj", value: "company-website"),
+                                      SpanLabel(key: "feature", value: "search"),
+                                      SpanLabel(key: "type", value: "coding")]
+    private static let driftReview = [SpanLabel(key: "proj", value: "company-website"),
+                                      SpanLabel(key: "feature", value: "search"),
+                                      SpanLabel(key: "type", value: "review")]
+    private static func game(_ value: String) -> [SpanLabel] {
+        [SpanLabel(key: "game", value: value)]
+    }
+    private static func activity(_ value: String) -> [SpanLabel] {
+        [SpanLabel(key: "activity", value: value)]
+    }
+    private static func book(_ value: String) -> [SpanLabel] {
+        [SpanLabel(key: "book", value: value)]
+    }
 
-    /// Work-day templates, cycled chronologically across the trailing week's
-    /// weekdays so no two days chart identically. Any six consecutive days
-    /// contain at least four weekdays, so all four variants always appear —
-    /// which is what makes the per-variant fixtures (the overlap in B, the
-    /// key drift in C, the untagged call in D) launch-date-proof.
+    /// Work-day templates, cycled chronologically across the trailing
+    /// month's weekdays. Five-day weeks over a four-template cycle mean each
+    /// week starts one variant later than the last, so no two charted weeks
+    /// look identical — and any six consecutive days contain at least four
+    /// weekdays, so every per-variant fixture (the overlap in B, the key
+    /// drift in C, the untagged call in D) is launch-date-proof.
     private static let weekdayTemplates: [[Draft]] = [
-        // A — a heads-down build day.
+        // A — a heads-down Blue Sky build day, evening game.
         [
-            Draft(startMinute: 570, durationMinutes: 15, labels: standup),
-            Draft(startMinute: 585, durationMinutes: 105, labels: deepWork,
-                  note: "Calendar week grid: overlap columns"),
-            Draft(startMinute: 690, durationMinutes: 30, labels: email),
-            Draft(startMinute: 780, durationMinutes: 120, labels: appWork,
+            Draft(startMinute: 570, durationMinutes: 15, labels: blueSkyStandup),
+            Draft(startMinute: 585, durationMinutes: 105,
+                  labels: engagement("client-a", "blue-sky", "issue", "214")
+                      + [SpanLabel(key: "type", value: "coding")],
+                  note: "Issue number pasted straight into the quick start"),
+            Draft(startMinute: 690, durationMinutes: 30, labels: blueSkyPlanning,
+                  note: "Sprint scope"),
+            Draft(startMinute: 780, durationMinutes: 120, labels: frontendCoding,
                   note: "In-place editor for running timers"),
-            Draft(startMinute: 900, durationMinutes: 30, labels: appReview,
+            Draft(startMinute: 900, durationMinutes: 30, labels: frontendReview,
                   note: "Review: launcher ＋ card"),
-            Draft(startMinute: 960, durationMinutes: 60, labels: deepWork),
+            Draft(startMinute: 960, durationMinutes: 60, labels: blueSkyCoding),
+            Draft(startMinute: 1140, durationMinutes: 75, labels: game("baldurs-gate")),
         ],
-        // B — meetings and an upgrade, with a genuine overlap: the incident
-        // review ran while the deploy was still being watched (the
+        // B — meetings and a deploy, with a genuine overlap: the Lighthouse
+        // handoff ran while the API deploy was still being watched (the
         // multi-timer story, visible as shared columns in Calendar).
         [
-            Draft(startMinute: 570, durationMinutes: 15, labels: standup),
-            Draft(startMinute: 600, durationMinutes: 60, labels: standup,
-                  note: "Sprint planning"),
-            Draft(startMinute: 660, durationMinutes: 120, labels: serverOps,
-                  note: "Postgres 16 upgrade + deploy watch"),
-            Draft(startMinute: 735, durationMinutes: 30, labels: standup,
-                  note: "Incident review — deploy still rolling"),
-            Draft(startMinute: 840, durationMinutes: 120, labels: deepWork,
+            Draft(startMinute: 570, durationMinutes: 15, labels: lighthouseStandup),
+            Draft(startMinute: 600, durationMinutes: 60, labels: meridianRoadmap,
+                  note: "Q3 roadmap"),
+            Draft(startMinute: 660, durationMinutes: 120, labels: backendCoding,
+                  note: "API deploy + watch"),
+            Draft(startMinute: 735, durationMinutes: 30, labels: lighthouseHandoff,
+                  note: "Handoff — deploy still rolling"),
+            Draft(startMinute: 840, durationMinutes: 120, labels: blueSkyCoding,
                   note: "History donuts: per-value colours"),
-            Draft(startMinute: 990, durationMinutes: 30, labels: email,
-                  note: "Inbox zero attempt"),
+            Draft(startMinute: 990, durationMinutes: 30, labels: velocityRelease,
+                  note: "Release train boarding"),
+            Draft(startMinute: 1140, durationMinutes: 45, labels: activity("run")),
         ],
-        // C — the drift day: `proj` where every other span says `project`,
-        // Tag Review's cleanup fixture.
+        // C — the drift day: `proj:` where every other span says `repo:`,
+        // Label Review's move-to-another-key fixture.
         [
-            Draft(startMinute: 570, durationMinutes: 15, labels: standup),
-            Draft(startMinute: 585, durationMinutes: 120,
-                  labels: [SpanLabel(key: "proj", value: "primetime"),
-                           SpanLabel(key: "type", value: "programming")],
+            Draft(startMinute: 570, durationMinutes: 15, labels: blueSkyStandup),
+            Draft(startMinute: 585, durationMinutes: 120, labels: driftCoding,
                   note: "Donut hover + selection states"),
-            Draft(startMinute: 780, durationMinutes: 60,
-                  labels: [SpanLabel(key: "proj", value: "primetime"),
-                           SpanLabel(key: "type", value: "review")]),
-            Draft(startMinute: 870, durationMinutes: 120, labels: appWork,
+            Draft(startMinute: 780, durationMinutes: 60, labels: driftReview),
+            Draft(startMinute: 870, durationMinutes: 120,
+                  labels: engagement("client-a", "meridian", "issue", "87")
+                      + [SpanLabel(key: "type", value: "coding")],
                   note: "Log: minute steppers for start/end"),
-            Draft(startMinute: 1000, durationMinutes: 20,
-                  labels: [SpanLabel(key: "proj", value: "primetime"),
-                           SpanLabel(key: "type", value: "email")],
-                  note: "Beta tester replies"),
+            Draft(startMinute: 1000, durationMinutes: 20, labels: lighthousePlanning,
+                  note: "Next milestone notes"),
+            Draft(startMinute: 1170, durationMinutes: 90, labels: book("crux")),
         ],
         // D — a lighter day with an untagged phone call (the ad-hoc story:
         // a blank-timer span left as it was captured).
         [
-            Draft(startMinute: 570, durationMinutes: 15, labels: standup),
-            Draft(startMinute: 600, durationMinutes: 150, labels: deepWork,
+            Draft(startMinute: 570, durationMinutes: 15, labels: lighthouseStandup),
+            Draft(startMinute: 600, durationMinutes: 150, labels: backendBilling,
                   note: "Label Review: drag values between keys"),
             Draft(startMinute: 810, durationMinutes: 30,
                   note: "Phone call — forgot the labels"),
-            Draft(startMinute: 870, durationMinutes: 60, labels: serverOps),
-            Draft(startMinute: 945, durationMinutes: 45,
-                  labels: [SpanLabel(key: "project", value: "website"),
-                           SpanLabel(key: "type", value: "review")],
+            Draft(startMinute: 870, durationMinutes: 60, labels: lighthouseCoding),
+            Draft(startMinute: 945, durationMinutes: 45, labels: frontendReview,
                   note: "Landing-page copy pass"),
+            Draft(startMinute: 1050, durationMinutes: 45, labels: activity("gym")),
         ],
     ]
 
-    /// Weekend templates — sparse on purpose, so the History day bars show
-    /// the work-day clustering.
+    /// Weekend templates — leisure-only on purpose, so the History day bars
+    /// show the work-day clustering and the quick-labels-only sets (Gaming,
+    /// Workout, Reading) own the weekends.
     private static let weekendTemplates: [[Draft]] = [
         [
-            Draft(startMinute: 600, durationMinutes: 60, labels: exercise,
-                  note: "Long run"),
-            Draft(startMinute: 900, durationMinutes: 90, labels: reading,
-                  note: "Swift concurrency deep-dive"),
+            Draft(startMinute: 600, durationMinutes: 60, labels: activity("bike"),
+                  note: "Morning loop"),
+            Draft(startMinute: 780, durationMinutes: 150, labels: game("no-mans-sky"),
+                  note: "Weekend expedition"),
+            Draft(startMinute: 990, durationMinutes: 90, labels: book("the-director")),
         ],
         [
-            Draft(startMinute: 630, durationMinutes: 45, labels: exercise),
-            Draft(startMinute: 840, durationMinutes: 90,
-                  labels: [SpanLabel(key: "project", value: "website"),
-                           SpanLabel(key: "type", value: "programming")],
-                  note: "Blog draft: shipping a menu-bar app"),
-            Draft(startMinute: 990, durationMinutes: 60, labels: reading),
+            Draft(startMinute: 630, durationMinutes: 45, labels: activity("run")),
+            Draft(startMinute: 840, durationMinutes: 90, labels: game("cyberpunk")),
+            Draft(startMinute: 1020, durationMinutes: 60, labels: book("the-wayfinder"),
+                  note: "One more chapter"),
         ],
     ]
 
@@ -312,26 +405,27 @@ package enum DemoSeed {
     /// whatever the launch time is; a nil duration is a *running* span. The
     /// last two power the live menu-bar timer and the popover's multi-timer
     /// rows; the support span matches no saved set, so its Log row shows the
-    /// save-as-set ＋; the empty entry is the second ad-hoc unlabelled span.
+    /// save-as-set ＋; the empty entry is today's ad-hoc unlabelled span.
     private static let todayTemplate: [(minutesBeforeNow: Int, durationMinutes: Int?,
                                         labels: [SpanLabel], note: String)] = [
-        (220, 75, deepWork, "README screenshot pass"),
-        (130, 20, email, ""),
+        (220, 75, engagement("client-a", "blue-sky", "issue", "231")
+             + [SpanLabel(key: "type", value: "coding")], "README screenshot pass"),
+        (130, 20, velocityStandup, ""),
         (105, 15, [], ""),
-        (80, 25, [SpanLabel(key: "repo", value: "website"),
+        (80, 25, [SpanLabel(key: "repo", value: "company-website"),
                   SpanLabel(key: "type", value: "support")], "Crash report triage"),
-        (42, nil, deepWork, "Popover: running-row editor"),
-        (9, nil, serverOps, ""),
+        (42, nil, blueSkyCoding, "Popover: running-row editor"),
+        (9, nil, backendCoding, ""),
     ]
 
-    /// The full seed for the trailing week: six templated past days (weekday
-    /// variants cycled in chronological order, weekend days sparse) plus
-    /// today anchored to `now`.
+    /// The full seed for the trailing month: thirty templated past days
+    /// (weekday variants cycled in chronological order, weekend days
+    /// leisure-only) plus today anchored to `now`.
     static func spans(now: Date, calendar: Calendar = .current) -> [SeedSpan] {
         var result: [SeedSpan] = []
         var weekdayIndex = 0
         var weekendIndex = 0
-        for offset in -6...(-1) {
+        for offset in -30...(-1) {
             guard let day = calendar.date(byAdding: .day, value: offset, to: now) else { continue }
             let dayStart = calendar.startOfDay(for: day)
             let template: [Draft]

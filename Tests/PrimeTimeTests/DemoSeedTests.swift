@@ -4,8 +4,9 @@ import Testing
 @testable import PrimeTime
 @testable import PrimeTimeCore
 
-/// The demo seeder (#39): activation parsing, determinism, the content
-/// fixtures every surface depends on, and isolation from the real store.
+/// The demo seeder (#39, renovated in #172): activation parsing,
+/// determinism, the content fixtures every surface depends on, and
+/// isolation from the real store.
 @Suite struct DemoSeedTests {
 
     /// Gregorian + UTC so day layout (which offsets are weekends) doesn't
@@ -21,8 +22,8 @@ import Testing
                                                 day: day, hour: hour))!
     }
 
-    /// Mid-week reference: the trailing week is Thu–Tue behind a Wednesday,
-    /// so all four weekday templates and both weekend templates appear.
+    /// Mid-week reference: the trailing month behind a Wednesday starts on a
+    /// Monday, so the weekday-template cycle is easy to count by hand.
     private var wednesday: Date { date(2026, 7, 29, 10) }
     /// A second layout — Sunday evening — to prove the fixtures are
     /// launch-date-proof, not artifacts of one weekday arrangement.
@@ -70,14 +71,16 @@ import Testing
 
     @Test func contentCountsForTheMidWeekLayout() {
         let spans = seed(now: wednesday)
-        // Thu(A 6) + Fri(B 6) + Sat(W1 2) + Sun(W2 3) + Mon(C 5) + Tue(D 5)
-        // + today(6).
-        #expect(spans.count == 33)
+        // The trailing month behind Wed 2026-07-29 runs Mon Jun 29 – Tue
+        // Jul 28: 22 weekdays cycling A,B,C,D (A×6 + B×6 at 7 spans, C×5 +
+        // D×5 at 6 spans = 144) + 8 weekend days alternating W1/W2 (24)
+        // + today (6).
+        #expect(spans.count == 174)
         #expect(DemoSeed.tagSets.count == 9)
         #expect(Set(DemoSeed.tagSets.compactMap(\.symbolName)).count == 9)  // distinct symbols
-        #expect(DemoSeed.labelDefinitions.count == 8)
-        #expect(DemoSeed.valueColors.count == 17)
-        // Notes on several spans, so Log and Calendar popovers have texture.
+        #expect(DemoSeed.labelDefinitions.count == 11)
+        #expect(DemoSeed.valueColors.count == 31)
+        // Notes on many spans, so Log and Calendar popovers have texture.
         #expect(spans.filter { !$0.note.isEmpty }.count >= 10)
     }
 
@@ -93,13 +96,35 @@ import Testing
                 $0.start > now.addingTimeInterval(-3600) && $0.start <= now
             })
 
-            // Two unlabelled ad-hoc spans (blank-timer story).
-            #expect(spans.filter(\.labels.isEmpty).count == 2)
+            // Unlabelled ad-hoc spans (blank-timer story): one per D-day
+            // plus one today.
+            #expect(spans.filter(\.labels.isEmpty).count >= 5)
 
-            // The proj/project drift for Tag Review — both spellings in use.
-            let keys = spans.flatMap(\.labels).map(\.key)
-            #expect(keys.filter { $0 == "proj" }.count == 3)
-            #expect(keys.contains("project"))
+            // The proj/repo drift for Label Review — `proj: company-website`
+            // spans to move onto the canonical `repo:` key (#172's capture).
+            let labels = spans.flatMap(\.labels)
+            #expect(labels.filter { $0.key == "proj" && $0.value == "company-website" }
+                .count >= 8)
+            #expect(labels.contains { $0.key == "repo" && $0.value == "company-website" })
+
+            // History's combined view needs real co-occurrence on all three
+            // showcased pairings: type × project, type × client,
+            // meeting × client.
+            func cooccur(_ a: String, _ b: String) -> Bool {
+                spans.contains { span in
+                    span.labels.contains { $0.key == a } && span.labels.contains { $0.key == b }
+                }
+            }
+            #expect(cooccur("type", "project"))
+            #expect(cooccur("type", "client"))
+            #expect(cooccur("meeting", "client"))
+
+            // Every leisure chip value shows up in history, so the Launcher
+            // hover video always has populated cards to point at.
+            let values = { (key: String) in Set(labels.filter { $0.key == key }.map(\.value)) }
+            #expect(values("game") == ["baldurs-gate", "no-mans-sky", "cyberpunk"])
+            #expect(values("activity") == ["bike", "run", "gym"])
+            #expect(values("book") == ["the-director", "crux", "the-wayfinder"])
 
             // At least one genuine overlap among *finished* spans (the
             // running pair overlaps trivially).
@@ -111,19 +136,57 @@ import Testing
             }
             #expect(overlaps)
 
-            // Everything inside the trailing week, nothing in the future.
+            // Everything inside the trailing month, nothing in the future.
             #expect(spans.allSatisfy {
-                $0.start >= now.addingTimeInterval(-7 * 86_400) && $0.start <= now
+                $0.start >= now.addingTimeInterval(-31 * 86_400) && $0.start <= now
             })
             #expect(spans.allSatisfy { ($0.end ?? now) <= now })
         }
     }
 
-    @Test func valueColorsDifferentiateRepoWebsiteFromRepoServer() {
+    @Test func everySetCarriesItsQuickLabels() {
+        for set in DemoSeed.tagSets {
+            let quick = DemoSeed.quickLabels(forSetNamed: set.name)
+            #expect(quick?.isEmpty == false, "\(set.name) has no quick labels")
+        }
+        // The work sets carry the type trio; the full-service client sets
+        // add the meeting chips on top.
+        let type = DemoSeed.quickLabels(forSetNamed: "Frontend Work")!
+        #expect(type.map(\.value) == ["planning", "coding", "review"])
+        #expect(type.allSatisfy { $0.key == "type" })
+        #expect(DemoSeed.quickLabels(forSetNamed: "Blue Sky")!.count == 6)
+        // The leisure sets are quick-labels-only: chips with no presets, and
+        // a colorHex so their launcher cards aren't accent-grey.
+        for name in ["Gaming", "Workout", "Reading"] {
+            let set = DemoSeed.tagSets.first { $0.name == name }!
+            #expect(set.tags.isEmpty)
+            #expect(set.colorHex != nil)
+        }
+    }
+
+    @Test func valuelessLabelsSeedTheFillInPerStartStory() {
+        func rows(_ name: String) -> [TagRow] {
+            DemoSeed.tagSets.first { $0.name == name }!.tags
+        }
+        // The shared value-less `feature:` on the work pair (#149/#162)...
+        for name in ["Frontend Work", "Backend Work"] {
+            #expect(rows(name).contains { $0.key == "feature" && $0.value.isEmpty })
+        }
+        // ...and value-less `repo:`/`issue:` on the full-service client sets.
+        for name in ["Blue Sky", "Meridian", "Lighthouse"] {
+            #expect(rows(name).contains { $0.key == "repo" && $0.value.isEmpty })
+            #expect(rows(name).contains { $0.key == "issue" && $0.value.isEmpty })
+        }
+    }
+
+    @Test func valueColorsDifferentiateTheCompanyRepos() {
         let colors = DemoSeed.valueColors
-        let website = colors[ValueColorKey.join("repo", "website")]
-        let server = colors[ValueColorKey.join("repo", "server")]
+        let website = colors[ValueColorKey.join("repo", "company-website")]
+        let server = colors[ValueColorKey.join("repo", "company-server")]
         #expect(website != nil && server != nil && website != server)
+        // The drifted spelling matches the canonical one, so the mistake
+        // reads in Label Review rather than on every pill.
+        #expect(colors[ValueColorKey.join("proj", "company-website")] == website)
     }
 
     // MARK: Isolation from the real store

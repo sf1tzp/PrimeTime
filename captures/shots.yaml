@@ -29,8 +29,8 @@ shots:
     surface: menu-bar popover
     scene: |
       Popover open under the menu-bar status item, idle (no timer running).
-      Quick-start rows for the seeded label sets (Deep Work, App Backend,
-      App Frontend, Server Ops, Workout, …) plus the Log / Calendar /
+      Quick-start rows for the seeded label sets (Frontend Work, Backend
+      Work, Blue Sky, Meridian, Gaming, …) plus the Log / Calendar /
       History / Settings… rows below.
     outputs:
       - { to: website, path: static/screenshots/popover.webp, format: webp }
@@ -39,12 +39,15 @@ shots:
     kind: recording
     surface: menu-bar popover
     scene: |
-      ~18s. Start with the demo's running timer active. Click the status
-      item to open the popover; hover a couple of quick-start rows so their
-      quick-label chips reveal; then stop the running timer via its Stop row.
-      Record over a plain dark desktop (hide other windows, set a solid dark
-      wallpaper) — the wallpaper shows through around the popover, and a
-      detailed one balloons the README GIF roughly 8x.
+      ~20s. Start with the demo's running timer active. Click the status
+      item to open the popover; rest the pointer on a quick-start row so its
+      quick-label chips expand (the Blue Sky rows show the type:/meeting:
+      chips). Then quick-start Frontend Work — its value-less feature: opens
+      the in-popover editor with the value field focused — type/paste a
+      value and show the timer already running. Record over a plain dark
+      desktop (hide other windows, set a solid dark wallpaper) — the
+      wallpaper shows through around the popover, and a detailed one
+      balloons the README GIF roughly 8x.
     outputs:
       - { to: readme, path: readme-images/popover.gif, format: gif, width: 640, fps: 12 }
       - { to: website, path: static/screenshots/popover.mp4, format: mp4, width: 800 }
@@ -64,16 +67,28 @@ shots:
     surface: window / Launcher tab
     scene: |
       Launcher tab of the PrimeTime window: the quick-start grid of seeded
-      label sets with their quick-label chips.
+      label sets — the client engagement cards next to the quick-labels-only
+      hobby cards (Gaming, Workout, Reading) with their fallback colours.
     outputs:
       - { to: website, path: static/screenshots/launcher.webp, format: webp }
+
+  - id: launcher-motion
+    kind: recording
+    surface: window / Launcher tab
+    scene: |
+      ~15s. Mouse over the hobby cards in turn — Gaming, Reading, then
+      Workout — letting each card's quick-label chips show; finish by
+      clicking Workout's `activity: bike` chip so the menu-bar timer starts.
+    outputs:
+      - { to: website, path: static/screenshots/launcher.mp4, format: mp4, width: 1400 }
 
   - id: label-sets
     kind: still
     surface: window / Label Sets tab
     scene: |
-      Label Sets tab: the seeded sets (Deep Work, App Backend, App Frontend,
-      Server Ops, Workout, …) with their labels visible.
+      Label Sets tab: the seeded sets (Frontend Work, Backend Work, Blue
+      Sky, Meridian, Lighthouse, …) with their labels visible — including a
+      value-less label (Frontend Work's `feature:`) shown as key-only.
     outputs:
       - { to: website, path: static/screenshots/label-sets.webp, format: webp }
 
@@ -110,15 +125,40 @@ shots:
       - { to: website, path: static/screenshots/history.webp, format: webp }
       - { to: readme, path: readme-images/history-view.png, format: png }
 
+  - id: history-motion
+    kind: recording
+    surface: window / History tab
+    scene: |
+      ~25s. Start on the separate side-by-side donuts (Group by type vs
+      project), range set to Last 30 days so the full seeded month shows.
+      Flip Count labels to "in Groups" for the combined donut, then walk the
+      group-bys through the three showcased pairings: type × project →
+      type × client → meeting × client, pausing on each so the slices read.
+    outputs:
+      - { to: website, path: static/screenshots/history.mp4, format: mp4, width: 1400 }
+
   - id: label-review
     kind: still
     surface: window / Label Review tab
     scene: |
-      Label Review tab surfacing the demo seed's deliberate `proj` vs
-      `project` key drift and the unlabelled ad-hoc spans.
+      Label Review tab surfacing the demo seed's deliberate `proj:` vs
+      `repo:` key drift (`proj: company-website` spans) and the unlabelled
+      ad-hoc spans.
     outputs:
       - { to: website, path: static/screenshots/label-review.webp, format: webp }
       - { to: readme, path: readme-images/label-review.png, format: png }
+
+  - id: label-review-motion
+    kind: recording
+    surface: window / Label Review tab
+    scene: |
+      ~20s. Scan the seeded month; the drifted `proj: company-website`
+      surfaces beside the canonical `repo:` key. Drag the `company-website`
+      value from `proj` onto `repo`, show the staged red→green sentence at
+      the bottom, then Approve Changes and let the progress run so the key
+      count visibly collapses.
+    outputs:
+      - { to: website, path: static/screenshots/label-review.mp4, format: mp4, width: 1400 }
 
   - id: settings
     kind: still

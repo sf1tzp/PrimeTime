@@ -154,7 +154,9 @@ private struct HelpSection: Identifiable {
             **Label sets** are named bundles of labels used to start timespans with one \
             click, with a name and an icon. A timespan started from a set keeps the \
             labels but no link to the set. Their order matters — the popover lists the \
-            first few, in order (drag to reorder in Label Sets).
+            first few, in order (drag to reorder in Label Sets). Labels have an order \
+            too: drag them into place in any editor to control how a span's pills \
+            read.
 
             Everything above lives on this Mac by default. Connect a **sync server** \
             (see Settings) and it becomes yours-across-machines instead: timespans, \
@@ -219,6 +221,46 @@ private struct HelpSection: Identifiable {
             [primetime.tools/docs/labels](https://primetime.tools/docs/labels).
             """),
         HelpSection(
+            title: "Pro-Moves: set patterns that work",
+            symbol: "sparkles",
+            body: """
+            Three shapes of label set cover most schemes people settle into — \
+            worth stealing before inventing your own:
+            """,
+            rules: [
+                Rule(
+                    heading: "Quick labels only",
+                    detail: """
+                    A set with *no* preset labels, just one chip per thing: a \
+                    **Gaming** set whose chips are `game: baldurs-gate`, \
+                    `game: no-mans-sky`, `game: cyberpunk`; a **Workout** set with \
+                    `activity: bike` / `run` / `gym`; a **Reading** set with a chip \
+                    per book. Great for the simple stuff you do regularly — adding \
+                    or retiring a chip never touches the time already tracked.
+                    """),
+                Rule(
+                    heading: "Leave a value blank on purpose",
+                    detail: """
+                    A set can carry a label with an **empty value** — say \
+                    **Frontend Work** and **Backend Work**, each pinning its \
+                    `repo:` and sharing a value-less `feature:`. Starting one \
+                    opens the editor with that empty value focused: paste the \
+                    feature (or issue number) and the timer is already running. \
+                    Perfect when the value changes too often for dedicated sets, \
+                    and the shared key links time across everything else.
+                    """),
+                Rule(
+                    heading: "Scale out to clients and projects",
+                    detail: """
+                    One set per engagement — `client: client-a` + \
+                    `project: blue-sky` baked in, value-less `repo:` and `issue:` \
+                    to fill per start, and `type:` / `meeting:` quick labels on \
+                    top. The same month then cuts cleanly by type × project, \
+                    type × client, or meeting × client in History's combined \
+                    view, so billing and ceremony overhead fall out of the chart.
+                    """),
+            ]),
+        HelpSection(
             title: "Menu bar popover",
             symbol: "menubar.arrow.up.rectangle",
             body: """
@@ -233,6 +275,12 @@ private struct HelpSection: Identifiable {
             currently running is hidden until that timespan stops. While a timer runs \
             the other rows grey out, but each keeps an enabled **＋** that starts the \
             set *alongside* the running timer.
+
+            Hovering a set expands its **quick labels** — chips that ride along on \
+            start, replacing the set's value for the same key. Starting a set (or \
+            chip) that leaves a label's value **blank** still starts the timer, and \
+            opens its editor with that empty value focused — paste an issue number \
+            or type the feature, no extra clicking.
             """),
         HelpSection(
             title: "Launcher",
@@ -271,8 +319,18 @@ private struct HelpSection: Identifiable {
             body: """
             Two donut charts, each with its own **Group by**: a label key (one slice per \
             value) or a label set (one slice per member label), so two breakdowns of the \
-            same week sit side by side. The bars below show each day — one stack per \
+            same window sit side by side. The bars below show each day — one stack per \
             donut when both are active.
+
+            The **range picker** sets the charts' window: the displayed week (with the \
+            usual ‹ Today › stepping), or a trailing window — last 30 or 90 days, \
+            12 months, or all history.
+
+            With two group-bys active, **Count labels** switches from counting them \
+            *separately* to counting **in groups**: one combined donut whose slices are \
+            the pairings that actually occurred. Group one side by `type` and the other \
+            by `client` and the slices read type × client — swap either side to cut the \
+            same time by type × project or meeting × client.
 
             Chart colours come from a fixed palette; with *Colour labels by value* on, \
             your per-value colours win so the charts match the pills elsewhere.

@@ -154,3 +154,30 @@ skills, so the two don't drift.
   the window's `position`/`size` from AX first, and add margin if you want
   the shadow). `-V <seconds>` caps the duration so the run needs no manual
   stop; drive the scene from a second shell while it records.
+- **SwiftUI drags need the app frontmost** (2026-08-04, Label Review value
+  drag): if another app is active, the initial `dd:` mousedown only
+  activates the window and the drag session never forms — same recipe
+  succeeds after `set frontmost of process "PrimeTime" to true`. Set it
+  immediately before every scripted drag.
+- **`cliclick t:<text>` types reliably where AppleScript `keystroke` fails**
+  (2026-08-04, popover editor): the CGEvent typing path lands in the
+  focused in-popover text field and survives Done/commit; `keystroke` into
+  the same field drops silently. Prefer `cliclick t:` for any popover text.
+- **Backgrounded `(screencapture -v … &)` starts unreliably** inside
+  compound commands — it sometimes never creates the file, and a region
+  that exceeds the display (height past the bottom edge) fails silently
+  too. Run `screencapture -v` in the *foreground* and background a driver
+  script (`(driver.sh &) && screencapture …`) for choreographed recordings;
+  also remember the main display may be an external monitor (read its
+  point size before computing regions).
+- **Solid-wallpaper recordings**: back up `~/Library/Application
+  Support/com.apple.wallpaper/Store/Index.plist`, `tell every desktop to
+  set picture to <png>` (a generated 64×64 solid `#16161a` works), record,
+  then restore the plist and `killall WallpaperAgent`. Hide the driving
+  terminal with `set visible of process "Alacritty" to false` — the
+  session's commands keep running while it's hidden.
+- **MenuBarExtra popover toggle discipline for recordings**: every AX
+  enumeration session that opened the popover must close it again before
+  the take, and windows left over from onboarding (walkthrough → main
+  window) overlap popover-region captures — close them all and verify
+  with a CGWindowList helper that *zero* app windows remain on screen.
