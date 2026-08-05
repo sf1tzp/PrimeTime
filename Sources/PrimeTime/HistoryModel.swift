@@ -85,6 +85,15 @@ final class HistoryModel {
         if span.isRunning {
             app.claimEditingNow(span)
         }
+        // The Log shows one week; a hand-off can point outside it (Label
+        // Review scans months back, #69). Move the week over so the span is
+        // actually in the loaded list — the Log consumes the pending id once
+        // the reload delivers it.
+        if !weekInterval.contains(span.start),
+           let start = Calendar.current.dateInterval(of: .weekOfYear, for: span.start)?.start {
+            weekStart = start
+            Task { await reload() }
+        }
     }
 
     /// True once a load has completed, so mutations elsewhere in the app (e.g.

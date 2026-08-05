@@ -120,6 +120,25 @@ skills, so the two don't drift.
   Escape to clear it. That's why the popover's row reorder is a plain
   `DragGesture` (`GestureReorderGrip`), not the system drag the window
   editors use.
+- **The Label Review tree drives well** (2026-08-04, #69 verify): it's
+  `outline 1 of scroll area 1 of group 1 of group 1` with `AXRow` children
+  whose `position`s are global points (rows are 26pt, instances 24pt — row
+  centre ≈ top + 13). The disclosure chevrons don't enumerate; click them by
+  coordinates at the row's left edge (key rows ≈ 16pt in from the window's
+  left content edge, value rows ≈ 30pt). Counting rows after each click is a
+  cheap expand/collapse assertion. Its `.draggable` value rows accept the
+  same `cliclick -e 120 dd:… m:… du:…` recipe as row reorder; drop onto a
+  key row's centre.
+- **Sheets may not enumerate at all** (2026-08-04, Label Review's
+  RenameSheet): no `sheet 1`, and `entire contents` doesn't surface its
+  buttons either. But the sheet's text field takes focus on open and real
+  keystrokes are trustworthy there (unlike the popover editors): `cmd+A` +
+  `keystroke "…"` sticks, and Return fires the `.defaultAction` button.
+  Confirm what got typed from a screenshot before committing.
+- The popover's menu rows (Label Sets/Log/Calendar/…) are unnamed
+  `AXButton`s with no readable static-text children; identify them by
+  y-order — they sit below the quick-start sets, separated by the "N more…"
+  row — and click via AX element reference, not coordinates.
 
 ## Screenshots & recordings
 

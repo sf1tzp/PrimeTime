@@ -82,6 +82,37 @@ package enum ValueColorKey {
         guard let index = raw.firstIndex(of: separator) else { return nil }
         return (String(raw[..<index]), String(raw[raw.index(after: index)...]))
     }
+
+    /// Overrides after a label rewrite: colours follow the labels they
+    /// described. `fromValue` nil moves every override under the key (a key
+    /// rename); otherwise one `key: value` pair moves, landing on
+    /// `toValue ?? fromValue` (mirroring how the rewrite keeps a span's value
+    /// when no new one is given). An override already at the destination wins
+    /// — it was chosen for that spelling — and the source override is dropped
+    /// either way.
+    package static func migrating(_ colors: [String: String],
+                                  fromKey: String, fromValue: String?,
+                                  toKey: String, toValue: String?) -> [String: String] {
+        let from = normalizeKey(fromKey)
+        let to = normalizeKey(toKey)
+        var colors = colors
+        func move(value: String, toValue: String) {
+            guard let hex = colors.removeValue(forKey: join(from, value)) else { return }
+            // A cleared value has no override slot.
+            guard !toValue.isEmpty else { return }
+            let target = join(to, toValue)
+            if colors[target] == nil { colors[target] = hex }
+        }
+        if let fromValue {
+            move(value: fromValue, toValue: toValue ?? fromValue)
+        } else {
+            for composite in colors.keys where composite.hasPrefix("\(from)\(separator)") {
+                guard let (_, value) = split(composite) else { continue }
+                move(value: value, toValue: value)
+            }
+        }
+        return colors
+    }
 }
 
 package extension [TagRow] {

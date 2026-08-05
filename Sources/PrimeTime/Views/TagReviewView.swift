@@ -35,9 +35,33 @@ struct TagReviewView: View {
     }
 
     @State private var renameTarget: RenameTarget?
-    /// Selected instance rows (span ids), so a shift-click selection can drag
-    /// as one payload.
-    @State private var selectedSpans = Set<Int>()
+    /// Selected instance rows, so a shift-click selection can drag as one
+    /// payload. Selection (like row identity) is the composite
+    /// key␟value␟span-id, not the bare span id: a span carrying several
+    /// labels appears under every key it matches, and duplicate tags in one
+    /// List broke row hit-testing outright — rows stopped expanding (#69).
+    @State private var selectedInstances = Set<String>()
+    /// Expansion state, held explicitly (keyed by key / key␟value) instead of
+    /// per-row `DisclosureGroup` state, so it survives the row re-creation
+    /// that a rescan or an applied batch causes (#69).
+    @State private var expandedKeys = Set<String>()
+    @State private var expandedValues = Set<String>()
+
+    private func valueID(_ key: String, _ value: String) -> String {
+        "\(key)\u{1F}\(value)"
+    }
+
+    private func instanceID(_ key: String, _ value: String, _ spanID: Int) -> String {
+        "\(key)\u{1F}\(value)\u{1F}\(spanID)"
+    }
+
+    private func isExpanded(_ id: String, in set: Binding<Set<String>>) -> Binding<Bool> {
+        Binding(get: { set.wrappedValue.contains(id) },
+                set: { expanded in
+                    if expanded { set.wrappedValue.insert(id) }
+                    else { set.wrappedValue.remove(id) }
+                })
+    }
 
     var body: some View {
         let review = model.review
@@ -113,9 +137,9 @@ struct TagReviewView: View {
     // MARK: Stats list
 
     private var statsList: some View {
-        List(selection: $selectedSpans) {
+        List(selection: $selectedInstances) {
             ForEach(model.review.keyStats) { stat in
-                DisclosureGroup {
+                DisclosureGroup(isExpanded: isExpanded(stat.key, in: $expandedKeys)) {
                     ForEach(stat.values) { value in
                         valueGroup(key: stat.key, value: value)
                     }
@@ -170,29 +194,38 @@ struct TagReviewView: View {
                     spanIDs: item.spanIDs))
                 accepted = true
             }
-            if accepted { selectedSpans.removeAll() }
+            if accepted { selectedInstances.removeAll() }
             return accepted
         }
     }
 
     /// One value row, expandable into its matched instances.
     private func valueGroup(key: String, value: ValueStat) -> some View {
-        DisclosureGroup {
+        DisclosureGroup(isExpanded: isExpanded(valueID(key, value.value), in: $expandedValues)) {
+            // Row identity must be the composite, not the span id — the same
+            // span shows up under every label it carries (see
+            // `selectedInstances`).
             let instances = model.review.matches(key: key, value: value.value)
                 .sorted { $0.start > $1.start }
-            ForEach(instances) { span in
+                .map { (rowID: instanceID(key, value.value, $0.id), span: $0) }
+            ForEach(instances, id: \.rowID) { instance in
+                let span = instance.span
                 if span.isRunning {
                     // Running spans can't be staged (see movableMatches);
-                    // their rows are inert — no selection, no drag.
+                    // their rows are inert — no selection, no drag. The Log
+                    // hand-off still works: its editor edits live timers.
                     instanceRow(span)
-                        .help("Still running — stop it before moving it")
+                        .onTapGesture(count: 2) { openInLog(span) }
+                        .help("Still running — stop it before moving it. Double-click to edit in the Log.")
                 } else {
                     instanceRow(span)
-                        .tag(span.id)
+                        .onTapGesture(count: 2) { openInLog(span) }
+                        .tag(instance.rowID)
                         .draggable(instancePayload(key: key, value: value.value, span: span)) {
                             TagPill(key: key, value: value.value,
                                     color: model.tagColor(for: key, value: value.value))
                         }
+                        .help("Drag to move · double-click to edit in the Log")
                 }
             }
         } label: {
@@ -207,6 +240,17 @@ struct TagReviewView: View {
 
     private func valueRow(key: String, value: ValueStat) -> some View {
         HStack(spacing: 8) {
+            // With "colour by value" on, the swatch edits the per-value
+            // override in place (#69). Otherwise (and for the value-less
+            // row) values can only render the key's colour, so a read-only
+            // dot mirroring the key row is honest.
+            if model.colorTagsByValue && !value.value.isEmpty {
+                TagColorPicker(key: key, value: value.value)
+            } else {
+                Circle()
+                    .fill(model.tagColor(for: key, value: value.value))
+                    .frame(width: 9, height: 9)
+            }
             Text(value.value.isEmpty ? "(no value)" : value.value)
                 .foregroundStyle(value.value.isEmpty ? .secondary : .primary)
             Spacer()
@@ -248,12 +292,23 @@ struct TagReviewView: View {
         .padding(.leading, 17)
     }
 
+    /// Hand a span to the Log tab and switch over — the same #130 hand-off
+    /// the Calendar's blocks use. `requestLogEdit` moves the Log's week to
+    /// the span first when it's outside the loaded one.
+    private func openInLog(_ span: TimeSpan) {
+        model.history.requestLogEdit(of: span)
+        SettingsWindowManager.shared.show(model: model, tab: .log)
+    }
+
     /// Dragging a row that's part of the current selection carries the whole
     /// selection (restricted to this value's movable instances); otherwise
     /// just the row itself.
     private func instancePayload(key: String, value: String, span: TimeSpan) -> TagMovePayload {
-        let instanceIDs = Set(model.review.movableMatches(key: key, value: value).map(\.id))
-        let selected = selectedSpans.intersection(instanceIDs)
+        // Selection carries composite ids; the payload wants span ids scoped
+        // to this value's movable instances.
+        let selected = Set(model.review.movableMatches(key: key, value: value)
+            .map(\.id)
+            .filter { selectedInstances.contains(instanceID(key, value, $0)) })
         let ids = selected.contains(span.id) ? selected.sorted() : [span.id]
         return TagMovePayload(key: key, value: value, spanIDs: ids)
     }
@@ -339,8 +394,8 @@ struct TagReviewView: View {
                                                 value: value.fromValue).count
         let countText = value.spanIDs == nil ? "\(count)" : "\(count) of \(total)"
         return HStack(spacing: 6) {
-            prose(for: value, count: countText)
-                .lineLimit(1)
+            prose(for: value, count: countText,
+                  toKey: model.review.effectiveTargetKey(of: value))
             if value.toValue != nil {
                 TextField("value", text: Binding(
                     get: { change.wrappedValue.toValue ?? "" },
@@ -364,31 +419,40 @@ struct TagReviewView: View {
     }
 
     /// The sentence describing a staged change, ending just before the
-    /// editable value field (when the change carries one).
-    private func prose(for change: StagedChange, count: String) -> Text {
-        let toKey = normalizeKey(change.toKey)
+    /// editable value field (when the change carries one). `toKey` is the
+    /// *effective* target — key renames staged earlier folded in — so the
+    /// pane describes what approving will actually do. Labels render as
+    /// `TagPill`s in their real colours, matching the review list and the
+    /// drag preview, instead of the generic red/green diff colouring (#69).
+    private func prose(for change: StagedChange, count: String, toKey: String) -> some View {
+        // The target key may not exist yet; apply will create it carrying
+        // the source key's colour, so preview it that way.
+        let toColor = model.tagDefinitions.contains { $0.key == toKey }
+            ? model.tagColor(for: toKey)
+            : model.tagColor(for: change.fromKey)
         let fromValue = (change.fromValue?.isEmpty == true)
             ? "(no value)" : change.fromValue ?? ""
-        if change.fromValue == nil {
-            // Key rename: values ride along, so no value field follows.
-            return Text("Rename key ")
-                + Text(change.fromKey).bold().foregroundColor(.red)
-                + Text(" to ")
-                + Text(toKey).bold().foregroundColor(.green)
-                + Text(" (\(count) spans)").foregroundColor(.secondary)
+        let fromColor = model.tagColor(for: change.fromKey, value: change.fromValue)
+        return HStack(spacing: 4) {
+            if change.fromValue == nil {
+                // Key rename: values ride along, so no value field follows.
+                Text("Rename key")
+                TagPill(key: change.fromKey, value: "", color: fromColor)
+                Text("to")
+                TagPill(key: toKey, value: "", color: toColor)
+                Text("(\(count) spans)").foregroundStyle(.secondary)
+            } else if toKey == change.fromKey {
+                Text("Rename \(count)")
+                TagPill(key: change.fromKey, value: fromValue, color: fromColor)
+                Text("spans to “\(toKey):”")
+            } else {
+                Text("Move \(count)")
+                TagPill(key: change.fromKey, value: fromValue, color: fromColor)
+                Text("spans to")
+                TagPill(key: toKey, value: "", color: toColor)
+            }
         }
-        if toKey == change.fromKey {
-            return Text("Rename \(count) ")
-                + Text("'\(change.fromKey): \(fromValue)'").bold().foregroundColor(.red)
-                + Text(" spans to ")
-                + Text("'\(toKey):").bold().foregroundColor(.green)
-        }
-        return Text("Move \(count) ")
-            + Text("'\(fromValue)'").bold().foregroundColor(.red)
-            + Text(" spans from ")
-            + Text(change.fromKey).bold().foregroundColor(.red)
-            + Text(" to ")
-            + Text(toKey).bold().foregroundColor(.green)
+        .lineLimit(1)
     }
 }
 

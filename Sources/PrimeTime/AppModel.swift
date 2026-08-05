@@ -800,6 +800,16 @@ final class AppModel {
         valueColors.removeValue(forKey: ValueColorKey.join(normalizeKey(rawKey), value))
     }
 
+    /// A Label Review rewrite respelled labels: their per-value colour
+    /// overrides move with them (#69 — without this, renaming a value
+    /// silently dropped its colour).
+    func migrateValueColors(fromKey: String, fromValue: String?,
+                            toKey: String, toValue: String?) {
+        valueColors = ValueColorKey.migrating(valueColors,
+                                              fromKey: fromKey, fromValue: fromValue,
+                                              toKey: toKey, toValue: toValue)
+    }
+
     /// Persist a new colour for a tag key, debounced so a colour-wheel drag
     /// collapses into a single write once it settles.
     func scheduleTagColor(for rawKey: String, color: Color) {

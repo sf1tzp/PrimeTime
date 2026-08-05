@@ -28,11 +28,47 @@ struct KeyStat: Identifiable {
 /// instances (`spanIDs` non-nil).
 struct StagedChange: Identifiable {
     var id = UUID()
-    let fromKey: String
+    var fromKey: String       // mutable: key renames applied earlier in a batch fold in
     let fromValue: String?    // nil = every value under the key
-    let toKey: String
+    var toKey: String
     var toValue: String?      // nil = keep each span's value; editable while staged
     let spanIDs: [Int]?       // nil = every scanned match
+
+    var isKeyRename: Bool { fromValue == nil }
+
+    /// Same source scope — the same spans, described the same way. Two staged
+    /// changes sharing a scope are two intents for one slot, not two changes.
+    func sameScope(as other: StagedChange) -> Bool {
+        fromKey == other.fromKey && fromValue == other.fromValue
+            && spanIDs == other.spanIDs
+    }
+}
+
+extension Sequence<StagedChange> {
+    /// The spelling `key` will have once this batch's key renames have
+    /// applied, in order. Following sequentially matches apply order exactly,
+    /// including chains (a→b staged, then b→c: a ends at c) and re-renames.
+    func effectiveKey(_ key: String) -> String {
+        var key = key
+        for change in self where change.isKeyRename && change.fromKey == key {
+            key = normalizeKey(change.toKey)
+        }
+        return key
+    }
+}
+
+extension [StagedChange] {
+    /// Stage `change` into the batch: anything pending with the same source
+    /// scope is replaced rather than duplicated — re-dragging a value (or
+    /// re-staging a rename from the pencil) updates the earlier entry, so a
+    /// change can't be queued twice (#69). A key rename back onto its own
+    /// spelling stages nothing.
+    func adding(_ change: StagedChange) -> [StagedChange] {
+        if change.isKeyRename, normalizeKey(change.toKey) == change.fromKey {
+            return self
+        }
+        return filter { !$0.sameScope(as: change) } + [change]
+    }
 }
 
 /// State and behaviour for the Tag Review tab: scans timespans to compute
@@ -157,7 +193,17 @@ final class TagReviewModel {
     // MARK: Staging
 
     func stage(_ change: StagedChange) {
-        staged.append(change)
+        staged = staged.adding(change)
+    }
+
+    /// The key a staged change will actually land on: key renames staged
+    /// before it fold in, since they'll have respelled the key by the time
+    /// this change applies. Keeps the Approve pane honest — dropping a value
+    /// onto a row whose key has a pending rename reads "to <new name>", and
+    /// discarding the rename reverts the description (#69).
+    func effectiveTargetKey(of change: StagedChange) -> String {
+        let index = staged.firstIndex { $0.id == change.id } ?? staged.endIndex
+        return staged[..<index].effectiveKey(normalizeKey(change.toKey))
     }
 
     func discard(_ id: StagedChange.ID) {
@@ -191,14 +237,30 @@ final class TagReviewModel {
         defer { isApplying = false }
         let batch = staged
         var keep: [StagedChange] = []
+        // Key renames that have applied so far: later changes in the batch
+        // fold them into their keys, because the spans they name have already
+        // been respelled on the server. A rename that *failed* is deliberately
+        // not folded — its spans still carry the old key.
+        var appliedRenames: [StagedChange] = []
+        func folded(_ change: StagedChange) -> StagedChange {
+            var change = change
+            change.fromKey = appliedRenames.effectiveKey(change.fromKey)
+            change.toKey = appliedRenames.effectiveKey(change.toKey)
+            return change
+        }
         for (index, change) in batch.enumerated() {
             applyIndex = index
             if cancelBatch {
-                keep.append(contentsOf: batch[index...])
+                // Fold what's already applied into the remainder, so a later
+                // retry still finds its spans under their new spelling.
+                keep.append(contentsOf: batch[index...].map(folded))
                 break
             }
-            if !(await apply(change)) {
-                keep.append(change)
+            let effective = folded(change)
+            if await apply(effective) {
+                if effective.isKeyRename { appliedRenames.append(effective) }
+            } else {
+                keep.append(effective)
             }
         }
         staged = keep
@@ -237,11 +299,15 @@ final class TagReviewModel {
                     : tag
             }
         }
-        // Whole-value (and whole-key) changes update local tag sets too, or
-        // quick-starting one would recreate the old spelling. Subset moves
-        // leave tag sets alone — the set still legitimately means the rest.
+        // Whole-value (and whole-key) changes update local tag sets and
+        // per-value colour overrides too, or quick-starting a set would
+        // recreate the old spelling and the renamed value would lose its
+        // colour. Subset moves leave both alone — the value (and its colour)
+        // still legitimately means the rest.
         if change.spanIDs == nil {
             updateTagSets(for: change, toKey: toKey)
+            app.migrateValueColors(fromKey: change.fromKey, fromValue: change.fromValue,
+                                   toKey: toKey, toValue: change.toValue)
         }
         return renameFailures == 0 && !cancelRequested
     }

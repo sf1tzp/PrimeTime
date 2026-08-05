@@ -53,19 +53,24 @@ struct LogView: View {
                 }
             }
             // The Calendar redirects here instead of editing in place (#130):
-            // onAppear covers the tab switch, onChange the already-visible case.
+            // onAppear covers the tab switch, onChange the already-visible
+            // case, and the isLoading edge a hand-off that moved the week
+            // first (#69) — the span only arrives when its reload lands.
             .onAppear { consumePendingEdit(proxy) }
             .onChange(of: model.history.pendingLogEditID) { consumePendingEdit(proxy) }
+            .onChange(of: model.history.isLoading) { consumePendingEdit(proxy) }
         }
         .task { await history.loadIfNeeded() }
     }
 
     /// Open the span another tab handed off (#130): drop a filter that would
-    /// hide it, expand its editor, and scroll its row into view.
+    /// hide it, expand its editor, and scroll its row into view. The id stays
+    /// pending until the span is actually in the loaded week, so a hand-off
+    /// racing its own reload (#69) isn't dropped on the floor.
     private func consumePendingEdit(_ proxy: ScrollViewProxy) {
         guard let id = model.history.pendingLogEditID else { return }
-        model.history.pendingLogEditID = nil
         guard let span = model.history.spans.first(where: { $0.id == id }) else { return }
+        model.history.pendingLogEditID = nil
         if !filter.isEmpty, !filter.matches(span) { filterText = "" }
         // No session claim here — for a running span, `requestLogEdit(of:)`
         // claimed it back at the sender, ahead of this render.
