@@ -191,6 +191,35 @@ struct GeneralSettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        // Start at Login (#169). Absent from dev builds and demos, where
+        // there is no bundle to register — see LoginItemModel.
+        if model.loginItem.isAvailable {
+            @Bindable var loginItem = model.loginItem
+            Section("Login") {
+                Toggle("Start PrimeTime at login", isOn: $loginItem.startsAtLogin)
+                if loginItem.requiresApproval {
+                    // Switched off behind the app's back — only System
+                    // Settings can turn it back on.
+                    HStack {
+                        Text("Switched off in System Settings › Login Items. Turn it back on there — the toggle above can’t override it.")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                        Spacer()
+                        Button("Open Login Items…") { loginItem.openSystemSettings() }
+                    }
+                } else {
+                    Text("Opens PrimeTime in the menu bar when you log in to this Mac. A per-Mac setting — it doesn’t sync.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let error = loginItem.lastError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .lineLimit(3)
+                }
+            }
+        }
         // Sparkle (#46). Absent from dev builds and demos, where there is no
         // updater to configure.
         if model.updater.isAvailable {

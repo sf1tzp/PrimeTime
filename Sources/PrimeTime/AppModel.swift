@@ -33,6 +33,10 @@ final class AppModel {
     /// and demo mode — see UpdaterModel.
     let updater: UpdaterModel
 
+    /// Start at Login (#169). Inert in dev builds, tests and demo mode for
+    /// the same reasons — see LoginItemModel.
+    let loginItem: LoginItemModel
+
     // MARK: Persisted configuration
 
     /// The traggo server URL — import-only now: the one-shot importer's
@@ -203,6 +207,7 @@ final class AppModel {
     init(demo: Bool = DemoMode.isActive) {
         isDemo = demo
         updater = UpdaterModel(demo: demo)
+        loginItem = LoginItemModel(demo: demo)
         let defaults = Self.makeDefaults(demo: demo)
         self.defaults = defaults
         // The fallback doubles as the URL hint in the Traggo import forms —
