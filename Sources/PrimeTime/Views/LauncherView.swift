@@ -4,23 +4,131 @@ import PrimeTimeCore
 /// The "see everything" surface complementing the popover's capped Quick start
 /// list (#7): every tag set as a clickable card in a grid. Clicking a card
 /// starts the set, same as a Quick start row; a running set's card stops it.
+/// Dragging a card reorders the sets (#178) — there is deliberately no
+/// launcher-only order: this is the one shared order, the same the Label Sets
+/// sidebar edits and the popover's first-N cap reads.
+///
+/// The reorder is a plain `DragGesture`, like the popover editor's
+/// `GestureReorderGrip`, not `onDrag`/`onDrop`: a system drag session in this
+/// grid flakily fails to conclude when the drop lands on the card that
+/// started it — which the live reshuffle makes the common case, since the
+/// dragged card parks under the cursor — and the stranded session then eats
+/// the next click (verified 2026-08-05 on macbook-air). The gesture keeps
+/// the same live-reshuffle feel with no session to strand. The columns are
+/// computed from the width (rather than `.adaptive`) so the gesture can turn
+/// cursor travel into a grid slot.
 struct LauncherView: View {
     @Environment(AppModel.self) private var model
+    /// Mid-drag display order: the reshuffle animates through this draft
+    /// only, so the model — and its per-mutation persist + the other
+    /// surfaces reading the shared order — is written once, on drop.
+    @State private var draft: [TagSet]?
 
-    private let columns = [GridItem(.adaptive(minimum: 140), spacing: 12)]
+    private static let minCardWidth: CGFloat = 140
+    private static let spacing: CGFloat = 12
+    private static let padding: CGFloat = 16
+    /// One grid slot's vertical stride: the cards' `minHeight` 96 (their
+    /// one-line content stays under it) plus the grid spacing.
+    private static let rowStride: CGFloat = 96 + spacing
 
     var body: some View {
-        ScrollView {
-            // The trailing ＋ card doubles as the empty state: with no sets
-            // saved, the grid is just the invitation to create one.
-            LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(model.tagSets) { set in
-                    TagSetCard(set: set)
+        GeometryReader { geo in
+            let content = geo.size.width - Self.padding * 2
+            let columns = max(1, Int((content + Self.spacing)
+                                     / (Self.minCardWidth + Self.spacing)))
+            let cardWidth = (content - Self.spacing * CGFloat(columns - 1))
+                            / CGFloat(columns)
+            ScrollView {
+                // The trailing ＋ card doubles as the empty state: with no sets
+                // saved, the grid is just the invitation to create one.
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(),
+                                                             spacing: Self.spacing),
+                                         count: columns),
+                          spacing: Self.spacing) {
+                    ForEach(draft ?? model.tagSets) { set in
+                        // The whole card is the drag handle — unlike the
+                        // editor rows there's no text selection to protect,
+                        // and a click without movement still lands as a click.
+                        TagSetCard(set: set)
+                            .modifier(CardReorderGesture(
+                                id: set.id, draft: $draft,
+                                committed: { model.tagSets },
+                                commit: { model.tagSets = $0 },
+                                columns: columns,
+                                columnStride: cardWidth + Self.spacing,
+                                rowStride: Self.rowStride))
+                    }
+                    NewTagSetCard()
                 }
-                NewTagSetCard()
+                .padding(Self.padding)
             }
-            .padding(16)
         }
+    }
+}
+
+/// The 2D counterpart of `GestureReorderGrip`: cursor travel in slot-stride
+/// units picks the target grid slot (columns sideways, rows of `columns`
+/// vertically), and the dragged card snaps there with a springy reshuffle.
+/// The origin index is captured at gesture start, so the target is always
+/// start + travel, immune to the reshuffles the gesture itself causes. The
+/// gesture works on the shared `draft`, seeded from the committed order on
+/// first movement and handed back through `commit` on release.
+private struct CardReorderGesture: ViewModifier {
+    let id: UUID
+    @Binding var draft: [TagSet]?
+    let committed: () -> [TagSet]
+    let commit: ([TagSet]) -> Void
+    let columns: Int
+    let columnStride: CGFloat
+    let rowStride: CGFloat
+    @State private var startIndex: Int?
+
+    func body(content: Content) -> some View {
+        // High priority so travel claims the events from the card's button;
+        // minimumDistance keeps stationary clicks reaching it. Global
+        // coordinates, deliberately: the reshuffle moves the card under the
+        // cursor, and a local-space translation would shrink by every slot
+        // the card itself travels.
+        content.highPriorityGesture(
+            DragGesture(minimumDistance: 5, coordinateSpace: .global)
+                .onChanged { value in
+                    if startIndex == nil {
+                        draft = committed()
+                        startIndex = draft?.firstIndex { $0.id == id }
+                    }
+                    guard var rows = draft, let start = startIndex else { return }
+                    let target = slot(for: value.translation, from: start,
+                                      in: rows.count)
+                    if rows.firstIndex(where: { $0.id == id }) != target {
+                        _ = rows.moveRow(id, onto: rows[target].id)
+                        withAnimation(.snappy(extraBounce: 0.15)) {
+                            draft = rows
+                        }
+                    }
+                }
+                .onEnded { value in
+                    defer { startIndex = nil }
+                    guard var rows = draft, let start = startIndex else { return }
+                    // Apply the release point too, not just the last
+                    // onChanged — a fast tail of the event stream can outrun
+                    // the updates, and the drop belongs where the cursor let
+                    // go. A no-op when the reshuffle already put it there.
+                    let target = slot(for: value.translation, from: start,
+                                      in: rows.count)
+                    _ = rows.moveRow(id, onto: rows[target].id)
+                    withAnimation(.snappy(extraBounce: 0.15)) {
+                        commit(rows)
+                        draft = nil
+                    }
+                })
+    }
+
+    /// Cursor travel → grid slot: whole column-strides sideways plus whole
+    /// row-strides of `columns` vertically, clamped to the array.
+    private func slot(for translation: CGSize, from start: Int, in count: Int) -> Int {
+        let dx = Int((translation.width / columnStride).rounded())
+        let dy = Int((translation.height / rowStride).rounded())
+        return max(0, min(count - 1, start + dx + dy * columns))
     }
 }
 
@@ -65,9 +173,13 @@ private struct NewTagSetCard: View {
 /// and clicking stops that timer. Hovering a startable card also floats the
 /// quick-label chips over its bottom edge — same one-click "set plus honing
 /// label" as the popover's quick-start rows.
-private struct TagSetCard: View {
+struct TagSetCard: View {
     @Environment(AppModel.self) private var model
     let set: TagSet
+    /// The Label Sets editor embeds the card as a live preview (#179): the
+    /// full hover choreography stays (that's what's being previewed), but
+    /// clicks are inert and the running/busy states don't leak in.
+    var isPreview = false
     @State private var hovering = false
 
     private var tint: Color {
@@ -77,10 +189,12 @@ private struct TagSetCard: View {
         return set.colorHex.flatMap(Color.init(hex:)) ?? .accentColor
     }
 
-    private var isRunning: Bool { model.isRunning(set) }
+    private var isRunning: Bool { !isPreview && model.isRunning(set) }
+    private var busy: Bool { !isPreview && model.isBusy }
 
     var body: some View {
         Button {
+            guard !isPreview else { return }
             Task {
                 if let running = model.runningTimer(for: set) {
                     await model.stop(id: running.id)
@@ -110,13 +224,13 @@ private struct TagSetCard: View {
             }
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(.white.opacity(hovering && !model.isBusy ? 0.6 : 0),
+                    .strokeBorder(.white.opacity(hovering && !busy ? 0.6 : 0),
                                   lineWidth: 2)
             )
         }
         .buttonStyle(.plain)
-        .disabled(model.isBusy)
-        .opacity(model.isBusy || (isRunning && !hovering) ? 0.5 : 1)
+        .disabled(busy)
+        .opacity(busy || (isRunning && !hovering) ? 0.5 : 1)
         // The chips are separate buttons, so they sit over the card rather
         // than nesting inside its label — on the same full-card scrim the
         // running state uses for its stop square, which also keeps them
@@ -131,7 +245,10 @@ private struct TagSetCard: View {
                         .allowsHitTesting(false)
                     FlowLayout(spacing: 4) {
                         ForEach(quicks) { quick in
-                            QuickLabelChip(set: set, quick: quick, filled: true)
+                            // In preview the chips keep their hover feedback
+                            // but the start routes to a no-op.
+                            QuickLabelChip(set: set, quick: quick, filled: true,
+                                           start: isPreview ? { _ in } : nil)
                         }
                     }
                     .padding(8)

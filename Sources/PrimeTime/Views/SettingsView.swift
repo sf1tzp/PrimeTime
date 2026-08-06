@@ -442,12 +442,31 @@ struct TagSetDetailView: View {
     @State private var dragged: UUID?
 
     var body: some View {
+        VStack(spacing: 0) {
+            // The preview leads (#179): what the edits below add up to,
+            // floating over the window background above the scrolling form.
+            TagSetPreview(tagSet: tagSet)
+            editorForm
+        }
+    }
+
+    private var editorForm: some View {
         Form {
             Section("Label set") {
                 // "Untitled" matches the fallback shown wherever an unnamed
                 // set is listed, so the placeholder tells the truth (#134).
-                TextField("Name", text: $tagSet.name, prompt: Text("Untitled"))
-                    .focused($nameFocused)
+                // An explicit label + hidden-label field, like the key/value
+                // rows: the grouped Form right-justifies a *labelled*
+                // TextField's text (multilineTextAlignment doesn't override
+                // it), which hides a trailing space as it's typed (#175).
+                HStack {
+                    Text("Name")
+                    TextField("Name", text: $tagSet.name, prompt: Text("Untitled"))
+                        .textFieldStyle(.roundedBorder)
+                        .labelsHidden()
+                        .multilineTextAlignment(.leading)
+                        .focused($nameFocused)
+                }
             }
             Section("Labels") {
                 ForEach($tagSet.tags) { $tag in

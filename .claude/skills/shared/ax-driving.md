@@ -113,6 +113,29 @@ skills, so the two don't drift.
   points from a screenshot (or from a sibling `AXColorWell`'s position) and
   drag by coordinates, app frontmost. Mid-drag screenshots race the
   reshuffle animation — trust the end state, not the mid-drag frame.
+- **Approach the press point with real `m:` moves before `dd:` (or `c:`)**
+  (2026-08-05, #178 launcher cards): `dd:` teleports the cursor and presses
+  in one event, and a `DragGesture` under a Button then never activates —
+  the same drag recipe works iff the cursor was already moved onto the
+  target first (`cliclick m:x,y-Δ w:… m:x,y w:…`, then drag). Hover-revealed
+  UI has the same need for other reasons (see `.opacity(0)` above). Short
+  one-slot hops are where the skipped approach bites hardest.
+- **`DragGesture` needs `dm:` between `dd:`/`du:`, not `m:`** (2026-08-05):
+  `m:` posts plain mouse-moved events, which an active `DragGesture` never
+  sees — every `m:`-based "drag" collapses into one onChanged at release,
+  so live reshuffles don't animate and only the final position registers.
+  `cliclick -e 120 dd:… w:… dm:… dm:… w:… du:…` drives the gesture
+  incrementally. NSDraggingSession (`onDrag`/`.draggable`) tracks the HID
+  cursor and tolerates `m:`, which is why the older recipe above got away
+  with it.
+- **`onDrag`/`onDrop` strands sessions when the drop concludes over the
+  drag's own source view** (2026-08-05, #178): in the Launcher grid the live
+  reshuffle parks the dragged card under the cursor, `performDrop` flakily
+  never fires, and the stranded session eats the next click — concluding on
+  it as a drop (a surprise `dropEntered` move) instead of a click. Escape
+  clears the stuck session. The row editors dodge it by topology (drag
+  source = grip, drop target = row); the Launcher dodges it by using a 2D
+  `DragGesture` instead (see `CardReorderGesture` in LauncherView.swift).
 - **The MenuBarExtra popover never delivers internal drag-and-drop**
   (2026-08-04): an `onDrag` from a popover row starts a session (the
   preview appears, then sticks) but no `onDrop`/`DropDelegate` in the same

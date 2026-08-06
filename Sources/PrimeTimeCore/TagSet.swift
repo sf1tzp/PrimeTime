@@ -126,10 +126,15 @@ package extension [TagRow] {
                              value: $0.value.trimmingCharacters(in: .whitespaces)) }
     }
 
-    /// Drag-to-reorder (#155): the row with `id` takes the drop target's
-    /// position, shifting the rows between them. Returns false when either
-    /// row is missing — a row dragged in from a different editor list — so
-    /// the drop can bounce back instead of landing.
+}
+
+package extension Array where Element: Identifiable, Element.ID == UUID {
+    /// Drag-to-reorder (#155): the element with `id` takes the drop target's
+    /// position, shifting the elements between them. Returns false when
+    /// either is missing — an element dragged in from a different list — so
+    /// the drop can bounce back instead of landing. Generic because two kinds
+    /// of list reorder this way: label rows within a set, and the sets
+    /// themselves via their Launcher cards (#178).
     @discardableResult
     mutating func moveRow(_ id: UUID, onto targetID: UUID) -> Bool {
         guard let from = firstIndex(where: { $0.id == id }),
