@@ -868,9 +868,9 @@ private struct LabelSetsConceptPage: View {
     /// The valueless label: no value baked into the set, so every start
     /// prompts for one.
     private static let valuelessKey = "issue"
-    private static let quicks = [Quick(key: "type", value: "programming"),
+    private static let quicks = [Quick(key: "type", value: "planning"),
                                  Quick(key: "type", value: "review"),
-                                 Quick(key: "type", value: "planning")]
+                                 Quick(key: "type", value: "debugging")]
 
     @State private var applied: Quick?
     @State private var issueValue = ""
@@ -911,22 +911,24 @@ private struct LabelSetsConceptPage: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("PrimeTime")
                         .font(.callout)
+                    .padding(.top, 4)
                     FlowLayout(spacing: 4) {
+                        badge(1).padding(.trailing, 2)
                         TagPill(key: Self.baked.key, value: Self.baked.value,
                                 color: WalkthroughModel.color(key: Self.baked.key,
                                                               value: Self.baked.value))
-                        badge(1)
                         TagPill(key: Self.valuelessKey, value: "",
                                 color: WalkthroughModel.keyColor(Self.valuelessKey))
-                        badge(2)
+                        badge(2).padding(.leading, 2)
                     }
+                    .padding(.top, 4)
                     FlowLayout(spacing: 4) {
+                        badge(3).padding(.trailing, 2)
                         ForEach(Self.quicks, id: \.self) { quick in
                             chip(quick)
                         }
-                        badge(3)
                     }
-                    .padding(.top, 2)
+                    .padding(.top, 4)
                 }
                 .padding(10)
                 .contentShape(Rectangle())
@@ -968,17 +970,17 @@ private struct LabelSetsConceptPage: View {
             .font(.caption2.weight(.bold).monospacedDigit())
             .foregroundStyle(.white)
             .frame(width: 15, height: 15)
-            .background(Circle().fill(.tint))
+            .background(Circle().strokeBorder(Color.accentColor, lineWidth: 1))
     }
 
     private var legend: some View {
         VStack(alignment: .leading, spacing: 12) {
             legendRow(1, "Baked-in labels",
-                      "The set's identity — every start wears these. Clicking the row starts a timer with just the set's own labels.")
+                      "The Label Set's main labels. Clicking the row starts a timer with just the set's own labels.")
             legendRow(2, "A valueless label",
-                      "issue: carries no value in the set, so every start opens the editor with its value field focused — type or paste the ticket number.")
+                      "Sometimes you don't know what the label should be until you're ready to start a timer. Leave the value field blank, then just type or paste the value when starting a timer")
             legendRow(3, "Quick labels",
-                      "An optional extra label as you start. All three share the key type:, so they swap with each other — click between them as often as you like.")
+                      "An optional extra label as you start. Useful for dividing up time into sub categories")
         }
     }
 
@@ -1010,12 +1012,12 @@ private struct LabelSetsConceptPage: View {
                 TagPill(key: Self.baked.key, value: Self.baked.value,
                         color: WalkthroughModel.color(key: Self.baked.key,
                                                       value: Self.baked.value))
+                issueField
                 if let applied {
                     TagPill(key: applied.key, value: applied.value,
                             color: WalkthroughModel.color(key: applied.key,
                                                           value: applied.value))
                 }
-                issueField
             }
         }
         .padding(.top, 4)
