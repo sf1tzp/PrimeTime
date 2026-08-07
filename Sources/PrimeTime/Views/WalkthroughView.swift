@@ -34,8 +34,8 @@ struct WalkthroughView: View {
                     case 1: AggregatePage(walkthrough: walkthrough)
                     case 2: LabelingSchemesPage()
                     case 3: SmellsPage(walkthrough: walkthrough)
-                    case 4: LabelSetsPage(walkthrough: walkthrough)
-                    case 5: QuickLabelsPage(walkthrough: walkthrough)
+                    case 4: LabelSetsConceptPage()
+                    case 5: CreateLabelSetsPage(walkthrough: walkthrough)
                     default: SurfacesPage()
                     }
                 }
@@ -612,7 +612,7 @@ private struct LabelingSchemesPage: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Text("PrimeTime lets you save custom labeling schemes as Label Sets — even a label whose value you leave blank and fill in as the timer starts. More on this later.")
+                Text("PrimeTime lets you save custom labeling schemes as Label Sets — that's next.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -847,23 +847,216 @@ private struct SmellsPage: View {
     }
 }
 
-// MARK: - Page 5: pick your starting label sets
+// MARK: - Page 5: label sets, the anatomy
 
-/// One way people run PrimeTime — a card on page 5, and (once the user
-/// creates its set) a quick-label suggestion on page 6. File-scoped because
-/// both pages read the catalogue.
+/// The Label Sets concept page: one mock quick-start row wearing all three
+/// moving parts — baked-in labels, a valueless label, quick labels — each
+/// tagged with a numbered callout the legend beside it explains. Interactive
+/// like the real popover row: chips apply and swap, the row body starts
+/// plain, and every start lands focus in the valueless label's field below,
+/// the same copy-a-number-click-paste flow the real editor runs (#149).
+/// All mock — this page writes nothing; creation is the next page's job.
+private struct LabelSetsConceptPage: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private struct Quick: Hashable {
+        let key: String
+        let value: String
+    }
+
+    private static let baked = SpanLabel(key: "repo", value: "primetime")
+    /// The valueless label: no value baked into the set, so every start
+    /// prompts for one.
+    private static let valuelessKey = "issue"
+    private static let quicks = [Quick(key: "type", value: "programming"),
+                                 Quick(key: "type", value: "review"),
+                                 Quick(key: "type", value: "planning")]
+
+    @State private var applied: Quick?
+    @State private var issueValue = ""
+    @FocusState private var issueFocused: Bool
+
+    private var anim: Animation? { reduceMotion ? nil : .easeOut(duration: 0.2) }
+
+    var body: some View {
+        WalkthroughPage(index: 4, title: "Label Sets",
+                        subtitle: "Save your labeling scheme as named sets that start with one click. This mock set wears all three moving parts — it's live, click around.") {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top, spacing: 24) {
+                    mockRow
+                        .frame(width: 280)
+                    legend
+                }
+                preview
+                Text("A set can even be nothing but quick labels — a tidy home for hobbies: game:, book:, activity:. Up next: create your own.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+    }
+
+    /// A quick-start row like the popover's, chips permanently revealed (the
+    /// real row shows them on hover). As in the popover, the row itself is
+    /// the click target for "just the set" — anywhere that isn't a chip.
+    private var mockRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Quick start")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button {
+                start(applying: nil)
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("PrimeTime")
+                        .font(.callout)
+                    FlowLayout(spacing: 4) {
+                        TagPill(key: Self.baked.key, value: Self.baked.value,
+                                color: WalkthroughModel.color(key: Self.baked.key,
+                                                              value: Self.baked.value))
+                        badge(1)
+                        TagPill(key: Self.valuelessKey, value: "",
+                                color: WalkthroughModel.keyColor(Self.valuelessKey))
+                        badge(2)
+                    }
+                    FlowLayout(spacing: 4) {
+                        ForEach(Self.quicks, id: \.self) { quick in
+                            chip(quick)
+                        }
+                        badge(3)
+                    }
+                    .padding(.top, 2)
+                }
+                .padding(10)
+                .contentShape(Rectangle())
+                .overlay(RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(Color.accentColor, lineWidth: 1.5))
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+            .help("Start with the set's labels")
+        }
+    }
+
+    /// Chips apply, they never toggle off — like the popover, where a chip
+    /// always means "start with this"; the row body is the way back to the
+    /// set's plain labels. So switching types is endlessly repeatable.
+    private func chip(_ quick: Quick) -> some View {
+        Button {
+            start(applying: quick)
+        } label: {
+            Text("+\(quick.value)")
+        }
+        .buttonStyle(QuickLabelChipStyle(
+            color: WalkthroughModel.color(key: quick.key, value: quick.value),
+            filled: applied == quick))
+        .pointingHandCursor()
+        .help("Start with \(quick.key): \(quick.value)")
+    }
+
+    /// Every click is a fresh mock start: apply (or clear) the quick label,
+    /// blank the valueless field, and focus it — the #149 flow in miniature.
+    private func start(applying quick: Quick?) {
+        withAnimation(anim) { applied = quick }
+        issueValue = ""
+        issueFocused = true
+    }
+
+    private func badge(_ number: Int) -> some View {
+        Text("\(number)")
+            .font(.caption2.weight(.bold).monospacedDigit())
+            .foregroundStyle(.white)
+            .frame(width: 15, height: 15)
+            .background(Circle().fill(.tint))
+    }
+
+    private var legend: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            legendRow(1, "Baked-in labels",
+                      "The set's identity — every start wears these. Clicking the row starts a timer with just the set's own labels.")
+            legendRow(2, "A valueless label",
+                      "issue: carries no value in the set, so every start opens the editor with its value field focused — type or paste the ticket number.")
+            legendRow(3, "Quick labels",
+                      "An optional extra label as you start. All three share the key type:, so they swap with each other — click between them as often as you like.")
+        }
+    }
+
+    private func legendRow(_ number: Int, _ title: String,
+                           _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            badge(number)
+                .padding(.top, 1)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.callout.weight(.semibold))
+                Text(text)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// The span a click would start: the baked label, the applied quick
+    /// label, and the valueless label as a live field — typing into it is
+    /// the page's proof of the prompt-per-start workflow.
+    private var preview: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("One click starts:")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            FlowLayout(spacing: 4) {
+                TagPill(key: Self.baked.key, value: Self.baked.value,
+                        color: WalkthroughModel.color(key: Self.baked.key,
+                                                      value: Self.baked.value))
+                if let applied {
+                    TagPill(key: applied.key, value: applied.value,
+                            color: WalkthroughModel.color(key: applied.key,
+                                                          value: applied.value))
+                }
+                issueField
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    /// The valueless label at start time: a pill-shaped field awaiting its
+    /// value, focused by every mock start.
+    private var issueField: some View {
+        HStack(spacing: 3) {
+            Text("\(Self.valuelessKey):")
+            TextField("12345", text: $issueValue)
+                .textFieldStyle(.plain)
+                .focused($issueFocused)
+                .frame(width: 64)
+        }
+        .font(.caption2)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 2)
+        .overlay(Capsule().strokeBorder(
+            WalkthroughModel.keyColor(Self.valuelessKey)))
+    }
+}
+
+// MARK: - Page 6: create your first label sets
+
+/// One way people run PrimeTime — a card on the create page, whose editor
+/// also includes the persona's three suggested quick labels by default.
 private struct WalkthroughPersona: Identifiable {
     let name: String
     let symbol: String
     /// The two primary keys, with example values — hints, never
     /// prefilled. (The work *type* is deliberately absent: that's a
-    /// quick label's job, not a set's — see the next page.)
+    /// quick label's job, not a set's — the editor suggests those below
+    /// the rows.)
     let rows: [(key: String, example: String)]
     /// The example set name woven into the editor's prompt — Tab in the
     /// empty name field accepts it verbatim.
     let nameExample: String
-    /// Page 6's suggested quick labels — three values under the one
-    /// conventional key `type:`, the kinds of work within this set.
+    /// The editor's suggested quick labels — three values under the one
+    /// conventional key `type:`, the kinds of work within this set, seeded
+    /// as editable rows.
     let quickValues: [String]
     var id: String { name }
 
@@ -923,9 +1116,12 @@ private struct WalkthroughPersona: Identifiable {
 }
 
 /// The eight personas of the catalogue above, each openable into a small
-/// editor that creates a *real* label set — the walkthrough's one page
-/// that writes into the user's data, because that's its whole point.
-private struct LabelSetsPage: View {
+/// editor that creates a *real* label set — quick labels included — the
+/// walkthrough's one page that writes into the user's data, because that's
+/// its whole point. It assumes everything the concept page just taught, so
+/// the copy stays action-dense: no re-explaining what a set or a quick
+/// label is.
+private struct CreateLabelSetsPage: View {
     @Environment(AppModel.self) private var model
     @Bindable var walkthrough: WalkthroughModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -950,14 +1146,36 @@ private struct LabelSetsPage: View {
 
         var trimmedKey: String { key.trimmingCharacters(in: .whitespaces) }
         var trimmedValue: String { value.trimmingCharacters(in: .whitespaces) }
-        var incomplete: Bool { trimmedKey.isEmpty || trimmedValue.isEmpty }
+        /// Nothing typed at all — silently dropped on add, like an unused
+        /// "Add Label" click.
+        var isBlank: Bool { trimmedKey.isEmpty && trimmedValue.isEmpty }
+        /// A value with no key can't become a label — the one refusal left.
+        var missingKey: Bool { trimmedKey.isEmpty && !trimmedValue.isEmpty }
+        /// A key with no value is legal: the set prompts for the value on
+        /// every start (the concept page's issue: workflow) — worth a
+        /// heads-up in the editor, not a refusal.
+        var valueless: Bool { !trimmedKey.isEmpty && trimmedValue.isEmpty }
     }
 
     @State private var editing: Persona?
+    /// The quick-label drafts, an editable list like the Label Sets tab's —
+    /// seeded with the persona's three suggestions (or, in edit mode, the
+    /// set's real quick labels).
+    @State private var quickDrafts: [DraftRow] = []
+    /// Hover-expanded card, popover-style: the card grows to reveal its
+    /// quick labels after the pointer rests briefly (`cardHovered`).
+    @State private var hoveredID: String?
+    @State private var pendingHoverID: String?
+    @State private var hoverTask: Task<Void, Never>?
     /// Tallest card in the grid — every card takes it as a floor, so a card
     /// whose pills fit one line (Reading, Creative Work) doesn't run shorter
     /// than its neighbours; its content centres in the extra room.
     @State private var cardHeight: CGFloat = 0
+    /// The floor is measured once, before any hover: an expanded card
+    /// stretches its row-mate, whose (collapsed!) reported height would
+    /// otherwise ratchet the floor up for good. The window never resizes,
+    /// so the initial measurement stays right.
+    @State private var cardHeightLocked = false
     @State private var draftName = ""
     @State private var draftRows: [DraftRow] = []
     /// Rows flagged by a failed add — their empty fields stay outlined red
@@ -966,45 +1184,61 @@ private struct LabelSetsPage: View {
     /// Failed-add counter; each bump drives one shake of the add button.
     @State private var shakes = 0
 
-    /// Personas whose set the user already created — from the shared model,
-    /// so the checkmarks survive paging away and back.
-    private var added: Set<String> {
-        Set(walkthrough.createdSets.map(\.personaID))
+    /// The real set behind an already-added persona, if it still exists —
+    /// from the shared model, so it survives paging away and back. Added
+    /// cards display this set's actual labels (not the persona examples),
+    /// and reopening one edits it in place.
+    private func createdSet(for persona: Persona) -> TagSet? {
+        guard let created = walkthrough.createdSets.first(where: {
+            $0.personaID == persona.id
+        }) else { return nil }
+        return model.tagSets.first { $0.id == created.setID }
     }
 
     var body: some View {
-        WalkthroughPage(index: 4, title: "Pick your starting Label Sets",
-                        subtitle: "Eight ways people run PrimeTime. Open one, type your own values, and it becomes a real one-click set.") {
+        WalkthroughPage(index: 5, title: "Create your first Label Sets",
+                        subtitle: "Eight ways people run PrimeTime. Open one, make it yours — it becomes a real one-click set, quick labels and all.") {
             Group {
                 if let persona = editing {
-                    editor(for: persona)
-                        .frame(maxWidth: 460)
-                        .frame(maxWidth: .infinity, alignment: .center)
+                    // The editor (labels + quick labels) can outgrow the
+                    // fixed window — scroll rather than clip.
+                    ScrollView {
+                        editor(for: persona)
+                            .frame(maxWidth: 460)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
                 } else {
-                    VStack(alignment: .leading, spacing: 10) {
-                        // Deliberately not a LazyVGrid: lazy cells materialise
-                        // mid page-slide, so the cards visibly popped in while
-                        // the text was still moving.
-                        ForEach(Array(Self.personaPairs.enumerated()),
-                                id: \.offset) { _, pair in
-                            HStack(alignment: .top, spacing: 10) {
-                                ForEach(pair) { persona in
-                                    card(for: persona)
-                                        .frame(maxWidth: .infinity)
+                    // A ScrollView so a hover-expanded card pushes the rows
+                    // below it down (the popover's expand mechanic) instead
+                    // of overflowing the fixed page.
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 10) {
+                            // Deliberately not a LazyVGrid: lazy cells
+                            // materialise mid page-slide, so the cards
+                            // visibly popped in while the text was still
+                            // moving.
+                            ForEach(Array(Self.personaPairs.enumerated()),
+                                    id: \.offset) { _, pair in
+                                HStack(alignment: .top, spacing: 10) {
+                                    ForEach(pair) { persona in
+                                        card(for: persona)
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    if pair.count == 1 {
+                                        Color.clear.frame(maxWidth: .infinity)
+                                    }
                                 }
-                                if pair.count == 1 {
-                                    Color.clear.frame(maxWidth: .infinity)
-                                }
+                                // Cards whose pills fit one line would
+                                // otherwise run shorter than their neighbour:
+                                // the row takes the taller card's height, the
+                                // shorter one stretches to match (content
+                                // centres, below).
+                                .fixedSize(horizontal: false, vertical: true)
                             }
-                            // Cards whose pills fit one line would otherwise
-                            // run shorter than their neighbour: the row takes
-                            // the taller card's height, the shorter one
-                            // stretches to match (content centres, below).
-                            .fixedSize(horizontal: false, vertical: true)
+                            Text("Add as many as fit — or none. The Label Sets tab can do all of this later.")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
                         }
-                        Text("Add as many as fit — or none. The Label Sets tab can do all of this later.")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
                     }
                 }
             }
@@ -1013,7 +1247,8 @@ private struct LabelSetsPage: View {
     }
 
     private func card(for persona: Persona) -> some View {
-        let isAdded = added.contains(persona.id)
+        let set = createdSet(for: persona)
+        let expanded = hoveredID == persona.id
         return Button {
             open(persona)
         } label: {
@@ -1028,17 +1263,50 @@ private struct LabelSetsPage: View {
                     // with the *first* chip row of a two-line neighbour, and
                     // the card's extra height simply trails below.
                     FlowLayout(spacing: 4) {
-                        ForEach(persona.rows, id: \.key) { row in
-                            TagPill(key: row.key, value: row.example,
-                                    color: WalkthroughModel.color(key: row.key,
-                                                                  value: row.example))
+                        if let set {
+                            // The user's own labels in their palette — an
+                            // added card mirrors what they created, not the
+                            // example it started from.
+                            ForEach(set.tags) { row in
+                                TagPill(key: row.key, value: row.value,
+                                        color: model.tagColor(for: row.key,
+                                                              value: row.value.isEmpty
+                                                                  ? nil : row.value))
+                            }
+                        } else {
+                            ForEach(persona.rows, id: \.key) { row in
+                                TagPill(key: row.key, value: row.example,
+                                        color: WalkthroughModel.color(key: row.key,
+                                                                      value: row.example))
+                            }
                         }
+                    }
+                    // The popover-style hover reveal: rest on a card and it
+                    // grows to show its quick labels.
+                    if expanded {
+                        FlowLayout(spacing: 4) {
+                            if let set {
+                                ForEach(model.quickLabels(for: set)) { row in
+                                    quickChip(row.value.isEmpty ? row.key : row.value,
+                                              color: model.tagColor(for: row.key,
+                                                                    value: row.value.isEmpty
+                                                                        ? nil : row.value))
+                                }
+                            } else {
+                                ForEach(Array(persona.quickValues.enumerated()),
+                                        id: \.element) { index, value in
+                                    quickChip(value, color: Self.suggestionColor(at: index))
+                                }
+                            }
+                        }
+                        .padding(.top, 2)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
                 Spacer(minLength: 0)
-                Image(systemName: isAdded ? "checkmark.circle.fill" : "plus.circle")
-                    .foregroundStyle(isAdded ? AnyShapeStyle(.green)
-                                             : AnyShapeStyle(.quaternary))
+                Image(systemName: set != nil ? "checkmark.circle.fill" : "plus.circle")
+                    .foregroundStyle(set != nil ? AnyShapeStyle(.green)
+                                                : AnyShapeStyle(.quaternary))
             }
             .padding(10)
             // Fill whatever height the row settled on — and at least the
@@ -1050,26 +1318,98 @@ private struct LabelSetsPage: View {
         }
         .buttonStyle(.plain)
         .pointingHandCursor()
+        .onHover { cardHovered(persona, inside: $0) }
         .overlay {
             GeometryReader { proxy in
                 Color.clear.preference(key: CardHeightKey.self,
                                        value: proxy.size.height)
             }
         }
-        .onPreferenceChange(CardHeightKey.self) { cardHeight = max(cardHeight, $0) }
+        .onPreferenceChange(CardHeightKey.self) {
+            guard !cardHeightLocked else { return }
+            cardHeight = max(cardHeight, $0)
+        }
+    }
+
+    /// A non-interactive rendition of the popover's quick-label chip — the
+    /// hover reveal shows what the set offers; clicking anywhere on the card
+    /// still opens the editor.
+    private func quickChip(_ text: String, color: Color) -> some View {
+        Text("+\(text)")
+            .font(.caption2)
+            .lineLimit(1)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .overlay(Capsule().strokeBorder(color))
+    }
+
+    /// Hover intent for a persona card, mirroring the popover's quick-start
+    /// rows: expansion waits until the pointer has rested briefly, so a
+    /// pass across the grid never reflows it; collapse is immediate (but
+    /// animated) on exit.
+    private func cardHovered(_ persona: Persona, inside: Bool) {
+        if inside {
+            cardHeightLocked = true   // see `cardHeightLocked`
+            guard hoveredID != persona.id, pendingHoverID != persona.id else { return }
+            hoverTask?.cancel()
+            pendingHoverID = persona.id
+            hoverTask = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(180))
+                guard !Task.isCancelled else { return }
+                pendingHoverID = nil
+                withAnimation(reduceMotion ? nil : .snappy(duration: 0.18)) {
+                    hoveredID = persona.id
+                }
+            }
+        } else {
+            if pendingHoverID == persona.id {
+                pendingHoverID = nil
+                hoverTask?.cancel()
+            }
+            if hoveredID == persona.id {
+                withAnimation(reduceMotion ? nil : .snappy(duration: 0.18)) {
+                    hoveredID = nil
+                }
+            }
+        }
     }
 
     private func open(_ persona: Persona) {
-        // The name starts blank on purpose: the prompt is a directive hint
-        // ("Pick something readable like …"), and Add stays disabled until
-        // the user names the set themselves.
-        draftName = ""
-        // Swatches start on the walkthrough's colour for the example, so the
-        // editor matches the card the user just clicked.
-        draftRows = persona.rows.map {
-            DraftRow(key: $0.key, value: "",
-                     color: WalkthroughModel.color(key: $0.key, value: $0.example),
-                     example: $0.example)
+        hoverTask?.cancel()
+        pendingHoverID = nil
+        hoveredID = nil
+        if let set = createdSet(for: persona) {
+            // Edit mode: the drafts mirror the set the user already made,
+            // in their own palette — Save replaces it wholesale.
+            draftName = set.name
+            draftRows = set.tags.map {
+                DraftRow(key: $0.key, value: $0.value,
+                         color: model.tagColor(for: $0.key,
+                                               value: $0.value.isEmpty ? nil : $0.value))
+            }
+            quickDrafts = model.quickLabels(for: set).map {
+                DraftRow(key: $0.key, value: $0.value,
+                         color: model.tagColor(for: $0.key,
+                                               value: $0.value.isEmpty ? nil : $0.value))
+            }
+        } else {
+            // The name starts blank on purpose: the prompt is a directive
+            // hint ("Pick something readable like …"), and Add stays
+            // disabled until the user names the set themselves.
+            draftName = ""
+            // Swatches start on the walkthrough's colour for the example, so
+            // the editor matches the card the user just clicked; quick-label
+            // seeds prefer a colour the user's palette already has.
+            draftRows = persona.rows.map {
+                DraftRow(key: $0.key, value: "",
+                         color: WalkthroughModel.color(key: $0.key, value: $0.example),
+                         example: $0.example)
+            }
+            quickDrafts = persona.quickValues.enumerated().map { index, value in
+                DraftRow(key: Persona.quickKey, value: value,
+                         color: model.valueColor(key: Persona.quickKey, value: value)
+                             ?? Self.suggestionColor(at: index))
+            }
         }
         invalidRows = []
         editing = persona
@@ -1097,37 +1437,7 @@ private struct LabelSetsPage: View {
                     }
             }
             ForEach($draftRows) { $row in
-                HStack(spacing: 6) {
-                    ColorPicker("", selection: $row.color, supportsOpacity: false)
-                        .labelsHidden()
-                    TextField("key", text: $row.key)
-                        .textFieldStyle(.roundedBorder)
-                        .autocorrectionDisabled()
-                        .frame(width: LabelEditorStyle.keyFieldWidth)
-                        .overlay(invalidOutline(flagged(row) && row.trimmedKey.isEmpty))
-                    Text(":").foregroundStyle(.secondary)
-                    TextField("value", text: $row.value,
-                              prompt: row.example.map { Text($0) })
-                        .textFieldStyle(.roundedBorder)
-                        .autocorrectionDisabled()
-                        .overlay(invalidOutline(flagged(row) && row.trimmedValue.isEmpty))
-                        .onKeyPress(.tab) {
-                            guard row.trimmedValue.isEmpty, let example = row.example
-                            else { return .ignored }
-                            row.value = example
-                            return .handled
-                        }
-                    Button(role: .destructive) {
-                        // Read the id before removeAll — reading the `row`
-                        // binding inside the predicate re-enters the array's
-                        // exclusive access and traps.
-                        let id = row.id
-                        draftRows.removeAll { $0.id == id }
-                    } label: {
-                        Image(systemName: "minus.circle")
-                    }
-                    .buttonStyle(.borderless)
-                }
+                editorRow($row, removeFrom: $draftRows)
             }
             Button {
                 draftRows.append(DraftRow(key: "", value: "",
@@ -1136,13 +1446,26 @@ private struct LabelSetsPage: View {
                 Label("Add Label", systemImage: "plus")
             }
             .buttonStyle(.borderless)
-            Text("The grey values are examples — type your own, or press Tab to keep one.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            if draftRows.contains(where: { $0.example != nil }) {
+                Text("The grey values are examples — type your own, or press Tab to keep one.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            if draftRows.contains(where: \.valueless) {
+                Label("Blank label values are fine — the set will prompt for them when starting a timer.",
+                      systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            quickLabelsSection
             HStack {
                 Spacer()
                 Button("Cancel") { editing = nil }
-                Button("Add label set") { add(persona) }
+                Button(createdSet(for: persona) != nil ? "Save label set"
+                                                       : "Add label set") {
+                    add(persona)
+                }
                     .buttonStyle(.borderedProminent)
                     .tint(anyFlagged ? .red : nil)
                     .modifier(Shake(animatableData: CGFloat(shakes)))
@@ -1153,6 +1476,82 @@ private struct LabelSetsPage: View {
         .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
     }
 
+    /// One key/value editor row — swatch, fields, remove — shared by the
+    /// label list and the quick-label list, like the Label Sets tab's twin
+    /// lists. A persona example (when present) rides as placeholder with
+    /// Tab completion.
+    private func editorRow(_ row: Binding<DraftRow>,
+                           removeFrom list: Binding<[DraftRow]>) -> some View {
+        HStack(spacing: 6) {
+            ColorPicker("", selection: row.color, supportsOpacity: false)
+                .labelsHidden()
+            TextField("key", text: row.key)
+                .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled()
+                .frame(width: LabelEditorStyle.keyFieldWidth)
+                .overlay(invalidOutline(flagged(row.wrappedValue)
+                    && row.wrappedValue.trimmedKey.isEmpty))
+            Text(":").foregroundStyle(.secondary)
+            TextField("value", text: row.value,
+                      prompt: row.wrappedValue.example.map { Text($0) })
+                .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled()
+                .onKeyPress(.tab) {
+                    guard row.wrappedValue.trimmedValue.isEmpty,
+                          let example = row.wrappedValue.example
+                    else { return .ignored }
+                    row.wrappedValue.value = example
+                    return .handled
+                }
+            Button(role: .destructive) {
+                // Read the id before removeAll — reading the binding inside
+                // the predicate re-enters the array's exclusive access and
+                // traps.
+                let id = row.wrappedValue.id
+                list.wrappedValue.removeAll { $0.id == id }
+            } label: {
+                Image(systemName: "minus.circle")
+            }
+            .buttonStyle(.borderless)
+        }
+    }
+
+    /// The quick-label list, editable exactly like the labels above (and
+    /// like the Label Sets tab's own quick-label list) — seeded with the
+    /// persona's three suggestions under the conventional key `type:`, all
+    /// free to retype, remove, or extend.
+    private var quickLabelsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Quick labels")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ForEach($quickDrafts) { $row in
+                editorRow($row, removeFrom: $quickDrafts)
+            }
+            Button {
+                quickDrafts.append(DraftRow(key: Persona.quickKey, value: "",
+                                            color: WalkthroughModel.keyColor(Persona.quickKey)))
+            } label: {
+                Label("Add Quick Label", systemImage: "plus")
+            }
+            .buttonStyle(.borderless)
+            Text("Offered on the set's row as one-click swap-ins — a shared key means they swap with each other.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, 4)
+    }
+
+    /// The concept page's chip hues — blue, gold, purple — by position.
+    /// Written into the user's palette when the quick label is added, so the
+    /// real chips keep the hue.
+    private static func suggestionColor(at index: Int) -> Color {
+        let examples = ["programming", "review", "planning"]
+        return WalkthroughModel.color(key: Persona.quickKey,
+                                      value: examples[index % examples.count])
+    }
+
     /// A field flagged by a failed add keeps its outline only while still
     /// empty — typing clears it, without any bookkeeping.
     private func flagged(_ row: DraftRow) -> Bool {
@@ -1160,7 +1559,7 @@ private struct LabelSetsPage: View {
     }
 
     private var anyFlagged: Bool {
-        draftRows.contains { flagged($0) && $0.incomplete }
+        draftRows.contains { flagged($0) && $0.trimmedKey.isEmpty }
     }
 
     private func invalidOutline(_ on: Bool) -> some View {
@@ -1169,15 +1568,19 @@ private struct LabelSetsPage: View {
             .opacity(on ? 1 : 0)
     }
 
-    /// Create the real set — or refuse: a blank key or value doesn't pass.
-    /// The refusal is shown, not written: the empty fields outline red and
-    /// the add button shakes. Chosen colours go through the model's
-    /// per-value colour store; duplicate names are skipped (the set already
-    /// exists — still counts as added).
+    /// Create — or, for an already-added persona, update — the real set.
+    /// Refusals: a value with no key (in either list), or an entirely empty
+    /// draft (no labels *and* no quick labels). A blank *value* is legal —
+    /// the set prompts for it per start (the caption above says so), and
+    /// quick-labels-only sets are a real pattern. The refusal is shown, not
+    /// written: the offending key fields outline red and the add button
+    /// shakes. Chosen colours go through the model's per-value colour store.
     private func add(_ persona: Persona) {
-        let incomplete = draftRows.filter(\.incomplete)
-        guard incomplete.isEmpty, !draftRows.isEmpty else {
-            invalidRows.formUnion(incomplete.map(\.id))
+        let rows = draftRows.filter { !$0.isBlank }
+        let quickRows = quickDrafts.filter { !$0.isBlank }
+        let refused = (rows + quickRows).filter(\.missingKey)
+        guard refused.isEmpty, !(rows.isEmpty && quickRows.isEmpty) else {
+            invalidRows.formUnion(refused.map(\.id))
             if reduceMotion {
                 shakes += 1   // unanimated: the red tint still lands
             } else {
@@ -1186,20 +1589,43 @@ private struct LabelSetsPage: View {
             return
         }
         let name = draftName.trimmingCharacters(in: .whitespaces)
+        let tags = rows.map { TagRow(key: $0.trimmedKey, value: $0.trimmedValue) }
+        let quickTags = quickRows.map { TagRow(key: $0.trimmedKey, value: $0.trimmedValue) }
+        // Chosen colours — a valueless row has no pair to colour; the value
+        // arrives at start time. (Edit-mode swatches were seeded from the
+        // palette, so an untouched swatch writes back its own colour.)
+        for row in rows + quickRows where !row.trimmedValue.isEmpty {
+            model.setValueColor(key: row.trimmedKey, value: row.trimmedValue,
+                                color: row.color)
+        }
         let set: TagSet
-        if let existing = model.tagSets.first(where: {
+        if let existing = createdSet(for: persona) {
+            // Edit mode: the drafts *are* the set now — name, labels, and
+            // quick labels replaced wholesale.
+            set = existing
+            if let index = model.tagSets.firstIndex(where: { $0.id == existing.id }) {
+                model.tagSets[index].name = name
+                model.tagSets[index].tags = tags
+            }
+            model.quickLabels[set.id.uuidString] = quickTags
+        } else if let existing = model.tagSets.first(where: {
             $0.name.lowercased() == name.lowercased()
         }) {
-            set = existing   // the set already exists — still counts as added
+            // A pre-existing set of the same name — counts as added; merge
+            // in the quick labels without disturbing what it already has.
+            set = existing
+            let present = model.quickLabels(for: set)
+            model.quickLabels[set.id.uuidString, default: []].append(
+                contentsOf: quickTags.filter { tag in
+                    !present.contains {
+                        normalizeKey($0.key) == normalizeKey(tag.key)
+                            && $0.value == tag.value
+                    }
+                })
         } else {
-            var tags: [TagRow] = []
-            for row in draftRows {
-                tags.append(TagRow(key: row.trimmedKey, value: row.trimmedValue))
-                model.setValueColor(key: row.trimmedKey, value: row.trimmedValue,
-                                    color: row.color)
-            }
             set = TagSet(name: name, tags: tags, symbolName: persona.symbol)
             model.tagSets.append(set)
+            model.quickLabels[set.id.uuidString] = quickTags
         }
         if !walkthrough.createdSets.contains(where: { $0.setID == set.id }) {
             walkthrough.createdSets.append(
@@ -1227,326 +1653,6 @@ private struct Shake: GeometryEffect {
     func effectValue(size: CGSize) -> ProjectionTransform {
         ProjectionTransform(CGAffineTransform(
             translationX: travel * sin(animatableData * .pi * cycles * 2), y: 0))
-    }
-}
-
-// MARK: - Page 6: quick labels
-
-private struct QuickLabelsPage: View {
-    @Environment(AppModel.self) private var model
-    @Bindable var walkthrough: WalkthroughModel
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private struct Quick: Hashable {
-        let key: String
-        let value: String
-    }
-
-    /// The mocked set — the SWE-shop scheme's own labels — and its quick
-    /// labels: three work types that swap with each other, exactly the
-    /// role page 5 kept *out* of the sets.
-    private static let base = [Quick(key: "repo", value: "primetime"),
-                               Quick(key: "feat", value: "onboarding")]
-    private static let quicks = [Quick(key: "type", value: "programming"),
-                                 Quick(key: "type", value: "review"),
-                                 Quick(key: "type", value: "planning")]
-
-    /// The example widget's chip colours — blue, gold, purple — inherited by
-    /// position, so every persona's three suggested values read as instances
-    /// of the example. Written into the user's palette when a suggestion is
-    /// added, so the real chips keep the hue.
-    private static func suggestionColor(at index: Int) -> Color {
-        let quick = quicks[index % quicks.count]
-        return WalkthroughModel.color(key: quick.key, value: quick.value)
-    }
-
-    @State private var applied: Quick?
-
-    /// A set the user created on page 5, joined with its persona — the
-    /// source of that set's three suggested `type:` quick labels.
-    private struct Suggestion: Identifiable {
-        let tagSet: TagSet
-        let persona: WalkthroughPersona
-        var id: UUID { tagSet.id }
-    }
-
-    private var anim: Animation? { reduceMotion ? nil : .easeOut(duration: 0.2) }
-
-    /// The sets created on page 5 that still exist, in creation order.
-    private var suggestions: [Suggestion] {
-        walkthrough.createdSets.compactMap { created in
-            guard let set = model.tagSets.first(where: { $0.id == created.setID }),
-                  let persona = WalkthroughPersona.named(created.personaID)
-            else { return nil }
-            return Suggestion(tagSet: set, persona: persona)
-        }
-    }
-
-    var body: some View {
-        WalkthroughPage(index: 5, title: "Quick labels",
-                        subtitle: "Often you want to start from a label set but add one more label — the work type, the client. PrimeTime lets you define these Quick Labels ahead of time, so switching contexts takes a couple of clicks.") {
-            VStack(alignment: .leading, spacing: 14) {
-                if suggestions.isEmpty {
-                    // Alone, the card must not stretch to the page: cap it
-                    // at its ideal height (both cards are maxHeight-flexible
-                    // for the equal-height row below).
-                    mockRow
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    // Two equal-width cards, centred with air on both sides.
-                    // fixedSize caps the row at the taller card's ideal
-                    // height, and each card stretches to match.
-                    HStack(alignment: .top, spacing: 52) {
-                        mockRow
-                            .frame(width: 280)
-                        suggestionsCard
-                            .frame(width: 280)
-                    }
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity)
-                }
-                preview
-                Text("All three quick labels share the key type:, so they swap with each other — click between them as often as you like. Clicking the row anywhere else starts from just the set's own labels. A set can even be quick labels only — no baked-in labels at all — which makes a tidy home for hobbies: game:, book:, activity:.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            .frame(maxWidth: suggestions.isEmpty ? 440 : 660)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        }
-    }
-
-    // MARK: Suggested quick labels for the user's own sets
-
-    /// The sets created on page 5, each with three suggested quick labels
-    /// under the conventional key `type:` — the kinds of work within the
-    /// set. All or nothing: the chips are a preview, and the one button
-    /// adds every remaining suggestion verbatim to the user's real per-set
-    /// quick labels, like page 5 wrote real sets.
-    private var suggestionsCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Suggested for your sets")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            ForEach(suggestions) { suggestion in
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 5) {
-                        Image(systemName: suggestion.tagSet.symbol)
-                            .font(.caption)
-                            .foregroundStyle(.tint)
-                        Text(suggestion.tagSet.name)
-                            .font(.callout.weight(.medium))
-                            .lineLimit(1)
-                    }
-                    FlowLayout(spacing: 4) {
-                        ForEach(Array(suggestion.persona.quickValues.enumerated()),
-                                id: \.element) { index, value in
-                            suggestionChip(value, at: index, for: suggestion.tagSet)
-                        }
-                    }
-                }
-            }
-            Text("You customize these any time in the Label Sets menu.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-            Button("Add suggested quick labels", action: addAllSuggestions)
-                .buttonStyle(GoldenSparkleButtonStyle())
-                .disabled(allSuggestionsAdded)
-                .pointingHandCursor()
-                .frame(maxWidth: .infinity)
-        }
-        // Flexible height so the side-by-side layout can stretch this card
-        // to the quick-start card's height; the Spacer above keeps the
-        // button pinned to the bottom edge when it does.
-        .frame(maxHeight: .infinity)
-        .padding(14)
-        .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    /// Whether this exact suggestion already sits in the set's quick labels
-    /// (added here, or defined before onboarding).
-    private func isAdded(_ value: String, in set: TagSet) -> Bool {
-        model.quickLabels(for: set).contains {
-            normalizeKey($0.key) == WalkthroughPersona.quickKey
-                && $0.value.trimmingCharacters(in: .whitespaces) == value
-        }
-    }
-
-    private var allSuggestionsAdded: Bool {
-        suggestions.allSatisfy { suggestion in
-            suggestion.persona.quickValues.allSatisfy { isAdded($0, in: suggestion.tagSet) }
-        }
-    }
-
-    /// A suggested chip — a preview, not a control: the card is all or
-    /// nothing, added by the one button below. Pending chips wear the
-    /// example's positional colour outlined; added ones render filled from
-    /// the user's real palette (which the add seeded with that colour).
-    private func suggestionChip(_ value: String, at index: Int,
-                                for set: TagSet) -> some View {
-        let added = isAdded(value, in: set)
-        let color = added ? model.tagColor(for: WalkthroughPersona.quickKey, value: value)
-                          : Self.suggestionColor(at: index)
-        return Text("+\(value)")
-            .font(.caption2)
-            .lineLimit(1)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 2)
-            .foregroundStyle(added ? AnyShapeStyle(color.contrastingTextColor)
-                                   : AnyShapeStyle(.primary))
-            .background(Capsule().fill(added ? color : .clear))
-            .overlay(Capsule().strokeBorder(added ? .clear : color))
-    }
-
-    /// The card's one-click path: every suggestion not already present,
-    /// added verbatim.
-    private func addAllSuggestions() {
-        withAnimation(anim) {
-            for suggestion in suggestions {
-                for (index, value) in suggestion.persona.quickValues.enumerated()
-                where !isAdded(value, in: suggestion.tagSet) {
-                    // Carry the chips' positional colours into the palette —
-                    // without clobbering a pair the user already coloured.
-                    if model.valueColor(key: WalkthroughPersona.quickKey,
-                                        value: value) == nil {
-                        model.setValueColor(key: WalkthroughPersona.quickKey,
-                                            value: value,
-                                            color: Self.suggestionColor(at: index))
-                    }
-                    model.quickLabels[suggestion.tagSet.id.uuidString, default: []]
-                        .append(TagRow(key: WalkthroughPersona.quickKey, value: value))
-                }
-            }
-        }
-    }
-
-    /// A quick-start row like the popover's, chips permanently revealed (the
-    /// real row shows them on hover). As in the popover, the row itself is
-    /// the click target for "just the set" — anywhere that isn't a chip.
-    private var mockRow: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Quick start")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            // Stretched beside the suggestions card the widget would hug
-            // the top-left corner — centre it in the card's free space.
-            Spacer(minLength: 6)
-            Button {
-                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
-                    applied = nil
-                }
-            } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("PrimeTime")
-                        .font(.callout)
-                    FlowLayout(spacing: 4) {
-                        ForEach(Self.base, id: \.self) { tag in
-                            TagPill(key: tag.key, value: tag.value,
-                                    color: WalkthroughModel.color(key: tag.key, value: tag.value))
-                        }
-                    }
-                    FlowLayout(spacing: 4) {
-                        ForEach(Self.quicks, id: \.self) { quick in
-                            chip(quick)
-                        }
-                    }
-                    .padding(.top, 2)
-                }
-                .padding(10)
-                .contentShape(Rectangle())
-                .overlay(RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(Color.accentColor, lineWidth: 1.5))
-            }
-            .buttonStyle(.plain)
-            .pointingHandCursor()
-            .help("Start with the set's labels")
-            .frame(maxWidth: .infinity)
-            Spacer(minLength: 0)
-        }
-        // Flexible on both axes so the side-by-side layout can stretch this
-        // card to the suggestions card's height and the row's width.
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(14)
-        .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    /// Chips apply, they never toggle off — like the popover, where a chip
-    /// always means "start with this"; the row body is the way back to the
-    /// set's plain labels. So switching types is endlessly repeatable.
-    private func chip(_ quick: Quick) -> some View {
-        Button {
-            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
-                applied = quick
-            }
-        } label: {
-            Text("+\(quick.value)")
-        }
-        .buttonStyle(QuickLabelChipStyle(
-            color: WalkthroughModel.color(key: quick.key, value: quick.value),
-            filled: applied == quick))
-        .pointingHandCursor()
-        .help("Start with \(quick.key): \(quick.value)")
-    }
-
-    /// The span a click would start: the set's labels with same-key
-    /// replacement applied — the `TagSet.labels(applying:)` rule, computed
-    /// locally on the mock data.
-    @ViewBuilder
-    private var preview: some View {
-        let labels = applied.map { quick in
-            Self.base.filter { $0.key != quick.key } + [quick]
-        } ?? Self.base
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text("One click starts:")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            FlowLayout(spacing: 4) {
-                ForEach(labels, id: \.self) { tag in
-                    TagPill(key: tag.key, value: tag.value,
-                            color: WalkthroughModel.color(key: tag.key, value: tag.value))
-                }
-            }
-        }
-        .padding(.top, 16)
-    }
-}
-
-/// The suggestions card's call to action: quiet at rest, gilded on
-/// mouse-over — a torch-gold border, tinted fill, and a bouncing sparkle,
-/// echoing the popover quick labels' hover flourish.
-private struct GoldenSparkleButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        Styled(configuration: configuration)
-    }
-
-    private struct Styled: View {
-        let configuration: ButtonStyleConfiguration
-        @Environment(\.isEnabled) private var isEnabled
-        @Environment(\.accessibilityReduceMotion) private var reduceMotion
-        @State private var hovering = false
-
-        private var highlighted: Bool { hovering && isEnabled }
-
-        var body: some View {
-            HStack(spacing: 5) {
-                Image(systemName: "sparkles")
-                    .foregroundStyle(highlighted ? AnyShapeStyle(Brand.torchGold)
-                                                 : AnyShapeStyle(.secondary))
-                    .symbolEffect(.bounce, value: reduceMotion ? false : highlighted)
-                configuration.label
-            }
-            .font(.callout)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 5)
-            .background(Capsule().fill(Brand.torchGold.opacity(highlighted ? 0.14 : 0)))
-            .overlay(Capsule().strokeBorder(
-                highlighted ? Brand.torchGold : Color.secondary.opacity(0.4),
-                lineWidth: 1))
-            .opacity(isEnabled ? (configuration.isPressed ? 0.7 : 1) : 0.5)
-            .onHover { hovering = $0 }
-            .animation(.easeOut(duration: 0.15), value: highlighted)
-        }
     }
 }
 

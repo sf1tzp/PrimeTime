@@ -364,6 +364,7 @@ final class WalkthroughModel {
         case "client": hex = "#f9a825"
         case "proj": hex = "#d84315"
         case "work": hex = "#e53935"
+        case "issue": hex = "#ef6c00"   // the concept page's valueless label
         case "book": hex = "#b39ddb"   // pastel purple, distinct from feat's
         default: hex = "#546e7a"
         }
@@ -491,12 +492,12 @@ final class WalkthroughModel {
         return "With these labels, this timer can be found by \(keys.formatted(.list(type: .or)))."
     }
 
-    // MARK: Created label sets (page 5 → page 6)
+    // MARK: Created label sets (the create page)
 
-    /// A label set created from one of page 5's persona cards. Carries the
-    /// real `TagSet.id` (not the name — the user names the set themselves)
-    /// so page 6 can offer that persona's quick-label suggestions against
-    /// the right set.
+    /// A label set created from one of the create page's persona cards.
+    /// Carries the real `TagSet.id` (not the name — the user names the set
+    /// themselves) alongside the persona, so the page's checkmarks map back
+    /// to the right cards.
     struct CreatedSet: Identifiable, Hashable {
         let setID: UUID
         let personaID: String
