@@ -968,7 +968,7 @@ private struct LabelSetsConceptPage: View {
     private func badge(_ number: Int) -> some View {
         Text("\(number)")
             .font(.caption2.weight(.bold).monospacedDigit())
-            .foregroundStyle(.white)
+            .foregroundStyle(.primary)
             .frame(width: 15, height: 15)
             .background(Circle().strokeBorder(Color.accentColor, lineWidth: 1))
     }

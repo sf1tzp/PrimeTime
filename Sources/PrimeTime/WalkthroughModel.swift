@@ -56,23 +56,23 @@ final class WalkthroughModel {
     /// The other meetings deliberately carry no `repo` — "decide what
     /// untagged means" is part of the story.
     static let baseWeek: [DemoSpan] = [
-        DemoSpan(id: 0, day: 0, startHour: 9, hours: 2.5, labels: week("primetime", "onboarding", "feature", "sfi")),
+        DemoSpan(id: 0, day: 0, startHour: 9, hours: 2.5, labels: week("primetime", "onboarding", "development", "sfi")),
         DemoSpan(id: 1, day: 0, startHour: 11.5, hours: 0.5, labels: [SpanLabel(key: "type", value: "meeting"), SpanLabel(key: "client", value: "sfi")]),
-        DemoSpan(id: 2, day: 0, startHour: 13, hours: 3, labels: week("primetime", "charts", "feature", "sfi")),
+        DemoSpan(id: 2, day: 0, startHour: 13, hours: 3, labels: week("primetime", "charts", "development", "sfi")),
         DemoSpan(id: 3, day: 1, startHour: 9, hours: 1, labels: [SpanLabel(key: "type", value: "meeting"), SpanLabel(key: "client", value: "acme")]),
-        DemoSpan(id: 4, day: 1, startHour: 10, hours: 3, labels: week("acme-app", "billing", "feature", "acme")),
+        DemoSpan(id: 4, day: 1, startHour: 10, hours: 3, labels: week("acme-app", "billing", "development", "acme")),
         DemoSpan(id: 5, day: 1, startHour: 14, hours: 2, labels: week("acme-app", "billing", "review", "acme")),
-        DemoSpan(id: 6, day: 2, startHour: 9, hours: 3, labels: week("primetime", "onboarding", "feature", "sfi")),
-        DemoSpan(id: 7, day: 2, startHour: 13, hours: 2, labels: week("website", "landing", "feature", "sfi")),
+        DemoSpan(id: 6, day: 2, startHour: 9, hours: 3, labels: week("primetime", "onboarding", "development", "sfi")),
+        DemoSpan(id: 7, day: 2, startHour: 13, hours: 2, labels: week("website", "landing", "development", "sfi")),
         DemoSpan(id: 8, day: 2, startHour: 15, hours: 1, labels: week("primetime", "charts", "review", "sfi")),
         DemoSpan(id: 9, day: 3, startHour: 9, hours: 2, labels: week("acme-app", "billing", "support", "acme")),
         DemoSpan(id: 10, day: 3, startHour: 11, hours: 1, labels: week("primetime", "onboarding", "meeting", "sfi")),
-        DemoSpan(id: 11, day: 3, startHour: 13, hours: 4, labels: week("primetime", "onboarding", "feature", "sfi")),
+        DemoSpan(id: 11, day: 3, startHour: 13, hours: 4, labels: week("primetime", "onboarding", "development", "sfi")),
         DemoSpan(id: 12, day: 4, startHour: 9, hours: 2, labels: week("website", "landing", "review", "sfi")),
         DemoSpan(id: 13, day: 4, startHour: 11, hours: 1, labels: week("acme-app", "billing", "meeting", "acme")),
-        DemoSpan(id: 14, day: 4, startHour: 13, hours: 2, labels: week("primetime", "charts", "feature", "sfi")),
+        DemoSpan(id: 14, day: 4, startHour: 13, hours: 2, labels: week("primetime", "charts", "development", "sfi")),
         DemoSpan(id: 15, day: 4, startHour: 15, hours: 1, labels: [SpanLabel(key: "repo", value: "primetime"), SpanLabel(key: "type", value: "ops"), SpanLabel(key: "client", value: "sfi")]),
-        DemoSpan(id: 16, day: 5, startHour: 10, hours: 2, labels: week("website", "landing", "feature", "sfi")),
+        DemoSpan(id: 16, day: 5, startHour: 10, hours: 2, labels: week("website", "landing", "development", "sfi")),
     ]
 
     private static func week(_ repo: String, _ feat: String, _ type: String,
@@ -377,19 +377,19 @@ final class WalkthroughModel {
     /// so the walkthrough demos it too, still without touching the user's
     /// palette.
     private static let valueColors: [String: String] = [
-        ValueColorKey.join("repo", "primetime"): "#ffc686ff",
+        ValueColorKey.join("repo", "primetime"): "#f7b060ff",
         ValueColorKey.join("repo", "website"): "#42a5f5",
-        ValueColorKey.join("repo", "acme-app"): "#26a69a",
+        ValueColorKey.join("repo", "acme-app"): "#4ad679ff",
         ValueColorKey.join("feat", "onboarding"): "#00acc1",
         ValueColorKey.join("feat", "charts"): "#7e57c2",
         ValueColorKey.join("feat", "billing"): "#f06292",
         ValueColorKey.join("feat", "landing"): "#9ccc65",
-        ValueColorKey.join("type", "feature"): "#3949ab",
-        ValueColorKey.join("type", "review"): "#ffa726",
+        ValueColorKey.join("type", "development"): "#3949ab",
+        ValueColorKey.join("type", "review"): "#c1f893ff",
         // Meetings are overhead, not identity — a muted tinted grey, so they
         // recede next to the work types.
         ValueColorKey.join("type", "meeting"): "#8d6e63",
-        ValueColorKey.join("type", "support"): "#ffca28",
+        ValueColorKey.join("type", "support"): "#f53293ff",
         ValueColorKey.join("type", "ops"): "#66bb6a",
         ValueColorKey.join("type", "programming"): "#5c6bc0",
         ValueColorKey.join("type", "planning"): "#ab47bc",
@@ -431,7 +431,7 @@ final class WalkthroughModel {
         return fallbackPalette[stableHash("\(lookupKey):\(value)") % fallbackPalette.count]
     }
 
-    private static let fallbackPalette = ["#00897b", "#8e24aa", "#1e88e5", "#f9a825",
+    private static let fallbackPalette = ["#00897b", "#8e24aa", "#1e88e5", "#fdf39aff",
                                           "#d84315", "#3949ab", "#43a047", "#6d4c41"]
         .compactMap { Color(hex: $0) }
 
