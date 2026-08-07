@@ -377,7 +377,7 @@ final class WalkthroughModel {
     /// so the walkthrough demos it too, still without touching the user's
     /// palette.
     private static let valueColors: [String: String] = [
-        ValueColorKey.join("repo", "primetime"): "#e64a19",
+        ValueColorKey.join("repo", "primetime"): "#ffc686ff",
         ValueColorKey.join("repo", "website"): "#42a5f5",
         ValueColorKey.join("repo", "acme-app"): "#26a69a",
         ValueColorKey.join("feat", "onboarding"): "#00acc1",

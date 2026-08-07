@@ -7,9 +7,12 @@ extension Color {
     init?(hex: String) {
         var s = hex.trimmingCharacters(in: .whitespaces)
         if s.hasPrefix("#") { s.removeFirst() }
-        // Accept #rgb shorthand as well as #rrggbb.
+        // Accept #rgb shorthand and #rrggbbaa (colour pickers append alpha)
+        // as well as #rrggbb. Alpha is dropped: these colours always render
+        // fully opaque.
         if s.count == 3 { s = s.map { "\($0)\($0)" }.joined() }
-        guard s.count == 6, let v = UInt32(s, radix: 16) else { return nil }
+        guard s.count == 6 || s.count == 8, var v = UInt32(s, radix: 16) else { return nil }
+        if s.count == 8 { v >>= 8 }
         self = Color(
             red: Double((v >> 16) & 0xFF) / 255,
             green: Double((v >> 8) & 0xFF) / 255,
