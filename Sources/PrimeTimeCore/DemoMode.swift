@@ -135,7 +135,7 @@ package enum DemoSeed {
         // Quick-labels-only sets: no presets, so the card colour comes from
         // `colorHex` (matched to the key's definition colour below).
         TagSet(name: "Gaming", symbolName: "gamecontroller", colorHex: "#7e57c2"),
-        TagSet(name: "Workout", symbolName: "figure.run", colorHex: "#43a047"),
+        TagSet(name: "Workout", symbolName: "figure.run", colorHex: "#a5dd77ff"),
         TagSet(name: "Reading", symbolName: "book", colorHex: "#f4511e"),
     ]
 
@@ -223,14 +223,14 @@ package enum DemoSeed {
         ValueColorKey.join("feature", "search"): "#ba68c8",
         ValueColorKey.join("feature", "billing"): "#ffb74d",
         ValueColorKey.join("feature", "primetime-api"): "#4db6ac",
-        ValueColorKey.join("type", "planning"): "#fae093ff",
+        ValueColorKey.join("type", "planning"): "#f0ee73ff",
         ValueColorKey.join("type", "coding"): "#5c6bc0",
-        ValueColorKey.join("type", "debugging"): "#e46c6cff",
-        ValueColorKey.join("type", "review"): "#68da26ff",
+        ValueColorKey.join("type", "debugging"): "#fc3e3eff",
+        ValueColorKey.join("type", "review"): "#d2fcbaff",
         ValueColorKey.join("type", "support"): "#78909c",
         ValueColorKey.join("meeting", "standup"): "#ef5350",
         ValueColorKey.join("meeting", "retrospective"): "#ab47bc",
-        ValueColorKey.join("meeting", "handoff"): "#ff7043",
+        ValueColorKey.join("meeting", "handoff"): "#43b4ffff",
         ValueColorKey.join("meeting", "release-planning"): "#d4e157",
         ValueColorKey.join("game", "baldurs-gate"): "#d84315",
         ValueColorKey.join("game", "no-mans-sky"): "#26a69a",

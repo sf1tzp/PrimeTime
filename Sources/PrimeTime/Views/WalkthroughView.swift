@@ -888,7 +888,7 @@ private struct LabelSetsConceptPage: View {
                     legend
                 }
                 preview
-                Text("A set can even be nothing but quick labels — a tidy home for hobbies: game:, book:, activity:. Up next: create your own.")
+                Text("A set can even be nothing but quick labels — a tidy home for hobbies: book:, game:, show:. Up next: create your own.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -1044,22 +1044,24 @@ private struct LabelSetsConceptPage: View {
 // MARK: - Page 6: create your first label sets
 
 /// One way people run PrimeTime — a card on the create page, whose editor
-/// also includes the persona's three suggested quick labels by default.
+/// also includes the persona's suggested quick labels by default.
 private struct WalkthroughPersona: Identifiable {
     let name: String
     let symbol: String
-    /// The two primary keys, with example values — hints, never
-    /// prefilled. (The work *type* is deliberately absent: that's a
-    /// quick label's job, not a set's — the editor suggests those below
-    /// the rows.)
-    let rows: [(key: String, example: String)]
+    /// The primary keys, with example values — hints, never prefilled.
+    /// A nil example seeds a *valueless* label, the concept page's
+    /// prompt-per-start workflow. (The work *type* is deliberately
+    /// absent: that's a quick label's job, not a set's — the editor
+    /// suggests those below the rows.)
+    let rows: [(key: String, example: String?)]
     /// The example set name woven into the editor's prompt — Tab in the
     /// empty name field accepts it verbatim.
     let nameExample: String
-    /// The editor's suggested quick labels — three values under the one
-    /// conventional key `type:`, the kinds of work within this set, seeded
-    /// as editable rows.
-    let quickValues: [String]
+    /// The editor's suggested quick labels, seeded as editable rows —
+    /// kinds of work under the conventional key `type:` for the working
+    /// personas; Leisure's instead carry one key per hobby, the
+    /// quick-labels-only pattern the concept page teased.
+    let quickLabels: [(key: String, value: String)]
     var id: String { name }
 
     /// The editor's name-field prompt: a directive nudge toward a readable,
@@ -1069,47 +1071,37 @@ private struct WalkthroughPersona: Identifiable {
     /// The conventional quick-label key — adopted outright on page 6.
     static let quickKey = "type"
 
+    /// The App Store submission's four: common cases over coverage.
+    /// Programming deliberately mirrors the concept page's mock set —
+    /// same valueless `issue:`, same quick-label trio — so the card reads
+    /// as "that thing you just clicked around, for real". Leisure is the
+    /// quick-labels-only set the concept page's caption promised.
     static let all: [WalkthroughPersona] = [
         WalkthroughPersona(name: "Programming", symbol: "chevron.left.forwardslash.chevron.right",
-                           rows: [("repo", "sfi/sfi-website"),
-                                  ("feat", "kb-knowledge-graph")],
-                           nameExample: "SFI Knowledge Graph",
-                           quickValues: ["programming", "review", "planning"]),
+                           rows: [("repo", "sfi/PrimeTime"),
+                                  ("issue", nil)],
+                           nameExample: "PrimeTime App",
+                           quickLabels: [("type", "planning"),
+                                         ("type", "review"),
+                                         ("type", "debugging")]),
         WalkthroughPersona(name: "Studying", symbol: "graduationcap",
                            rows: [("course", "linear-algebra"),
-                                  ("topic", "eigenvalues")],
+                                  ("topic", nil)],
                            nameExample: "Linear Algebra",
-                           quickValues: ["lecture", "homework", "revision"]),
-        WalkthroughPersona(name: "Reading", symbol: "book",
-                           rows: [("book", "locke-lamora"),
-                                  ("author", "scott-lynch")],
-                           nameExample: "Locke Lamora",
-                           quickValues: ["reading", "notes", "research"]),
-        WalkthroughPersona(name: "Small Business", symbol: "storefront",
-                           rows: [("project", "t-shirt-run"),
-                                  ("client", "sfi")],
-                           nameExample: "T-Shirt Run",
-                           quickValues: ["design", "production", "sales"]),
+                           quickLabels: [("type", "lecture"),
+                                         ("type", "group-session"),
+                                         ("type", "homework")]),
         WalkthroughPersona(name: "Creative Work", symbol: "paintbrush",
-                           rows: [("medium", "digital"),
-                                  ("title", "clockwork")],
-                           nameExample: "Clockwork",
-                           quickValues: ["draft", "refine", "publish"]),
-        WalkthroughPersona(name: "Music Production", symbol: "music.note",
-                           rows: [("project", "hit-the-lights"),
-                                  ("genre", "deep")],
-                           nameExample: "Hit the Lights",
-                           quickValues: ["composing", "mixing", "mastering"]),
-        WalkthroughPersona(name: "Project Management", symbol: "checklist",
-                           rows: [("project", "q3-roadmap"),
-                                  ("meeting", "sprint-planning")],
-                           nameExample: "Q3 Roadmap",
-                           quickValues: ["planning", "review", "standup"]),
-        WalkthroughPersona(name: "Dungeon Master", symbol: "die.face.6",
-                           rows: [("encounter", "temporal-paradox"),
-                                  ("repo", "sfi/prime-campaigns")],
-                           nameExample: "Prime Campaigns",
-                           quickValues: ["prep", "session", "worldbuilding"]),
+                           rows: [("project", "wedding-shoot")],
+                           nameExample: "Wedding Shoot",
+                           quickLabels: [("type", "photoshoot"),
+                                         ("type", "editing")]),
+        WalkthroughPersona(name: "Leisure", symbol: "sofa",
+                           rows: [],
+                           nameExample: "Off the Clock",
+                           quickLabels: [("book", "the-wayfinder"),
+                                         ("game", "baldurs-gate"),
+                                         ("show", "ted-lasso")]),
     ]
 
     static func named(_ id: String) -> WalkthroughPersona? {
@@ -1117,7 +1109,7 @@ private struct WalkthroughPersona: Identifiable {
     }
 }
 
-/// The eight personas of the catalogue above, each openable into a small
+/// The four personas of the catalogue above, each openable into a small
 /// editor that creates a *real* label set — quick labels included — the
 /// walkthrough's one page that writes into the user's data, because that's
 /// its whole point. It assumes everything the concept page just taught, so
@@ -1170,8 +1162,8 @@ private struct CreateLabelSetsPage: View {
     @State private var pendingHoverID: String?
     @State private var hoverTask: Task<Void, Never>?
     /// Tallest card in the grid — every card takes it as a floor, so a card
-    /// whose pills fit one line (Reading, Creative Work) doesn't run shorter
-    /// than its neighbours; its content centres in the extra room.
+    /// whose pills fit one line doesn't run shorter than its neighbours; its
+    /// content centres in the extra room.
     @State private var cardHeight: CGFloat = 0
     /// The floor is measured once, before any hover: an expanded card
     /// stretches its row-mate, whose (collapsed!) reported height would
@@ -1199,7 +1191,7 @@ private struct CreateLabelSetsPage: View {
 
     var body: some View {
         WalkthroughPage(index: 5, title: "Create your first Label Sets",
-                        subtitle: "Eight ways people run PrimeTime. Open one, make it yours — it becomes a real one-click set, quick labels and all.") {
+                        subtitle: "Four ways people run PrimeTime. Open one, make it yours — it becomes a real one-click set, quick labels and all.") {
             Group {
                 if let persona = editing {
                     // The editor (labels + quick labels) can outgrow the
@@ -1237,7 +1229,7 @@ private struct CreateLabelSetsPage: View {
                                 // centres, below).
                                 .fixedSize(horizontal: false, vertical: true)
                             }
-                            Text("Add as many as fit — or none. The Label Sets tab can do all of this later.")
+                            Text("You can add as many Label Sets as you'd like in Settings after onboarding.")
                                 .font(.caption)
                                 .foregroundStyle(.tertiary)
                         }
@@ -1250,7 +1242,10 @@ private struct CreateLabelSetsPage: View {
 
     private func card(for persona: Persona) -> some View {
         let set = createdSet(for: persona)
-        let expanded = hoveredID == persona.id
+        // A quick-labels-only card (Leisure) has no pills — its chips are
+        // its identity, so they stay visible instead of waiting for hover.
+        let chipsAlwaysVisible = set?.tags.isEmpty ?? persona.rows.isEmpty
+        let expanded = hoveredID == persona.id || chipsAlwaysVisible
         return Button {
             open(persona)
         } label: {
@@ -1276,10 +1271,13 @@ private struct CreateLabelSetsPage: View {
                                                                   ? nil : row.value))
                             }
                         } else {
+                            // A nil example is a valueless label — a bare
+                            // `key:` pill in the key's colour, like the
+                            // concept page's issue:.
                             ForEach(persona.rows, id: \.key) { row in
-                                TagPill(key: row.key, value: row.example,
+                                TagPill(key: row.key, value: row.example ?? "",
                                         color: WalkthroughModel.color(key: row.key,
-                                                                      value: row.example))
+                                                                      value: row.example ?? ""))
                             }
                         }
                     }
@@ -1295,9 +1293,11 @@ private struct CreateLabelSetsPage: View {
                                                                         ? nil : row.value))
                                 }
                             } else {
-                                ForEach(Array(persona.quickValues.enumerated()),
-                                        id: \.element) { index, value in
-                                    quickChip(value, color: Self.suggestionColor(at: index))
+                                ForEach(Array(persona.quickLabels.enumerated()),
+                                        id: \.offset) { _, quick in
+                                    quickChip(quick.value,
+                                              color: WalkthroughModel.color(key: quick.key,
+                                                                            value: quick.value))
                                 }
                             }
                         }
@@ -1404,13 +1404,13 @@ private struct CreateLabelSetsPage: View {
             // seeds prefer a colour the user's palette already has.
             draftRows = persona.rows.map {
                 DraftRow(key: $0.key, value: "",
-                         color: WalkthroughModel.color(key: $0.key, value: $0.example),
+                         color: WalkthroughModel.color(key: $0.key, value: $0.example ?? ""),
                          example: $0.example)
             }
-            quickDrafts = persona.quickValues.enumerated().map { index, value in
-                DraftRow(key: Persona.quickKey, value: value,
-                         color: model.valueColor(key: Persona.quickKey, value: value)
-                             ?? Self.suggestionColor(at: index))
+            quickDrafts = persona.quickLabels.map { quick in
+                DraftRow(key: quick.key, value: quick.value,
+                         color: model.valueColor(key: quick.key, value: quick.value)
+                             ?? WalkthroughModel.color(key: quick.key, value: quick.value))
             }
         }
         invalidRows = []
@@ -1520,8 +1520,7 @@ private struct CreateLabelSetsPage: View {
 
     /// The quick-label list, editable exactly like the labels above (and
     /// like the Label Sets tab's own quick-label list) — seeded with the
-    /// persona's three suggestions under the conventional key `type:`, all
-    /// free to retype, remove, or extend.
+    /// persona's suggestions, all free to retype, remove, or extend.
     private var quickLabelsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Quick labels")
@@ -1543,15 +1542,6 @@ private struct CreateLabelSetsPage: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.top, 4)
-    }
-
-    /// The concept page's chip hues — blue, gold, purple — by position.
-    /// Written into the user's palette when the quick label is added, so the
-    /// real chips keep the hue.
-    private static func suggestionColor(at index: Int) -> Color {
-        let examples = ["programming", "review", "planning"]
-        return WalkthroughModel.color(key: Persona.quickKey,
-                                      value: examples[index % examples.count])
     }
 
     /// A field flagged by a failed add keeps its outline only while still

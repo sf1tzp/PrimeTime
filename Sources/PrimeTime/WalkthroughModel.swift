@@ -365,6 +365,7 @@ final class WalkthroughModel {
         case "proj": hex = "#d84315"
         case "work": hex = "#e53935"
         case "issue": hex = "#ef6c00"   // the concept page's valueless label
+        case "topic": hex = "#ab47bc"   // the Studying card's valueless label
         case "book": hex = "#b39ddb"   // pastel purple, distinct from feat's
         default: hex = "#546e7a"
         }
@@ -391,26 +392,32 @@ final class WalkthroughModel {
         ValueColorKey.join("type", "meeting"): "#8d6e63",
         ValueColorKey.join("type", "support"): "#f53293ff",
         ValueColorKey.join("type", "ops"): "#66bb6a",
-        ValueColorKey.join("type", "programming"): "#5c6bc0",
-        ValueColorKey.join("type", "planning"): "#ab47bc",
+        // The planning / review / debugging trio the concept page's mock
+        // set and the Programming persona share — light yellow / green /
+        // red, the demo seed's hues (debugging lightened to sit in the
+        // same pastel family as its two neighbours).
+        ValueColorKey.join("type", "planning"): "#f0ee73ff",
+        ValueColorKey.join("type", "debugging"): "#f89393ff",
         // SFI in company red — sfi-website's streetfortress wordmark fill
         // (`text only.svg`, = --streetfortress-red); the contract client in
         // a light yellow.
         ValueColorKey.join("client", "sfi"): "#d44141",
         ValueColorKey.join("client", "acme"): "#ffe082",
-        // The persona page's example values, pinned so each card's pills
-        // read as distinct hues — the hash fallback happily hands
-        // neighbours the same colour.
-        ValueColorKey.join("repo", "sfi/sfi-website"): "#26a69a",
-        ValueColorKey.join("feat", "kb-knowledge-graph"): "#7e57c2",
+        // The persona cards' example pairs, pinned so each card's pills
+        // and chips read as distinct hues — the hash fallback happily
+        // hands neighbours the same colour. Demo-seed hexes reused where
+        // the values overlap (baldurs-gate, the-wayfinder).
+        ValueColorKey.join("repo", "sfi/PrimeTime"): "#00add8",   // traggo blue
         ValueColorKey.join("course", "linear-algebra"): "#42a5f5",
-        ValueColorKey.join("topic", "eigenvalues"): "#ab47bc",
-        ValueColorKey.join("book", "dune"): "#8d6e63",
-        ValueColorKey.join("author", "herbert"): "#29b6f6",
-        ValueColorKey.join("project", "q3-roadmap"): "#ffa000",
-        ValueColorKey.join("meeting", "sprint-planning"): "#e53935",
-        ValueColorKey.join("film", "promo-spot"): "#d81b60",
-        ValueColorKey.join("stage", "edit"): "#5e35b1",
+        ValueColorKey.join("type", "lecture"): "#43a047",
+        ValueColorKey.join("type", "group-session"): "#ffa726",
+        ValueColorKey.join("type", "homework"): "#ec407a",
+        ValueColorKey.join("project", "wedding-shoot"): "#f06292",
+        ValueColorKey.join("type", "photoshoot"): "#29b6f6",
+        ValueColorKey.join("type", "editing"): "#7e57c2",
+        ValueColorKey.join("book", "the-wayfinder"): "#26a69a",
+        ValueColorKey.join("game", "baldurs-gate"): "#d84315",
+        ValueColorKey.join("show", "ted-lasso"): "#fdd835",
     ]
 
     /// The colour for a demo pill or chart series: the fixed pair colour when
