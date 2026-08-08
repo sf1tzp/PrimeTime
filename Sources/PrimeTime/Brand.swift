@@ -16,7 +16,8 @@ enum Brand {
     /// the first frame. Look where bundle-app.sh actually puts the bundle
     /// (Contents/Resources), then fall back to `.module` for unbundled
     /// `swift run` builds, where the baked-in .build path is the right one.
-    private static let resources: Bundle = {
+    /// Non-private: HelpView's acknowledgements load license texts from here.
+    static let resources: Bundle = {
         if let url = Bundle.main.resourceURL?
             .appendingPathComponent("PrimeTime_PrimeTime.bundle"),
            let bundle = Bundle(url: url) { return bundle }

@@ -13,8 +13,9 @@ struct HelpView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(HelpSection.all) { section in
-                    HelpSectionCard(section: section, isExpanded: binding(for: section))
+                    HelpSectionCard(section: section, isExpanded: binding(for: section.id))
                 }
+                AcknowledgementsCard(isExpanded: binding(for: AcknowledgementsCard.id))
                 Text("PrimeTime \(Self.versionString)")
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
@@ -26,11 +27,11 @@ struct HelpView: View {
         }
     }
 
-    private func binding(for section: HelpSection) -> Binding<Bool> {
+    private func binding(for id: String) -> Binding<Bool> {
         Binding(
-            get: { expanded.contains(section.id) },
+            get: { expanded.contains(id) },
             set: { open in
-                if open { expanded.insert(section.id) } else { expanded.remove(section.id) }
+                if open { expanded.insert(id) } else { expanded.remove(id) }
             })
     }
 
@@ -375,4 +376,145 @@ private struct HelpSection: Identifiable {
             sync server connected, both follow your account across Macs.
             """),
     ]
+}
+
+// MARK: Acknowledgements (#115)
+
+/// The open-source components in this build, one entry per license text in
+/// the resource bundle. The MAS variant's list omits Sparkle and
+/// swift-argument-parser: that binary links no updater and bundles no CLI,
+/// so their notices would credit code the user didn't receive. Internal (not
+/// fileprivate) so the resource-drift test can see it.
+struct Acknowledgement: Identifiable {
+    let name: String
+    let detail: String
+    let license: String
+    /// Filename (no extension) of the bundled license text.
+    let resource: String
+
+    var id: String { name }
+
+    /// The full license text; nil only if this list and the resource bundle
+    /// drift apart, which AcknowledgementTests pins.
+    var licenseText: String? {
+        Brand.resources.url(forResource: resource, withExtension: "txt")
+            .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
+    }
+
+    static let all: [Acknowledgement] = {
+        var all = [
+            Acknowledgement(
+                name: "GRDB.swift",
+                detail: "the SQLite toolkit behind the local store",
+                license: "MIT License",
+                resource: "GRDB-MIT"),
+            Acknowledgement(
+                name: "Bricolage Grotesque",
+                detail: "the wordmark typeface",
+                license: "SIL Open Font License 1.1",
+                resource: "BricolageGrotesque-OFL"),
+        ]
+        #if !MAS_BUILD
+        all += [
+            Acknowledgement(
+                name: "Sparkle",
+                detail: "the in-app update framework",
+                license: "MIT License",
+                resource: "Sparkle-MIT"),
+            Acknowledgement(
+                name: "swift-argument-parser",
+                detail: "command parsing in the bundled primetime CLI",
+                license: "Apache License 2.0",
+                resource: "SwiftArgumentParser-Apache"),
+        ]
+        #endif
+        return all
+    }()
+}
+
+/// Open-source acknowledgements as one more Help card: a line per component
+/// with its license text expandable underneath, so the notices those
+/// licenses ask for ship inside the app rather than in a file nobody finds.
+struct AcknowledgementsCard: View {
+    static let id = "acknowledgements"
+    @Binding var isExpanded: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeOut(duration: 0.15)) { isExpanded.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "shippingbox")
+                        .frame(width: 20)
+                        .foregroundStyle(.tint)
+                    Text("Acknowledgements")
+                        .font(.headline)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("PrimeTime builds on these open-source components.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    ForEach(Acknowledgement.all) { AcknowledgementRow(item: $0) }
+                }
+                .padding(.top, 10)
+                .padding(.leading, 28)  // align body under the title, past the icon
+            }
+        }
+        .padding(12)
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+/// Name and role on the left, the license name as a disclosure toggle on the
+/// right; the full text unfolds beneath, selectable for copying.
+private struct AcknowledgementRow: View {
+    let item: Acknowledgement
+    @State private var showsLicense = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(item.name)
+                    .font(.callout.weight(.semibold))
+                Text("— \(item.detail)")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button {
+                    withAnimation(.easeOut(duration: 0.15)) { showsLicense.toggle() }
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(item.license)
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                            .rotationEffect(.degrees(showsLicense ? 90 : 0))
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.tint)
+                }
+                .buttonStyle(.plain)
+            }
+            if showsLicense, let text = item.licenseText {
+                Text(text)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(.quinary, in: RoundedRectangle(cornerRadius: 6))
+            }
+        }
+    }
 }

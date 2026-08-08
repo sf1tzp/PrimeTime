@@ -67,7 +67,15 @@ let package = Package(
             resources: [
                 .copy("Resources/BricolageGrotesque.ttf"),
                 .copy("Resources/BricolageGrotesque-OFL.txt"),
-                .copy("Resources/AppIcon.icns")
+                .copy("Resources/AppIcon.icns"),
+                // License texts surfaced in Help → Acknowledgements (#115).
+                // All ride in both variants (inert text either way); what
+                // varies is the entry list in HelpView, where MAS_BUILD drops
+                // Sparkle and argument-parser — the store binary contains
+                // neither.
+                .copy("Resources/GRDB-MIT.txt"),
+                .copy("Resources/Sparkle-MIT.txt"),
+                .copy("Resources/SwiftArgumentParser-Apache.txt")
             ],
             // MAS_BUILD switches Updater.swift to its Sparkle-free stub.
             swiftSettings: masBuild ? [.define("MAS_BUILD")] : [],
