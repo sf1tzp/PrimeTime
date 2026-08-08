@@ -41,11 +41,10 @@ shots:
     scene: |
       ~20s. Start with the demo's running timer active. Click the status
       item to open the popover; rest the pointer on a quick-start row so its
-      quick-label chips expand (the Blue Sky rows show the type:/meeting:
-      chips). Then quick-start Frontend Work — its value-less feature: opens
-      the in-popover editor with the value field focused — type/paste a
-      value and show the timer already running. Record over a plain dark
-      desktop (hide other windows, set a solid dark wallpaper) — the
+      quick-label chips expand (the Meridian rows show the type:/meeting:
+      chips). Then start a timer using Project Meridian's "standup" quick label,
+      and stop the active "repo: infrastructure" timer.
+      Record over a plain desktop (hide other windows, set a solid dark wallpaper) — the
       wallpaper shows through around the popover, and a detailed one
       balloons the README GIF roughly 8x.
     outputs:

@@ -379,7 +379,7 @@ final class WalkthroughModel {
     private static let valueColors: [String: String] = [
         ValueColorKey.join("repo", "primetime"): "#f7b060ff",
         ValueColorKey.join("repo", "website"): "#42a5f5",
-        ValueColorKey.join("repo", "acme-app"): "#4ad679ff",
+        ValueColorKey.join("repo", "acme-app"): "#66bb6a",
         ValueColorKey.join("feat", "onboarding"): "#00acc1",
         ValueColorKey.join("feat", "charts"): "#7e57c2",
         ValueColorKey.join("feat", "billing"): "#f06292",

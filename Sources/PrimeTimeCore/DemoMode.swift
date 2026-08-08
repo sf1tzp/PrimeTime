@@ -74,7 +74,7 @@ package extension LocalBackend {
 ///   sets' `repo:`/`issue:`): quick-starting one opens the popover editor
 ///   with the empty value focused, ready for a pasted issue number (#149,
 ///   #162).
-/// - **Multi-client, multi-project sets** (Blue Sky, Meridian, Lighthouse,
+/// - **Multi-client, multi-project sets** (PrimeTime, Meridian, Lighthouse,
 ///   Velocity Consulting): `client:` + `project:` presets with `type:` and
 ///   `meeting:` quick labels, so History's combined view has real
 ///   type × project, type × client and meeting × client axes to group by.
@@ -96,44 +96,42 @@ package enum DemoSeed {
         // The "common work" pair: a shared value-less `feature:` links time
         // across both repos, and quick-starting either opens the editor with
         // the empty value focused (#149/#162).
-        TagSet(name: "Frontend Work",
-               tags: [TagRow(key: "repo", value: "company-website"),
-                      TagRow(key: "feature", value: "")],
-               symbolName: "paintbrush"),
-        TagSet(name: "Backend Work",
-               tags: [TagRow(key: "repo", value: "company-server"),
-                      TagRow(key: "feature", value: "")],
-               symbolName: "terminal"),
+        // TagSet(name: "Frontend Work",
+        //        tags: [TagRow(key: "repo", value: "company-website"),
+        //               TagRow(key: "feature", value: "")],
+        //        symbolName: "paintbrush"),
+        // TagSet(name: "Backend Work",
+        //        tags: [TagRow(key: "repo", value: "infrastructure"),
+        //               TagRow(key: "feature", value: "")],
+        //        symbolName: "terminal"),
         // The multi-client pattern: `project:` + `client:` presets, with
         // value-less `repo:`/`issue:` to fill in per start. Their quick
         // labels below carry the `type:`/`meeting:` axes History's combined
         // view groups by. `project:` leads so each launcher card borrows its
-        // *project's* colour — client-first would paint Blue Sky and
-        // Meridian the same client-a blue.
-        TagSet(name: "Blue Sky",
-               tags: [TagRow(key: "project", value: "blue-sky"),
-                      TagRow(key: "client", value: "client-a"),
-                      TagRow(key: "repo", value: ""),
+        // *project's* colour — client-first would paint PrimeTime and
+        // Meridian the same sfi blue.
+        TagSet(name: "PrimeTime App",
+               tags: [TagRow(key: "project", value: "primetime"),
+                      TagRow(key: "client", value: "sfi"),
                       TagRow(key: "issue", value: "")],
-               symbolName: "cloud.sun"),
-        TagSet(name: "Meridian",
+               symbolName: "laptopcomputer"),
+        TagSet(name: "Project Meridian",
                tags: [TagRow(key: "project", value: "meridian"),
-                      TagRow(key: "client", value: "client-a"),
-                      TagRow(key: "repo", value: ""),
-                      TagRow(key: "issue", value: "")],
+                      TagRow(key: "client", value: "acme-inc"),
+                      ],
                symbolName: "globe"),
-        TagSet(name: "Lighthouse",
-               tags: [TagRow(key: "project", value: "lighthouse"),
-                      TagRow(key: "client", value: "client-b"),
-                      TagRow(key: "repo", value: ""),
-                      TagRow(key: "issue", value: "")],
-               symbolName: "light.beacon.max"),
+        // TagSet(name: "Lighthouse",
+        //        tags: [TagRow(key: "project", value: "lighthouse"),
+        //               TagRow(key: "client", value: "code-corps"),
+        //               TagRow(key: "repo", value: ""),
+        //               TagRow(key: "issue", value: "")],
+        //        symbolName: "light.beacon.max"),
         // Meetings-only engagement: no repo/issue to fill in, just the
         // `meeting:` chips.
-        TagSet(name: "Velocity Consulting",
-               tags: [TagRow(key: "project", value: "velocity-consulting"),
-                      TagRow(key: "client", value: "client-c")],
-               symbolName: "briefcase"),
+        // TagSet(name: "Velocity Consulting",
+        //        tags: [TagRow(key: "project", value: "velocity-consulting"),
+        //               TagRow(key: "client", value: "code-corps")],
+        //        symbolName: "briefcase"),
         // Quick-labels-only sets: no presets, so the card colour comes from
         // `colorHex` (matched to the key's definition colour below).
         TagSet(name: "Gaming", symbolName: "gamecontroller", colorHex: "#7e57c2"),
@@ -151,17 +149,17 @@ package enum DemoSeed {
     /// labels.
     package static func quickLabels(forSetNamed name: String) -> [TagRow]? {
         let type = [TagRow(key: "type", value: "planning"),
-                    TagRow(key: "type", value: "coding"),
-                    TagRow(key: "type", value: "review")]
+                    TagRow(key: "type", value: "review"),
+                    TagRow(key: "type", value: "debugging")]
         switch name {
-        case "Frontend Work", "Backend Work":
+        case "PrimeTime App", "Backend Work":
             return type
-        case "Blue Sky", "Meridian", "Lighthouse":
-            return type + [TagRow(key: "meeting", value: "roadmap"),
+        case "Project Meridian", "Lighthouse":
+            return type + [TagRow(key: "meeting", value: "retrospective"),
                            TagRow(key: "meeting", value: "standup"),
                            TagRow(key: "meeting", value: "handoff")]
         case "Velocity Consulting":
-            return [TagRow(key: "meeting", value: "roadmap"),
+            return [TagRow(key: "meeting", value: "retrospective"),
                     TagRow(key: "meeting", value: "standup"),
                     TagRow(key: "meeting", value: "release-planning")]
         case "Gaming":
@@ -191,13 +189,13 @@ package enum DemoSeed {
     static let labelDefinitions: [LabelDefinition] = [
         LabelDefinition(key: "client", color: "#795548"),
         LabelDefinition(key: "project", color: "#d84315"),
-        LabelDefinition(key: "repo", color: "#00897b"),
+        LabelDefinition(key: "repo", color: "#2fd1c1ff"),
         // Same colour as `repo` on purpose: the drifted key should look
         // like what it is — the same concept, misspelled — so the difference
         // shows up in Label Review, not on every pill.
         LabelDefinition(key: "proj", color: "#00897b"),
         LabelDefinition(key: "feature", color: "#8e24aa"),
-        LabelDefinition(key: "issue", color: "#fbc02d"),
+        LabelDefinition(key: "issue", color: "#ccf7b8ff"),
         LabelDefinition(key: "type", color: "#1e88e5"),
         LabelDefinition(key: "meeting", color: "#e53935"),
         LabelDefinition(key: "game", color: "#7e57c2"),
@@ -210,27 +208,28 @@ package enum DemoSeed {
     /// the History donuts, and the combined view's type × client and
     /// meeting × client pairings stay tellable-apart.
     static let valueColors: [String: String] = [
-        ValueColorKey.join("project", "blue-sky"): "#039be5",
-        ValueColorKey.join("project", "meridian"): "#ec407a",
-        ValueColorKey.join("project", "lighthouse"): "#ffa726",
+        ValueColorKey.join("project", "primetime"): "#f7b060ff",
+        ValueColorKey.join("project", "meridian"): "#9fe3f8ff",
+        ValueColorKey.join("project", "lighthouse"): "#fff126ff",
         ValueColorKey.join("project", "velocity-consulting"): "#9ccc65",
-        ValueColorKey.join("client", "client-a"): "#29b6f6",
-        ValueColorKey.join("client", "client-b"): "#66bb6a",
-        ValueColorKey.join("client", "client-c"): "#8d6e63",
+        ValueColorKey.join("client", "sfi"): "#d44141",
+        ValueColorKey.join("client", "acme-inc"): "#ffe082",
+        ValueColorKey.join("client", "code-corps"): "#8d6e63",
         ValueColorKey.join("repo", "company-website"): "#42a5f5",
-        ValueColorKey.join("repo", "company-server"): "#26a69a",
+        ValueColorKey.join("repo", "infrastructure"): "#d7ddddff",
         // Drift matches too — see `proj` above.
         ValueColorKey.join("proj", "company-website"): "#42a5f5",
         ValueColorKey.join("feature", "checkout"): "#f06292",
         ValueColorKey.join("feature", "search"): "#ba68c8",
         ValueColorKey.join("feature", "billing"): "#ffb74d",
-        ValueColorKey.join("feature", "api"): "#4db6ac",
-        ValueColorKey.join("type", "planning"): "#ffca28",
+        ValueColorKey.join("feature", "primetime-api"): "#4db6ac",
+        ValueColorKey.join("type", "planning"): "#fae093ff",
         ValueColorKey.join("type", "coding"): "#5c6bc0",
-        ValueColorKey.join("type", "review"): "#26c6da",
+        ValueColorKey.join("type", "debugging"): "#e46c6cff",
+        ValueColorKey.join("type", "review"): "#68da26ff",
         ValueColorKey.join("type", "support"): "#78909c",
         ValueColorKey.join("meeting", "standup"): "#ef5350",
-        ValueColorKey.join("meeting", "roadmap"): "#ab47bc",
+        ValueColorKey.join("meeting", "retrospective"): "#ab47bc",
         ValueColorKey.join("meeting", "handoff"): "#ff7043",
         ValueColorKey.join("meeting", "release-planning"): "#d4e157",
         ValueColorKey.join("game", "baldurs-gate"): "#d84315",
@@ -271,16 +270,16 @@ package enum DemoSeed {
          SpanLabel(key: "project", value: project),
          SpanLabel(key: key, value: value)]
     }
-    private static let blueSkyStandup = engagement("client-a", "blue-sky", "meeting", "standup")
-    private static let blueSkyPlanning = engagement("client-a", "blue-sky", "type", "planning")
-    private static let blueSkyCoding = engagement("client-a", "blue-sky", "type", "coding")
-    private static let meridianRoadmap = engagement("client-a", "meridian", "meeting", "roadmap")
-    private static let lighthouseStandup = engagement("client-b", "lighthouse", "meeting", "standup")
-    private static let lighthouseHandoff = engagement("client-b", "lighthouse", "meeting", "handoff")
-    private static let lighthouseCoding = engagement("client-b", "lighthouse", "type", "coding")
-    private static let lighthousePlanning = engagement("client-b", "lighthouse", "type", "planning")
-    private static let velocityStandup = engagement("client-c", "velocity-consulting", "meeting", "standup")
-    private static let velocityRelease = engagement("client-c", "velocity-consulting",
+    private static let blueSkyStandup = engagement("sfi", "primetime", "meeting", "standup")
+    private static let blueSkyPlanning = engagement("sfi", "primetime", "type", "planning")
+    private static let blueSkyCoding = engagement("sfi", "primetime", "type", "coding")
+    private static let meridianRoadmap = engagement("sfi", "meridian", "meeting", "retrospective")
+    private static let lighthouseStandup = engagement("acme-inc", "lighthouse", "meeting", "standup")
+    private static let lighthouseHandoff = engagement("acme-inc", "lighthouse", "meeting", "handoff")
+    private static let lighthouseCoding = engagement("acme-inc", "lighthouse", "type", "coding")
+    private static let lighthousePlanning = engagement("acme-inc", "lighthouse", "type", "planning")
+    private static let velocityStandup = engagement("code-corps", "velocity-consulting", "meeting", "standup")
+    private static let velocityRelease = engagement("code-corps", "velocity-consulting",
                                                     "meeting", "release-planning")
     private static let frontendCoding = [SpanLabel(key: "repo", value: "company-website"),
                                          SpanLabel(key: "feature", value: "checkout"),
@@ -288,10 +287,10 @@ package enum DemoSeed {
     private static let frontendReview = [SpanLabel(key: "repo", value: "company-website"),
                                          SpanLabel(key: "feature", value: "checkout"),
                                          SpanLabel(key: "type", value: "review")]
-    private static let backendCoding = [SpanLabel(key: "repo", value: "company-server"),
-                                        SpanLabel(key: "feature", value: "api"),
-                                        SpanLabel(key: "type", value: "coding")]
-    private static let backendBilling = [SpanLabel(key: "repo", value: "company-server"),
+    private static let backendCoding = [SpanLabel(key: "repo", value: "infrastructure"),
+                                        SpanLabel(key: "feature", value: "primetime-api"),
+                                        SpanLabel(key: "type", value: "planning")]
+    private static let backendBilling = [SpanLabel(key: "repo", value: "infrastructure"),
                                          SpanLabel(key: "feature", value: "billing"),
                                          SpanLabel(key: "type", value: "coding")]
     // The drift pair: `proj:` where every other span says `repo:` — Label
@@ -319,11 +318,11 @@ package enum DemoSeed {
     /// weekdays, so every per-variant fixture (the overlap in B, the key
     /// drift in C, the untagged call in D) is launch-date-proof.
     private static let weekdayTemplates: [[Draft]] = [
-        // A — a heads-down Blue Sky build day, evening game.
+        // A — a heads-down PrimeTime build day, evening game.
         [
             Draft(startMinute: 570, durationMinutes: 15, labels: blueSkyStandup),
             Draft(startMinute: 585, durationMinutes: 105,
-                  labels: engagement("client-a", "blue-sky", "issue", "214")
+                  labels: engagement("sfi", "primetime", "issue", "214")
                       + [SpanLabel(key: "type", value: "coding")],
                   note: "Issue number pasted straight into the quick start"),
             Draft(startMinute: 690, durationMinutes: 30, labels: blueSkyPlanning,
@@ -341,7 +340,7 @@ package enum DemoSeed {
         [
             Draft(startMinute: 570, durationMinutes: 15, labels: lighthouseStandup),
             Draft(startMinute: 600, durationMinutes: 60, labels: meridianRoadmap,
-                  note: "Q3 roadmap"),
+                  note: "Q3 retrospective"),
             Draft(startMinute: 660, durationMinutes: 120, labels: backendCoding,
                   note: "API deploy + watch"),
             Draft(startMinute: 735, durationMinutes: 30, labels: lighthouseHandoff,
@@ -360,7 +359,7 @@ package enum DemoSeed {
                   note: "Donut hover + selection states"),
             Draft(startMinute: 780, durationMinutes: 60, labels: driftReview),
             Draft(startMinute: 870, durationMinutes: 120,
-                  labels: engagement("client-a", "meridian", "issue", "87")
+                  labels: engagement("sfi", "meridian", "issue", "87")
                       + [SpanLabel(key: "type", value: "coding")],
                   note: "Log: minute steppers for start/end"),
             Draft(startMinute: 1000, durationMinutes: 20, labels: lighthousePlanning,
@@ -408,13 +407,13 @@ package enum DemoSeed {
     /// save-as-set ＋; the empty entry is today's ad-hoc unlabelled span.
     private static let todayTemplate: [(minutesBeforeNow: Int, durationMinutes: Int?,
                                         labels: [SpanLabel], note: String)] = [
-        (220, 75, engagement("client-a", "blue-sky", "issue", "231")
+        (220, 75, engagement("sfi", "primetime", "issue", "231")
              + [SpanLabel(key: "type", value: "coding")], "README screenshot pass"),
         (130, 20, velocityStandup, ""),
         (105, 15, [], ""),
         (80, 25, [SpanLabel(key: "repo", value: "company-website"),
                   SpanLabel(key: "type", value: "support")], "Crash report triage"),
-        (42, nil, blueSkyCoding, "Popover: running-row editor"),
+        (42, 0, blueSkyCoding, "Popover: running-row editor"),
         (9, nil, backendCoding, ""),
     ]
 
