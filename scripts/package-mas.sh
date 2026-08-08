@@ -46,6 +46,11 @@ VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/
 
 if [[ -n "${MAS_PROFILE:-}" ]]; then
     cp "$MAS_PROFILE" "$APP/Contents/embedded.provisionprofile"
+    # A browser-downloaded profile carries com.apple.quarantine, which App
+    # Store Connect rejects anywhere in a submission (error 91109) — and cp
+    # propagates it (or, when overwriting, keeps the destination's old
+    # xattrs, since the inode survives). Clear them on the copy.
+    xattr -c "$APP/Contents/embedded.provisionprofile"
 else
     echo "warning: no MAS_PROFILE — App Store Connect will reject the upload" \
          "without Contents/embedded.provisionprofile" >&2
