@@ -30,6 +30,12 @@ pipeline overview.
    (element map, window-ID stills, region recordings, all the AX caveats)
    live in [shared/ax-driving.md](../shared/ax-driving.md).
    A partial refresh is fine: capture only the shots whose surfaces changed.
+   Outputs with `theme: light` need a second capture of the same scene as
+   `<id>-light.png`: flip the system appearance with
+   `osascript -e 'tell app "System Events" to tell appearance preferences to
+   set dark mode to false'`, give the app a beat to re-render, re-stage, and
+   capture. Do all dark shots first, then the light batch in one appearance
+   flip — and flip dark mode back on when done.
 3. **Process:** `just process-captures` (deps: `brew install yq jq ffmpeg
    webp`). Missing raws are listed and skipped.
 4. **Export:** `just export-captures` — copies renditions into

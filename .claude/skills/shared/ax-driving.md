@@ -204,3 +204,40 @@ skills, so the two don't drift.
   the take, and windows left over from onboarding (walkthrough → main
   window) overlap popover-region captures — close them all and verify
   with a CGWindowList helper that *zero* app windows remain on screen.
+- **Bulk attribute reads beat per-element iteration** (2026-08-07, popover
+  driving): `repeat with e in (UI elements of …)` re-resolves each element
+  by index and -10000s flakily even right after a successful `count`.
+  `set rs to role of UI elements of …` / `position of UI elements of …` /
+  `help of UI elements of …` fetch whole columns in one AppleEvent and are
+  reliable (absent attributes come back as `missing value`, no try needed).
+  Read everything you'll need *early* — trees go stale after clicks cause
+  reflows — and cache positions that survive the reflow (e.g. the top
+  timer's Stop button keeps its spot when a second timer appears).
+- **Hover-reveal rows: approach horizontally, target from AX at runtime**
+  (2026-08-07, popover quick-start rows): a cursor path that crosses upper
+  rows hover-expands them, shifting every later y — pre-baked coordinates
+  from a rehearsal in a different hover state click the wrong row. Enter
+  the row from *outside* the popover at its own y, and resolve chip
+  positions (`help` bulk read) only after the expansion settles.
+- **`.draggable`→`dropDestination` drops need a real event stream**
+  (2026-08-07, Label Review value→key drag): the cliclick
+  `dd:… m:… du:` recipe forms the drag session (preview + green badge)
+  but `performDrop` fires maybe 1 time in 5 — synthesized batch moves
+  starve `dropUpdated`. A tiny swiftc helper posting mouseDown, ~60Hz
+  interpolated `leftMouseDragged` events (ease-in-out), ~0.5s of settle
+  events over the target, then mouseUp landed the drop first try, every
+  try (`smoothdrag x1 y1 x2 y2 [ms]` — source vendored beside this file as
+  [smoothdrag.swift](smoothdrag.swift); `swiftc -O` it on demand). Frontmost still
+  required, and Escape before retries still applies.
+- **Focused vs unfocused window-ID stills differ in canvas size**
+  (2026-08-07): `screencapture -x -l` pads the window with its shadow —
+  56pt on every side for a *key* window (the 780×648 PrimeTime window →
+  1784×1520 px), noticeably less when unfocused. Screenshot-to-screen
+  coordinate math must use the focused margins (global = window origin +
+  canvas_pt − 56), and mixing focused/unfocused stills in one batch
+  changes rendition dimensions.
+- **`screencapture -v -V <s>` recordings end 1–4s before the cap** and the
+  written file's tail often can't be frame-extracted (`ffmpeg -ss` near
+  the end yields nothing even though `duration` includes it). Pad the cap
+  a few seconds past the choreography's last beat, and verify beats with
+  frames a couple of seconds *before* the nominal end.

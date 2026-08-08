@@ -19,22 +19,37 @@ done
 [[ -d "$RAW" ]] || { echo "error: $RAW does not exist — capture first (/capture skill)" >&2; exit 1; }
 mkdir -p "$OUT"
 
-# One line per output: id<TAB>kind<TAB>path<TAB>format<TAB>width<TAB>fps
+# One line per output: id<TAB>kind<TAB>to<TAB>path<TAB>format<TAB>width<TAB>fps<TAB>theme
 outputs() {
     yq -o=json '.' "$SHOTS" | jq -r '
         .shots[] | . as $s | .outputs[] |
-        [$s.id, $s.kind, .path, .format, (.width // ""), (.fps // "")] | @tsv'
+        [$s.id, $s.kind, .to, .path, .format,
+         (.width // ""), (.fps // ""), (.theme // "")] | @tsv'
 }
 
 missing=()
-while IFS=$'\t' read -r id kind path format width fps; do
+while IFS=$'\t' read -r id kind to path format width fps theme; do
     ext=png; [[ "$kind" == recording ]] && ext=mov
-    raw="$RAW/$id.$ext"
+    # theme: light renditions come from the <id>-light raw; default is dark.
+    raw="$RAW/$id${theme:+-$theme}.$ext"
     if [[ ! -f "$raw" ]]; then
-        missing+=("$id.$ext")
+        missing+=("$(basename "$raw")")
         continue
     fi
-    dst="$OUT/$(basename "$path")"
+    # Staged filenames are destination-prefixed: readme label-review.png and
+    # appstore label-review.png are different renditions of the same shot.
+    dst="$OUT/$to-$(basename "$path")"
+    if [[ "$to" == appstore ]]; then
+        # Mac App Store screenshots must be exactly 16:10 (2880×1800 here),
+        # flattened RGB. Fit the capture into a 90% box and overlay it — alpha
+        # intact, so the window shadow lands softly — on the charcoal canvas.
+        ffmpeg -nostdin -v error -y \
+            -f lavfi -i "color=c=0x17151a:s=2880x1800" -i "$raw" \
+            -filter_complex "[1]scale=2592:1620:force_original_aspect_ratio=decrease:flags=lanczos[fg];[0][fg]overlay=(W-w)/2:(H-h)/2:format=auto,format=rgb24" \
+            -frames:v 1 -update 1 "$dst"
+        echo "  $id → $(basename "$dst")"
+        continue
+    fi
     case "$format" in
         png)
             cp "$raw" "$dst" ;;

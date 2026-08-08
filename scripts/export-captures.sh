@@ -9,6 +9,8 @@
 #                  from origin/main) — the primary checkout
 #                  ($PRIMETIME_WEBSITE_DIR, default ~/primetime-website) is
 #                  never written to directly, per the worktree-PR convention
+#   to: appstore → this repo (captures/appstore/) — hand-uploaded to App
+#                  Store Connect, committed for provenance like readme assets
 #
 # Manifests record what build the batch came from: captures/manifest.json
 # here (release.sh compares UI changes against its commit) and
@@ -36,7 +38,10 @@ else
     REPO="${PRIMETIME_WEBSITE_DIR:-$HOME/primetime-website}"
     [[ -e "$REPO/.git" ]] \
         || { echo "error: '$REPO' is not a git checkout (set PRIMETIME_WEBSITE_DIR)" >&2; exit 1; }
-    BRANCH="captures-$(date -u +%F)"
+    # Local date, not UTC: the capture worktree convention (captures-<date>)
+    # uses local dates, and a UTC evening rollover otherwise splits the pair
+    # into two differently-dated worktrees.
+    BRANCH="captures-$(date +%F)"
     WEBSITE="$HOME/worktrees/primetime-website/$BRANCH"
     if [[ ! -e "$WEBSITE/.git" ]]; then
         git -C "$REPO" fetch origin
@@ -55,18 +60,19 @@ SHOTS_JSON="$(yq -o=json '.' "$SHOTS")"
 
 exported=()   # shot ids fully exported
 partial=0
-while IFS=$'\t' read -r id path _; do
-    src="$OUT/$(basename "$path")"
+while IFS=$'\t' read -r id path to; do
+    # Staged filenames are destination-prefixed (see process-captures.sh).
+    src="$OUT/$to-$(basename "$path")"
     [[ -f "$src" ]] || { partial=1; continue; }
     # A shot counts as exported only if ALL its renditions are present.
-    for p in $(jq -r --arg id "$id" '.shots[] | select(.id==$id) | .outputs[].path' <<<"$SHOTS_JSON"); do
-        [[ -f "$OUT/$(basename "$p")" ]] || continue 2
+    for p in $(jq -r --arg id "$id" \
+            '.shots[] | select(.id==$id) | .outputs[] | .to + "|" + .path' <<<"$SHOTS_JSON"); do
+        [[ -f "$OUT/${p%%|*}-$(basename "${p#*|}")" ]] || continue 2
     done
-    case "$(jq -r --arg id "$id" --arg p "$path" \
-            '.shots[] | select(.id==$id) | .outputs[] | select(.path==$p) | .to' <<<"$SHOTS_JSON")" in
-        readme)  dest="$ROOT/$path" ;;
-        website) dest="$WEBSITE/$path" ;;
-        *)       echo "error: unknown destination for $id → $path" >&2; exit 1 ;;
+    case "$to" in
+        readme|appstore) dest="$ROOT/$path" ;;
+        website)         dest="$WEBSITE/$path" ;;
+        *)  echo "error: unknown destination for $id → $path" >&2; exit 1 ;;
     esac
     mkdir -p "$(dirname "$dest")"
     cp "$src" "$dest"

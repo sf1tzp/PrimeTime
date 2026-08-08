@@ -7,8 +7,9 @@ that capture batch reproducible instead of a per-session improvisation.
 | Piece | Role |
 | --- | --- |
 | `shots.yaml` | The shot list: every asset, the scene it must show, and which renditions ship where. Update a shot's `scene` in the same PR that changes its surface. |
-| `raw/` (gitignored) | Native-resolution captures as they come off `screencapture` — `<id>.png` stills, `<id>.mov` recordings. |
-| `out/` (gitignored) | Processed renditions (`just process-captures`): WebP stills, the README GIF, scaled mp4s. |
+| `raw/` (gitignored) | Native-resolution captures as they come off `screencapture` — `<id>.png` stills (`<id>-light.png` for light-appearance variants), `<id>.mov` recordings. |
+| `out/` (gitignored) | Processed renditions (`just process-captures`), staged as `<to>-<file>`: WebP stills, the README GIF, scaled mp4s, App Store composites. |
+| `appstore/` (committed) | Mac App Store screenshots: dark stills composited onto a flattened 2880×1800 (16:10) charcoal canvas, per the App Store Connect spec. Uploaded by hand at submission time. |
 | `manifest.json` | Provenance of the last exported batch: app commit, version, date, host, shots covered. `just release` warns when UI sources changed since this commit. |
 
 ## Refreshing the batch

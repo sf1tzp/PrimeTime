@@ -15,13 +15,21 @@
 #   scene     what must be visible — the contract a re-capture has to meet.
 #             When a PR changes a surface, update its scene here in the same PR.
 #   outputs   renditions, one per consumer file:
-#     to      readme | website  (destination roots: this repo /
-#             $PRIMETIME_WEBSITE_DIR — see scripts/export-captures.sh)
+#     to      readme | website | appstore  (destination roots: this repo /
+#             $PRIMETIME_WEBSITE_DIR / this repo — see
+#             scripts/export-captures.sh). appstore renditions are composited
+#             onto a flattened 2880×1800 canvas (dark charcoal #17151a) to
+#             meet the Mac App Store 16:10 screenshot spec; upload the files
+#             in captures/appstore/ to App Store Connect by hand.
 #     path    destination-repo-relative path
 #     format  png | webp | gif | mp4
 #     width   target pixel width; omit to keep the native (2x retina) size.
 #             Recordings are scaled; stills ship native.
 #     fps     gif only (mp4 keeps the source frame rate)
+#     theme   light — rendition comes from the light-appearance capture
+#             captures/raw/<id>-light.png. Omitted = dark, the canonical
+#             theme; recordings are dark-only. The website swaps still
+#             images to the -light variant when its light theme is active.
 
 shots:
   - id: popover
@@ -29,20 +37,21 @@ shots:
     surface: menu-bar popover
     scene: |
       Popover open under the menu-bar status item, idle (no timer running).
-      Quick-start rows for the seeded label sets (Frontend Work, Backend
-      Work, Blue Sky, Meridian, Gaming, …) plus the Log / Calendar /
-      History / Settings… rows below.
+      Quick-start rows for the seeded label sets (PrimeTime App, Project
+      Meridian, Gaming, Workout, Reading — the first two with their baked-in
+      label chips visible) plus the Label Sets / Log / Calendar / History /
+      Settings… rows below.
     outputs:
-      - { to: website, path: static/screenshots/popover.webp, format: webp }
+      - { to: appstore, path: captures/appstore/popover.png, format: png }
 
   - id: popover-motion
     kind: recording
     surface: menu-bar popover
     scene: |
       ~20s. Start with the demo's running timer active. Click the status
-      item to open the popover; rest the pointer on a quick-start row so its
-      quick-label chips expand (the Meridian rows show the type:/meeting:
-      chips). Then start a timer using Project Meridian's "standup" quick label,
+      item to open the popover; rest the pointer on the Project Meridian
+      quick-start row so its quick-label chips expand (the type:/meeting:
+      chip rows). Then start a timer using Meridian's "standup" quick label,
       and stop the active "repo: infrastructure" timer.
       Record over a plain desktop (hide other windows, set a solid dark wallpaper) — the
       wallpaper shows through around the popover, and a detailed one
@@ -66,10 +75,11 @@ shots:
     surface: window / Launcher tab
     scene: |
       Launcher tab of the PrimeTime window: the quick-start grid of seeded
-      label sets — the client engagement cards next to the quick-labels-only
-      hobby cards (Gaming, Workout, Reading) with their fallback colours.
+      label sets — the work cards (PrimeTime App, Project Meridian) next to
+      the quick-labels-only hobby cards (Gaming, Workout, Reading), each
+      with its own icon and colour, plus the dashed New Label Set card.
     outputs:
-      - { to: website, path: static/screenshots/launcher.webp, format: webp }
+      - { to: appstore, path: captures/appstore/launcher.png, format: png }
 
   - id: launcher-motion
     kind: recording
@@ -77,7 +87,8 @@ shots:
     scene: |
       ~15s. Mouse over the hobby cards in turn — Gaming, Reading, then
       Workout — letting each card's quick-label chips show; finish by
-      clicking Workout's `activity: bike` chip so the menu-bar timer starts.
+      clicking Workout's `+bike` chip so an `activity: bike` timer starts
+      and the Workout card lights up as running.
     outputs:
       - { to: website, path: static/screenshots/launcher.mp4, format: mp4, width: 1400 }
 
@@ -85,11 +96,14 @@ shots:
     kind: still
     surface: window / Label Sets tab
     scene: |
-      Label Sets tab: the seeded sets (Frontend Work, Backend Work, Blue
-      Sky, Meridian, Lighthouse, …) with their labels visible — including a
-      value-less label (Frontend Work's `feature:`) shown as key-only.
+      Label Sets tab: the seeded sets in the sidebar (PrimeTime App, Project
+      Meridian, Gaming, Workout, Reading) with PrimeTime App selected — card
+      preview, labels editor, and its value-less `issue` label shown with an
+      empty value field.
     outputs:
       - { to: website, path: static/screenshots/label-sets.webp, format: webp }
+      - { to: website, path: static/screenshots/label-sets-light.webp, format: webp, theme: light }
+      - { to: appstore, path: captures/appstore/label-sets.png, format: png }
 
   - id: log
     kind: still
@@ -101,7 +115,9 @@ shots:
       visible.
     outputs:
       - { to: website, path: static/screenshots/log.webp, format: webp }
+      - { to: website, path: static/screenshots/log-light.webp, format: webp, theme: light }
       - { to: readme, path: readme-images/log-view.png, format: png }
+      - { to: appstore, path: captures/appstore/log.png, format: png }
 
   - id: calendar
     kind: still
@@ -113,16 +129,21 @@ shots:
       several days — include the side-by-side overlap columns.
     outputs:
       - { to: website, path: static/screenshots/calendar.webp, format: webp }
+      - { to: website, path: static/screenshots/calendar-light.webp, format: webp, theme: light }
+      - { to: appstore, path: captures/appstore/calendar.png, format: png }
 
   - id: history
     kind: still
     surface: window / History tab
     scene: |
       History tab showing the side-by-side comparison grouping (type vs
-      project) over the seeded weeks — both panels populated.
+      project), range Last 30 days so the seeded month shows — both donuts
+      populated, per-day bars below.
     outputs:
       - { to: website, path: static/screenshots/history.webp, format: webp }
+      - { to: website, path: static/screenshots/history-light.webp, format: webp, theme: light }
       - { to: readme, path: readme-images/history-view.png, format: png }
+      - { to: appstore, path: captures/appstore/history.png, format: png }
 
   - id: history-motion
     kind: recording
@@ -130,8 +151,8 @@ shots:
     scene: |
       ~25s. Start on the separate side-by-side donuts (Group by type vs
       project), range set to Last 30 days so the full seeded month shows.
-      Flip Count labels to "in Groups" for the combined donut, then walk the
-      group-bys through the three showcased pairings: type × project →
+      Flip Count labels to "in Groups" for the combined donut, then walk
+      its pickers through the three showcased pairings: type × project →
       type × client → meeting × client, pausing on each so the slices read.
     outputs:
       - { to: website, path: static/screenshots/history.mp4, format: mp4, width: 1400 }
@@ -141,21 +162,21 @@ shots:
     surface: window / Label Review tab
     scene: |
       Label Review tab surfacing the demo seed's deliberate `proj:` vs
-      `repo:` key drift (`proj: company-website` spans) and the unlabelled
-      ad-hoc spans.
+      `project:` key drift — the `proj` key row expanded to show its lone
+      `company-website` value (10×) beside the canonical `project` key.
     outputs:
-      - { to: website, path: static/screenshots/label-review.webp, format: webp }
       - { to: readme, path: readme-images/label-review.png, format: png }
+      - { to: appstore, path: captures/appstore/label-review.png, format: png }
 
   - id: label-review-motion
     kind: recording
     surface: window / Label Review tab
     scene: |
-      ~20s. Scan the seeded month; the drifted `proj: company-website`
-      surfaces beside the canonical `repo:` key. Drag the `company-website`
-      value from `proj` onto `repo`, show the staged red→green sentence at
-      the bottom, then Approve Changes and let the progress run so the key
-      count visibly collapses.
+      ~20s. Expand the drifted `proj` key to surface its `company-website`
+      value beside the canonical `project` key. Drag the `company-website`
+      value from `proj` onto `project`, show the staged move sentence at
+      the bottom, then Approve Changes so the tree visibly collapses to one
+      key fewer (`project` absorbs the spans).
     outputs:
       - { to: website, path: static/screenshots/label-review.mp4, format: mp4, width: 1400 }
 
@@ -163,7 +184,10 @@ shots:
     kind: still
     surface: window / Settings tab
     scene: |
-      Settings tab in demo mode: the "Demo mode" banner and the
-      server/connection section.
+      Settings tab in demo mode: the "Demo mode" banner in the Storage
+      section (with the Export-as-JSON row), plus the Menu and Labels
+      sections.
     outputs:
       - { to: website, path: static/screenshots/settings.webp, format: webp }
+      - { to: website, path: static/screenshots/settings-light.webp, format: webp, theme: light }
+      - { to: appstore, path: captures/appstore/settings.png, format: png }

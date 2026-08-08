@@ -1,7 +1,7 @@
 {
-  "commit": "e43a2e5a9c4da69bd187fe0aff4b0155ddcb6483",
-  "describe": "v0.7.2-5-ge43a2e5",
-  "captured": "2026-08-05",
+  "commit": "fef32602e8e518541e10fb6a419193195374c216",
+  "describe": "v0.7.2-11-gfef3260",
+  "captured": "2026-08-08",
   "host": "macbook-air",
   "shots": [
     "popover",
