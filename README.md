@@ -7,6 +7,12 @@
 
 <p align="center"><strong>Your time, dimensioned.</strong></p>
 
+> [!IMPORTANT]
+> **PrimeTime is rebranding for 1.0!** Thank you to our early testers and users.
+> The name change will require an update to the brew tap and will impact the
+> in-app auto-updater, so you'll likely need to install the app under its new
+> name when 1.0 is released. Apologies for any inconvenience.
+
 PrimeTime is a macOS menu-bar time tracker that marks and divides your time exactly how you want. Attach `key: value` labels to every span — inspired by Prometheus metrics — and your time becomes queryable data, not entries filed into one rigid hierarchy. Start a timer in one keystroke, run several at once, then see where the day actually went. Offline-first: no account, no server, no network required.
 
 ## Install
