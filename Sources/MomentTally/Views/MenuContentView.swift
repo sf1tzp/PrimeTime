@@ -92,7 +92,7 @@ struct MenuContentView: View {
             Button {
                 NSApplication.shared.terminate(nil)
             } label: {
-                Label("Quit PrimeTime", systemImage: "power")
+                Label("Quit Moment Tally", systemImage: "power")
             }
             .buttonStyle(MenuRowButtonStyle())
         }
@@ -205,7 +205,7 @@ struct MenuContentView: View {
             Button {
                 NSApplication.shared.terminate(nil)
             } label: {
-                Label("Quit PrimeTime", systemImage: "power")
+                Label("Quit Moment Tally", systemImage: "power")
             }
             .buttonStyle(MenuRowButtonStyle())
         }

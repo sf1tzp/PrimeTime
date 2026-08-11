@@ -1,6 +1,6 @@
 # Release-asset capture pipeline
 
-Everything the README and [primetime.tools](https://primetime.tools) show is
+Everything the README and [momenttally.com](https://momenttally.com) show is
 the app's own demo mode — seeded data, unretouched UI. This directory makes
 that capture batch reproducible instead of a per-session improvisation.
 

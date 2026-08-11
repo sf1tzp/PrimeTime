@@ -47,7 +47,7 @@ import Testing
 
     @Test func startStopRoundTrip() async throws {
         let backend = try makeBackend()
-        let labels = [SpanLabel(key: "repo", value: "primetime"),
+        let labels = [SpanLabel(key: "repo", value: "moment-tally"),
                       SpanLabel(key: "work-type", value: "review")]
         let started = try await backend.startTimeSpan(start: date(1_000_000),
                                                       labels: labels, note: "")
@@ -95,7 +95,7 @@ import Testing
         let backend = try makeBackend()
         let span = try await backend.startTimeSpan(
             start: date(1_000_000),
-            labels: [SpanLabel(key: "repo", value: "primetime")], note: "")
+            labels: [SpanLabel(key: "repo", value: "moment-tally")], note: "")
         try await backend.removeTimeSpan(id: span.id)
 
         #expect(try await backend.timers().isEmpty)
@@ -154,7 +154,7 @@ import Testing
         let backend = try makeBackend()
         try await backend.createLabelDefinition(key: "repo", color: "#112233")
 
-        let tags = [SpanLabel(key: "repo", value: "primetime"),
+        let tags = [SpanLabel(key: "repo", value: "moment-tally"),
                     SpanLabel(key: "work-type", value: "review"),
                     SpanLabel(key: "work-type", value: "debug")]
         let first = try await backend.ensureLabelDefinitions(for: tags,

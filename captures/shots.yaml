@@ -37,7 +37,7 @@ shots:
     surface: menu-bar popover
     scene: |
       Popover open under the menu-bar status item, idle (no timer running).
-      Quick-start rows for the seeded label sets (PrimeTime App, Project
+      Quick-start rows for the seeded label sets (Moment Tally App, Project
       Meridian, Gaming, Workout, Reading — the first two with their baked-in
       label chips visible) plus the Label Sets / Log / Calendar / History /
       Settings… rows below.
@@ -74,8 +74,8 @@ shots:
     kind: still
     surface: window / Launcher tab
     scene: |
-      Launcher tab of the PrimeTime window: the quick-start grid of seeded
-      label sets — the work cards (PrimeTime App, Project Meridian) next to
+      Launcher tab of the Moment Tally window: the quick-start grid of seeded
+      label sets — the work cards (Moment Tally App, Project Meridian) next to
       the quick-labels-only hobby cards (Gaming, Workout, Reading), each
       with its own icon and colour, plus the dashed New Label Set card.
     outputs:
@@ -96,8 +96,8 @@ shots:
     kind: still
     surface: window / Label Sets tab
     scene: |
-      Label Sets tab: the seeded sets in the sidebar (PrimeTime App, Project
-      Meridian, Gaming, Workout, Reading) with PrimeTime App selected — card
+      Label Sets tab: the seeded sets in the sidebar (Moment Tally App, Project
+      Meridian, Gaming, Workout, Reading) with Moment Tally App selected — card
       preview, labels editor, and its value-less `issue` label shown with an
       empty value field.
     outputs:

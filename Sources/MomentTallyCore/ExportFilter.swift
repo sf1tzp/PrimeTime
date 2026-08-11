@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Export filtering (#80)
 //
-// The CLI's `primetime export --from/--to/--include/--exclude` narrows the
+// The CLI's `moment-tally export --from/--to/--include/--exclude` narrows the
 // export document to matching timespans. The logic lives here, not in the
 // CLI target, so the semantics are testable next to the export they filter —
 // and so a future importer can share the selector vocabulary.

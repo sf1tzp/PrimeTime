@@ -1,4 +1,4 @@
-# Driving PrimeTime via System Events / AX
+# Driving Moment Tally via System Events / AX
 
 Shared reference for the `verify` and `capture` skills. This is where the
 hard-won AX knowledge lives — keep additions here, not in the individual
@@ -11,7 +11,7 @@ skills, so the two don't drift.
 - The popover is the untitled window: `window ""`. Its rows are unnamed buttons
   of `group 1` in layout order (idle: quick-start sets first, then Log,
   Calendar, History, Settings…, Quit; running: Stop first).
-- The PrimeTime window is `window "PrimeTime"`; switch tabs via
+- The Moment Tally window is `window "Moment Tally"`; switch tabs via
   `click button "<Label>" of toolbar 1`. Tab content lives under
   `group 1 of group 1`; the week navigator is buttons 1-4 (prev, Today, next,
   refresh); log rows are unnamed buttons of `UI element 1 of scroll area 1`.
@@ -26,7 +26,7 @@ skills, so the two don't drift.
   fresh view instances. Synthetic `keystroke` is also unreliable here. Verify
   note/tag *text* edits manually; clicks (expand, save, delete, navigate) are
   reliable.
-- **Never drive AX with two PrimeTime instances running** (learned 2026-07-29
+- **Never drive AX with two Moment Tally instances running** (learned 2026-07-29
   testing Sparkle): the user's installed copy + a test build are two processes
   with the same name, and even `first process whose unix id is <pid>` sessions
   ended up enumerating the *other* app's popover. Both instances also share
@@ -39,7 +39,7 @@ skills, so the two don't drift.
   clicking again, or a fresh script closes what the last one opened.
 - The popover window is not reliably `window ""` — on macbook-air
   (2026-08-03) it enumerated as `window "Untitled"`. Address it as
-  `window 1` (the PrimeTime window is findable by its real name, so the
+  `window 1` (the Moment Tally window is findable by its real name, so the
   popover is whatever's left) and check `name of every window` when lost.
 - Collective element queries on the popover (`buttons of group 1 of
   window 1`) can fail wholesale with `-10000` even when the elements exist —
@@ -84,7 +84,7 @@ skills, so the two don't drift.
   -1719 on an element you just enumerated, re-address it by element index.
   Coercing `position of e as string` concatenates x,y with no separator
   ("1137612" = 1137,612) — fetch coordinates separately if you need math.
-- The popover's **Settings… row switches the main "PrimeTime" window to its
+- The popover's **Settings… row switches the main "Moment Tally" window to its
   Settings tab** — no separate settings window exists, and ⌘, does nothing.
   Onboarding's unnamed footer buttons are the last three of `group 1`
   (Back / Skip Tour / Next); pick "Skip Tour" as the ~85pt-wide one.
@@ -169,7 +169,7 @@ skills, so the two don't drift.
   just that window with its native shadow on a transparent background, no crop
   math. Get the ID with a tiny compiled Swift helper calling
   `CGWindowListCopyWindowInfo` (filter on owner name; there's no pyobjc to do
-  it from Python). The popover (`window ""`) and the PrimeTime window each
+  it from Python). The popover (`window ""`) and the Moment Tally window each
   have their own ID. Falling back to full-screen + crop: `sips -c <h> <w>
   --cropOffset <y> <x>` (pixels = points × 2), but beware `--cropOffset 0 0`
   is treated as unset and crops from the *center* — use `1 1` for top-left.
@@ -180,7 +180,7 @@ skills, so the two don't drift.
 - **SwiftUI drags need the app frontmost** (2026-08-04, Label Review value
   drag): if another app is active, the initial `dd:` mousedown only
   activates the window and the drag session never forms — same recipe
-  succeeds after `set frontmost of process "PrimeTime" to true`. Set it
+  succeeds after `set frontmost of process "MomentTally" to true`. Set it
   immediately before every scripted drag.
 - **`cliclick t:<text>` types reliably where AppleScript `keystroke` fails**
   (2026-08-04, popover editor): the CGEvent typing path lands in the
@@ -231,7 +231,7 @@ skills, so the two don't drift.
   required, and Escape before retries still applies.
 - **Focused vs unfocused window-ID stills differ in canvas size**
   (2026-08-07): `screencapture -x -l` pads the window with its shadow —
-  56pt on every side for a *key* window (the 780×648 PrimeTime window →
+  56pt on every side for a *key* window (the 780×648 Moment Tally window →
   1784×1520 px), noticeably less when unfocused. Screenshot-to-screen
   coordinate math must use the focused margins (global = window origin +
   canvas_pt − 56), and mixing focused/unfocused stills in one batch

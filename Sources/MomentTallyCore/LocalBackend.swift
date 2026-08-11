@@ -178,19 +178,37 @@ package final class LocalBackend: Backend {
         try Self.migrator(legacyDefaults: legacyDefaults).migrate(dbQueue)
     }
 
-    /// `~/Library/Application Support/<bundle id>/primetime.sqlite`. The SPM
-    /// executable has no bundle identifier until the app is bundled, so fall
-    /// back to the target name; the *file* name is already the product's so a
-    /// later rename doesn't have to move data.
+    /// `~/Library/Application Support/<bundle id>/momenttally.sqlite`. The
+    /// SPM executable has no bundle identifier until the app is bundled, so
+    /// fall back to the target name. Before settling on that path, adopt a
+    /// pre-rename `primetime.sqlite` (#195) sitting in the same directory —
+    /// scripts/migrate-container.sh renames the store when it moves the old
+    /// container, but a store that arrived by any other route (manual copy,
+    /// dev build) self-heals here. The -wal/-shm journal siblings move too:
+    /// renaming the main file out from under its WAL would drop the
+    /// uncheckpointed tail.
     package static func defaultDatabaseURL() throws -> URL {
         let support = try FileManager.default.url(for: .applicationSupportDirectory,
                                                   in: .userDomainMask,
                                                   appropriateFor: nil, create: true)
         let directory = support.appendingPathComponent(
-            Bundle.main.bundleIdentifier ?? "PrimeTime", isDirectory: true)
+            Bundle.main.bundleIdentifier ?? "MomentTally", isDirectory: true)
         try FileManager.default.createDirectory(at: directory,
                                                 withIntermediateDirectories: true)
-        return directory.appendingPathComponent("primetime.sqlite")
+        let fileManager = FileManager.default
+        let url = directory.appendingPathComponent("momenttally.sqlite")
+        if !fileManager.fileExists(atPath: url.path) {
+            let legacy = directory.appendingPathComponent("primetime.sqlite")
+            if fileManager.fileExists(atPath: legacy.path) {
+                for suffix in ["", "-wal", "-shm"] {
+                    let from = URL(fileURLWithPath: legacy.path + suffix)
+                    guard fileManager.fileExists(atPath: from.path) else { continue }
+                    try? fileManager.moveItem(
+                        at: from, to: URL(fileURLWithPath: url.path + suffix))
+                }
+            }
+        }
+        return url
     }
 
     // MARK: Migrations

@@ -1,7 +1,7 @@
 import Foundation
 import MomentTallyCore
 
-/// A thin GraphQL client for the PrimeTime v1 API (server/docs/api-v1.md),
+/// A thin GraphQL client for the Moment Tally v1 API (server/docs/api-v1.md),
 /// hand-rolled over URLSession in the style of `TraggoClient` — typed
 /// operations, wire DTOs mapped to engine shapes at this boundary. It
 /// implements `SyncServerAPI` for the sync engine, plus the session

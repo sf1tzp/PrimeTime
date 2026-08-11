@@ -2,13 +2,13 @@ import ArgumentParser
 import Foundation
 import MomentTallyCore
 
-// MARK: - primetime start
+// MARK: - moment-tally start
 
 struct Start: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "Start a timespan.",
         discussion: "Errors if a timer is already running — stop it first "
-            + "(agent hooks that mean \"switch\" chain `primetime stop; primetime start ...`).")
+            + "(agent hooks that mean \"switch\" chain `moment-tally stop; moment-tally start ...`).")
 
     @Option(name: .customShort("l"),
             help: ArgumentHelp("A key=value label; repeatable.", valueName: "key=value"))
@@ -27,7 +27,7 @@ struct Start: AsyncParsableCommand {
             guard running.isEmpty else {
                 throw LocalBackend.Error(message: "A timer is already running: "
                     + running.map { describeSpan($0, now: Date()) }.joined(separator: "; ")
-                    + ". Stop it first with `primetime stop`.")
+                    + ". Stop it first with `moment-tally stop`.")
             }
             // The same guard the app applies on start: every key needs a
             // definition (with the same default colour) so the new span's
@@ -55,7 +55,7 @@ struct Start: AsyncParsableCommand {
     }
 }
 
-// MARK: - primetime stop
+// MARK: - moment-tally stop
 
 struct Stop: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -85,13 +85,13 @@ struct Stop: AsyncParsableCommand {
     }
 }
 
-// MARK: - primetime status
+// MARK: - moment-tally status
 
 struct Status: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "Show the running timespan, if any.",
         discussion: "Exits 0 when a timer is running, 1 when idle — usable "
-            + "directly in scripts: `if primetime status -q; then ...`.")
+            + "directly in scripts: `if moment-tally status -q; then ...`.")
 
     @Flag(help: "Machine-readable output.")
     var json = false

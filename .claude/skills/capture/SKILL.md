@@ -20,7 +20,7 @@ pipeline overview.
    you run from — so work from a fresh worktree branch off origin/main
    (`git worktree add ~/worktrees/PrimeTime/captures-<date> -b
    captures-<date> origin/main`), never a primary checkout. There:
-   `swift build`, then launch `./.build/debug/PrimeTime --demo` (demo mode
+   `swift build`, then launch `./.build/debug/MomentTally --demo` (demo mode
    never touches the Keychain, so the unsigned binary launches with zero
    prompts). Quit the installed app first — see the two-instances caveat in
    [shared/ax-driving.md](../shared/ax-driving.md).

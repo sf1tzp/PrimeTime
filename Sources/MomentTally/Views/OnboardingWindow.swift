@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// Owns the first-run "Welcome to PrimeTime" window (issue #93): a fixed-size,
+/// Owns the first-run "Welcome to Moment Tally" window (issue #93): a fixed-size,
 /// mac-app-like sheetless welcome sequence — Welcome → interactive walkthrough
 /// (which ends by creating starter label sets) — shown once on a fresh install
 /// and on every demo launch (the demo defaults suite is wiped per launch, so

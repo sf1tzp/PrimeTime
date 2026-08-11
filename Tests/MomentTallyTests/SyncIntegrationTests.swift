@@ -4,7 +4,7 @@ import Testing
 @testable import MomentTally
 @testable import MomentTallyCore
 
-/// End-to-end against a *live* PrimeTime server: two in-memory local stores
+/// End-to-end against a *live* Moment Tally server: two in-memory local stores
 /// ("two Macs"), each with its own device token and `SyncEngine` over the
 /// real `MomentTallyClient`, converging through one real server process.
 ///
@@ -13,7 +13,7 @@ import Testing
 /// server, e.g.
 ///
 ///     TRAGGO_DATABASE_DIALECT=sqlite3 TRAGGO_DATABASE_CONNECTION=/tmp/s.db \
-///         ./primetime-server &
+///         ./moment-tally-server &
 ///     ./admin create-user -name convergence -pass convergepass
 ///     SYNC_INTEGRATION_URL=http://localhost:19080 swift test
 ///

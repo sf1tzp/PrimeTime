@@ -8,11 +8,14 @@ import Security
 /// Note: when running an unsigned dev build from the terminal, macOS may prompt
 /// once to allow keychain access. A signed, bundled build won't.
 enum Keychain {
-    private static let service = "tools.primetime.PrimeTime"
-    /// Pre-rename service identifier (#64). Items stored under it are migrated
-    /// to `service` on first read and removed on write/delete, so tokens saved
-    /// by older builds survive the rename without a re-login.
-    private static let legacyService = "lol.stev.traggo-menu-app"
+    private static let service = "com.streetfortress.MomentTally"
+    /// Pre-rename service identifiers, newest first: the PrimeTime era
+    /// (#195), then the original traggo-menu-app era (#64). Items stored
+    /// under either are migrated to `service` on first read and removed on
+    /// write/delete, so tokens saved by older builds survive each rename
+    /// without a re-login.
+    private static let legacyServices = ["tools.primetime.PrimeTime",
+                                         "lol.stev.traggo-menu-app"]
 
     static func set(_ value: String, account: String) {
         let base = baseQuery(service: service, account: account)
@@ -21,26 +24,33 @@ enum Keychain {
         var attributes = base
         attributes[kSecValueData as String] = Data(value.utf8)
         SecItemAdd(attributes as CFDictionary, nil)
-        // A fresh write supersedes any legacy copy; drop it so it can't
+        // A fresh write supersedes any legacy copy; drop them so they can't
         // resurface later.
-        SecItemDelete(baseQuery(service: legacyService, account: account) as CFDictionary)
+        for legacy in legacyServices {
+            SecItemDelete(baseQuery(service: legacy, account: account) as CFDictionary)
+        }
     }
 
     static func get(account: String) -> String? {
         if let value = copy(service: service, account: account) {
             return value
         }
-        // Miss under the current identifier: check the legacy one and migrate.
-        guard let legacy = copy(service: legacyService, account: account) else {
-            return nil
+        // Miss under the current identifier: check the legacy ones (newest
+        // first) and migrate the first hit.
+        for legacy in legacyServices {
+            if let value = copy(service: legacy, account: account) {
+                set(value, account: account)
+                return value
+            }
         }
-        set(legacy, account: account)
-        return legacy
+        return nil
     }
 
     static func delete(account: String) {
         SecItemDelete(baseQuery(service: service, account: account) as CFDictionary)
-        SecItemDelete(baseQuery(service: legacyService, account: account) as CFDictionary)
+        for legacy in legacyServices {
+            SecItemDelete(baseQuery(service: legacy, account: account) as CFDictionary)
+        }
     }
 
     private static func baseQuery(service: String, account: String) -> [String: Any] {

@@ -3,11 +3,12 @@ import AppKit
 import CoreText
 import MomentTallyCore
 
-/// The PrimeTime brand, ported from primetime-website (`layout.css` +
-/// `Nav.svelte`): the Bricolage Grotesque wordmark with the torch-gradient
-/// "Time", the app-icon mark, and partner accents. Values mirror the site's
-/// oklch fire stops (converted to sRGB) so the app and the website masthead
-/// read as one thing.
+/// The Moment Tally brand: the Bricolage Grotesque wordmark — "Moment" in
+/// ink, "Tally" carrying the brand gradient — plus the accent gradient and
+/// partner accents. Wordmark-only for now: the brand-mark motif is still
+/// undecided (#195), so nothing here invents a logo mark. Gradient stops are
+/// the momenttally.com values, kept verbatim so the app and the website
+/// masthead read as one thing.
 enum Brand {
 
     /// The SwiftPM resource bundle. `swift build`'s generated `Bundle.module`
@@ -39,37 +40,46 @@ enum Brand {
         .custom("BricolageGrotesque-ExtraBold", size: size)
     }
 
-    /// "PrimeTime" as the site renders it: solid "Prime", torch-gradient
-    /// "Time", tight tracking. A `Text` so it concatenates into sentences.
+    /// "Moment Tally" as the site renders it: "Moment" in ink (whatever the
+    /// context's foreground is), brand-gradient "Tally", tight tracking.
+    /// A `Text` so it concatenates into sentences.
     static func wordmark(size: CGFloat) -> Text {
         let kern = -size * 0.02   // tracking-tight
-        return Text("Prime").font(display(size)).kerning(kern)
-            + Text("Time").font(display(size)).kerning(kern)
-                .foregroundStyle(torchGradient)
+        return Text("Moment ").font(display(size)).kerning(kern)
+            + Text("Tally").font(display(size)).kerning(kern)
+                .foregroundStyle(brandGradient)
     }
 
-    /// `--torch-grad`: ember → flame → gold → spark at 100° (near-horizontal,
-    /// slightly falling). Light stops are the site's darker `:root` fire so
-    /// the gradient keeps contrast on a light background.
-    static var torchGradient: LinearGradient {
+    /// The brand gradient — `linear-gradient(90deg, #007aff, #af52de,
+    /// #ff2d55, #ff9500)`: blue → purple → pink → orange, horizontal, evenly
+    /// spaced stops. System-palette hues that hold up on light and dark
+    /// backgrounds alike, so the stops are not appearance-dependent.
+    static var brandGradient: LinearGradient {
         LinearGradient(
-            stops: [
-                .init(color: dynamic(light: "#c2410c", dark: "#f25914"), location: 0),
-                .init(color: dynamic(light: "#d1560b", dark: "#fe860f"), location: 0.42),
-                .init(color: dynamic(light: "#ca8a04", dark: "#f8bd40"), location: 0.78),
-                .init(color: dynamic(light: "#eab308", dark: "#f9e03f"), location: 1),
+            colors: [
+                Color(hex: "#007aff") ?? .blue,
+                Color(hex: "#af52de") ?? .purple,
+                Color(hex: "#ff2d55") ?? .pink,
+                Color(hex: "#ff9500") ?? .orange,
             ],
-            startPoint: UnitPoint(x: 0, y: 0.42),
-            endPoint: UnitPoint(x: 1, y: 0.58))
+            startPoint: .leading, endPoint: .trailing)
     }
 
-    /// Traggo's accent from primetime.tools/attributions — Go's Gopher Blue,
-    /// nudged darker on light backgrounds where #00add8 runs out of contrast.
-    static let traggoBlue = dynamic(light: "#0087a8", dark: "#00add8")
+    /// The accent gradient — `linear-gradient(135deg, #5856d6, #007aff)`:
+    /// indigo into blue, top-left to bottom-right. For flourishes that
+    /// should read branded without the full four-stop wordmark gradient.
+    static var accentGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(hex: "#5856d6") ?? .indigo,
+                Color(hex: "#007aff") ?? .blue,
+            ],
+            startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
 
-    /// The torch gradient's gold stop as a standalone accent — for small
-    /// flourishes that should read as "brand fire" without the full gradient.
-    static let torchGold = dynamic(light: "#ca8a04", dark: "#f8bd40")
+    /// Traggo's accent (import attribution) — Go's Gopher Blue, nudged
+    /// darker on light backgrounds where #00add8 runs out of contrast.
+    static let traggoBlue = dynamic(light: "#0087a8", dark: "#00add8")
 
     /// The flaming-clock mark, from the bundled icns (works unbundled, where
     /// `NSApp.applicationIconImage` would be the generic executable icon).

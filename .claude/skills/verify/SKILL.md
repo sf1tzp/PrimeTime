@@ -1,9 +1,9 @@
 ---
 name: verify
-description: Build, launch, and drive PrimeTime to verify changes against the live traggo.lofi server. Auto-invoke only on macbook-air; on any other machine (check `hostname`) run only when the user explicitly asks to verify.
+description: Build, launch, and drive Moment Tally to verify changes against the live traggo.lofi server. Auto-invoke only on macbook-air; on any other machine (check `hostname`) run only when the user explicitly asks to verify.
 ---
 
-# Verifying PrimeTime
+# Verifying Moment Tally
 
 > **Machine gate:** only invoke this skill unprompted on macbook-air. On other
 > machines (e.g. macmini) the build/launch/AX-drive cycle is too resource-heavy
@@ -13,7 +13,7 @@ description: Build, launch, and drive PrimeTime to verify changes against the li
 
 ```bash
 just build          # swift build + codesign with "TraggoMenuApp Dev"
-./.build/debug/PrimeTime > /tmp/app.log 2>&1 &   # plain bash background; wait ~5-10s
+./.build/debug/MomentTally > /tmp/app.log 2>&1 &   # plain bash background; wait ~5-10s
 ```
 
 On a machine with no codesigning identity (e.g. macbook-air), skip `just

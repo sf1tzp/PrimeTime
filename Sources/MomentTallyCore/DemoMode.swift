@@ -7,8 +7,8 @@ import GRDB
 /// data, for reproducible screenshots and a functional tour alongside Help.
 /// Activated per launch — the choice is never persisted — by either:
 ///
-///     MOMENTTALLY_DEMO=1 .build/debug/PrimeTime
-///     .build/debug/PrimeTime --demo
+///     MOMENTTALLY_DEMO=1 .build/debug/MomentTally
+///     .build/debug/MomentTally --demo
 ///
 /// Nothing a demo session does can touch real data: timespans, tag sets,
 /// definitions and value colours live in `demo.sqlite` beside the real
@@ -74,7 +74,7 @@ package extension LocalBackend {
 ///   sets' `repo:`/`issue:`): quick-starting one opens the popover editor
 ///   with the empty value focused, ready for a pasted issue number (#149,
 ///   #162).
-/// - **Multi-client, multi-project sets** (PrimeTime, Meridian, Lighthouse,
+/// - **Multi-client, multi-project sets** (Moment Tally, Meridian, Lighthouse,
 ///   Velocity Consulting): `client:` + `project:` presets with `type:` and
 ///   `meeting:` quick labels, so History's combined view has real
 ///   type × project, type × client and meeting × client axes to group by.
@@ -108,10 +108,10 @@ package enum DemoSeed {
         // value-less `repo:`/`issue:` to fill in per start. Their quick
         // labels below carry the `type:`/`meeting:` axes History's combined
         // view groups by. `project:` leads so each launcher card borrows its
-        // *project's* colour — client-first would paint PrimeTime and
+        // *project's* colour — client-first would paint Moment Tally and
         // Meridian the same sfi blue.
-        TagSet(name: "PrimeTime App",
-               tags: [TagRow(key: "project", value: "primetime"),
+        TagSet(name: "Moment Tally App",
+               tags: [TagRow(key: "project", value: "moment-tally"),
                       TagRow(key: "client", value: "sfi"),
                       TagRow(key: "issue", value: "")],
                symbolName: "laptopcomputer"),
@@ -152,7 +152,7 @@ package enum DemoSeed {
                     TagRow(key: "type", value: "review"),
                     TagRow(key: "type", value: "debugging")]
         switch name {
-        case "PrimeTime App", "Backend Work":
+        case "Moment Tally App", "Backend Work":
             return type
         case "Project Meridian", "Lighthouse":
             return type + [TagRow(key: "meeting", value: "retrospective"),
@@ -208,7 +208,7 @@ package enum DemoSeed {
     /// the History donuts, and the combined view's type × client and
     /// meeting × client pairings stay tellable-apart.
     static let valueColors: [String: String] = [
-        ValueColorKey.join("project", "primetime"): "#f7b060ff",
+        ValueColorKey.join("project", "moment-tally"): "#f7b060ff",
         ValueColorKey.join("project", "meridian"): "#9fe3f8ff",
         ValueColorKey.join("project", "lighthouse"): "#fff126ff",
         ValueColorKey.join("project", "velocity-consulting"): "#9ccc65",
@@ -222,7 +222,7 @@ package enum DemoSeed {
         ValueColorKey.join("feature", "checkout"): "#f06292",
         ValueColorKey.join("feature", "search"): "#ba68c8",
         ValueColorKey.join("feature", "billing"): "#ffb74d",
-        ValueColorKey.join("feature", "primetime-api"): "#4db6ac",
+        ValueColorKey.join("feature", "moment-tally-api"): "#4db6ac",
         ValueColorKey.join("type", "planning"): "#f0ee73ff",
         ValueColorKey.join("type", "coding"): "#5c6bc0",
         ValueColorKey.join("type", "debugging"): "#fc3e3eff",
@@ -270,9 +270,9 @@ package enum DemoSeed {
          SpanLabel(key: "project", value: project),
          SpanLabel(key: key, value: value)]
     }
-    private static let blueSkyStandup = engagement("sfi", "primetime", "meeting", "standup")
-    private static let blueSkyPlanning = engagement("sfi", "primetime", "type", "planning")
-    private static let blueSkyCoding = engagement("sfi", "primetime", "type", "coding")
+    private static let blueSkyStandup = engagement("sfi", "moment-tally", "meeting", "standup")
+    private static let blueSkyPlanning = engagement("sfi", "moment-tally", "type", "planning")
+    private static let blueSkyCoding = engagement("sfi", "moment-tally", "type", "coding")
     private static let meridianRoadmap = engagement("sfi", "meridian", "meeting", "retrospective")
     private static let lighthouseStandup = engagement("acme-inc", "lighthouse", "meeting", "standup")
     private static let lighthouseHandoff = engagement("acme-inc", "lighthouse", "meeting", "handoff")
@@ -288,7 +288,7 @@ package enum DemoSeed {
                                          SpanLabel(key: "feature", value: "checkout"),
                                          SpanLabel(key: "type", value: "review")]
     private static let backendCoding = [SpanLabel(key: "repo", value: "infrastructure"),
-                                        SpanLabel(key: "feature", value: "primetime-api"),
+                                        SpanLabel(key: "feature", value: "moment-tally-api"),
                                         SpanLabel(key: "type", value: "planning")]
     private static let backendBilling = [SpanLabel(key: "repo", value: "infrastructure"),
                                          SpanLabel(key: "feature", value: "billing"),
@@ -318,11 +318,11 @@ package enum DemoSeed {
     /// weekdays, so every per-variant fixture (the overlap in B, the key
     /// drift in C, the untagged call in D) is launch-date-proof.
     private static let weekdayTemplates: [[Draft]] = [
-        // A — a heads-down PrimeTime build day, evening game.
+        // A — a heads-down Moment Tally build day, evening game.
         [
             Draft(startMinute: 570, durationMinutes: 15, labels: blueSkyStandup),
             Draft(startMinute: 585, durationMinutes: 105,
-                  labels: engagement("sfi", "primetime", "issue", "214")
+                  labels: engagement("sfi", "moment-tally", "issue", "214")
                       + [SpanLabel(key: "type", value: "coding")],
                   note: "Issue number pasted straight into the quick start"),
             Draft(startMinute: 690, durationMinutes: 30, labels: blueSkyPlanning,
@@ -407,7 +407,7 @@ package enum DemoSeed {
     /// save-as-set ＋; the empty entry is today's ad-hoc unlabelled span.
     private static let todayTemplate: [(minutesBeforeNow: Int, durationMinutes: Int?,
                                         labels: [SpanLabel], note: String)] = [
-        (220, 75, engagement("sfi", "primetime", "issue", "231")
+        (220, 75, engagement("sfi", "moment-tally", "issue", "231")
              + [SpanLabel(key: "type", value: "coding")], "README screenshot pass"),
         (130, 20, velocityStandup, ""),
         (105, 15, [], ""),

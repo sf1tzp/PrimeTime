@@ -86,8 +86,8 @@ private struct WelcomeStep: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 8) {
-                    // The masthead: the flaming-clock mark over the branded
-                    // wordmark, as on the website.
+                    // The masthead: the app icon over the branded wordmark
+                    // and the tagline, as on the website.
                     if let icon = Brand.appIcon {
                         Image(nsImage: icon)
                             .resizable()
@@ -97,6 +97,9 @@ private struct WelcomeStep: View {
                     }
                     (Text("Welcome to ").font(.largeTitle.weight(.semibold))
                         + Brand.wordmark(size: 34))
+                    Text("Count what counts.")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
                     Text("A menu-bar time tracker where labels do the organising — no folders, no projects tree, just spans and their key: value labels.")
                         .font(.callout)
                         .foregroundStyle(.secondary)

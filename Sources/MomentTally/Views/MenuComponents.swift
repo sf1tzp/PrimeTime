@@ -236,7 +236,7 @@ enum LabelEditorStyle {
 
 /// Rebuilds the window's key-view loop (the Tab order) when `token` changes.
 ///
-/// The PrimeTime window computes the loop once and never revisits it when
+/// The Moment Tally window computes the loop once and never revisits it when
 /// SwiftUI inserts fields later — an "+ Add Label" row, or a whole editor
 /// expanding in place — so those fields are unreachable by Tab (resizing the
 /// window doesn't recompute it either). NSPopover's window evidently does

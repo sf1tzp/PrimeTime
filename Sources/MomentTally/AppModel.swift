@@ -80,7 +80,7 @@ final class AppModel {
     /// When on, tags are coloured by their `key: value` pair (using the local
     /// overrides below) instead of only by key, so `repo: foo` and `repo: bar`
     /// can look different. On by default — differentiating spans by value is
-    /// PrimeTime's headline improvement over vanilla traggo, with key colours
+    /// Moment Tally's headline improvement over vanilla traggo, with key colours
     /// remaining useful for navigating Tag Review; an explicitly stored false
     /// (a user who turned it off) is respected. Syncs as a user preference
     /// when a server is connected.
@@ -873,7 +873,7 @@ final class AppModel {
         }
     }
 
-    /// The primetime CLI (#80) writes the store from another process and
+    /// The moment-tally CLI (#80) writes the store from another process and
     /// posts a distributed notification (see StoreChangeNotification.swift in
     /// MomentTallyCore) — there is no cross-process store observation, so this
     /// is how those writes reach a running app. Re-read the live surfaces and
@@ -883,7 +883,7 @@ final class AppModel {
     private func startObservingStoreChanges() {
         guard !isDemo else { return }
         storeChangeObserver = DistributedNotificationCenter.default().addObserver(
-            forName: .primeTimeStoreDidChange, object: nil, queue: .main) { [weak self] _ in
+            forName: .momentTallyStoreDidChange, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
                 await self.refresh()

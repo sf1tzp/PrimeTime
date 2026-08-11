@@ -21,7 +21,7 @@ package struct User: Decodable, Equatable {
     }
 }
 
-/// A key/value pair attached to a timespan — e.g. `repo: primetime`.
+/// A key/value pair attached to a timespan — e.g. `repo: moment-tally`.
 package struct SpanLabel: Hashable {
     package let key: String
     package let value: String
@@ -94,7 +94,7 @@ package struct TimeSpanPage {
 
 /// The storage seam between the state layer and wherever timespans actually
 /// live. Today the only implementation is `TraggoClient` (a traggo server over
-/// GraphQL); a local store and a PrimeTime sync backend implement the same
+/// GraphQL); a local store and a Moment Tally sync backend implement the same
 /// surface later.
 ///
 /// Deliberately data-only: session lifecycle (login, logout, tokens) is a

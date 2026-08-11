@@ -87,7 +87,7 @@ final class SettingsWindowManager: NSObject, NSWindowDelegate {
         // In `.toolbar` style the window title follows the selected controller's
         // `title`. Give every section the same title so it stays static (an
         // unset title would show "Untitled" when switching tabs).
-        host.title = "PrimeTime"
+        host.title = "Moment Tally"
         let item = NSTabViewItem(viewController: host)
         item.label = label
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)

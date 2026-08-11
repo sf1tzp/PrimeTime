@@ -46,14 +46,14 @@ import Testing
     @Test func mapsFinishedTimeSpanToDomain() throws {
         let json = """
         {"id": 7, "start": "2026-07-29T10:00:00Z", "end": "2026-07-29T11:00:00Z",
-         "note": "review", "tags": [{"key": "repo", "value": "primetime"}]}
+         "note": "review", "tags": [{"key": "repo", "value": "moment-tally"}]}
         """
         let span = try JSONDecoder().decode(TraggoTimeSpan.self, from: Data(json.utf8)).domain
         #expect(span.id == 7)
         #expect(span.start == Date(timeIntervalSince1970: 1_785_319_200))
         #expect(span.end == Date(timeIntervalSince1970: 1_785_322_800))
         #expect(span.note == "review")
-        #expect(span.labels == [SpanLabel(key: "repo", value: "primetime")])
+        #expect(span.labels == [SpanLabel(key: "repo", value: "moment-tally")])
         #expect(!span.isRunning)
     }
 

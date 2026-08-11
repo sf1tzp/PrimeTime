@@ -612,7 +612,7 @@ private struct LabelingSchemesPage: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Text("PrimeTime lets you save custom labeling schemes as Label Sets — that's next.")
+                Text("Moment Tally lets you save custom labeling schemes as Label Sets — that's next.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -710,7 +710,7 @@ private struct SmellsPage: View {
 
     var body: some View {
         WalkthroughPage(index: 3, title: "Why schemes fail",
-                        subtitle: "Four ways a labeling scheme goes wrong — PrimeTime helps you dodge all of these by defining your labels up front. Click a card to corrupt the week; click it again and the charts heal.") {
+                        subtitle: "Four ways a labeling scheme goes wrong — Moment Tally helps you dodge all of these by defining your labels up front. Click a card to corrupt the week; click it again and the charts heal.") {
             HStack(alignment: .top, spacing: 20) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
@@ -864,7 +864,7 @@ private struct LabelSetsConceptPage: View {
         let value: String
     }
 
-    private static let baked = SpanLabel(key: "repo", value: "primetime")
+    private static let baked = SpanLabel(key: "repo", value: "moment-tally")
     /// The valueless label: no value baked into the set, so every start
     /// prompts for one.
     private static let valuelessKey = "issue"
@@ -909,7 +909,7 @@ private struct LabelSetsConceptPage: View {
                 start(applying: nil)
             } label: {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("PrimeTime")
+                    Text("Moment Tally")
                         .font(.callout)
                     .padding(.top, 4)
                     FlowLayout(spacing: 4) {
@@ -1043,7 +1043,7 @@ private struct LabelSetsConceptPage: View {
 
 // MARK: - Page 6: create your first label sets
 
-/// One way people run PrimeTime — a card on the create page, whose editor
+/// One way people run Moment Tally — a card on the create page, whose editor
 /// also includes the persona's suggested quick labels by default.
 private struct WalkthroughPersona: Identifiable {
     let name: String
@@ -1078,9 +1078,9 @@ private struct WalkthroughPersona: Identifiable {
     /// quick-labels-only set the concept page's caption promised.
     static let all: [WalkthroughPersona] = [
         WalkthroughPersona(name: "Programming", symbol: "chevron.left.forwardslash.chevron.right",
-                           rows: [("repo", "sfi/PrimeTime"),
+                           rows: [("repo", "sfi/moment-tally"),
                                   ("issue", nil)],
-                           nameExample: "PrimeTime App",
+                           nameExample: "Moment Tally App",
                            quickLabels: [("type", "planning"),
                                          ("type", "review"),
                                          ("type", "debugging")]),
@@ -1191,7 +1191,7 @@ private struct CreateLabelSetsPage: View {
 
     var body: some View {
         WalkthroughPage(index: 5, title: "Create your first Label Sets",
-                        subtitle: "Four ways people run PrimeTime. Open one, make it yours — it becomes a real one-click set, quick labels and all.") {
+                        subtitle: "Four ways people run Moment Tally. Open one, make it yours — it becomes a real one-click set, quick labels and all.") {
             Group {
                 if let persona = editing {
                     // The editor (labels + quick labels) can outgrow the
@@ -1673,7 +1673,7 @@ private struct SurfacesPage: View {
         Surface(symbol: "chart.pie", name: "History",
                 blurb: "Visualize your timespans with group-by based aggregations."),
         Surface(symbol: "stethoscope", name: "Label Review",
-                blurb: "Merge drifted keys and stray values. With PrimeTime it's easy to catch these outliers and correct them before they impact downstream."),
+                blurb: "Merge drifted keys and stray values. With Moment Tally it's easy to catch these outliers and correct them before they impact downstream."),
         Surface(symbol: "gear", name: "Settings",
                 blurb: "Sync, colours, and everything else."),
     ]
@@ -1695,7 +1695,7 @@ private struct SurfacesPage: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                Link(destination: URL(string: "https://primetime.tools/docs/labels")!) {
+                Link(destination: URL(string: "https://momenttally.com/docs/labels")!) {
                     Label("Read the full labelling guide", systemImage: "book")
                 }
                 .font(.callout)

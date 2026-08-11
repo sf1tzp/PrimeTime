@@ -63,7 +63,7 @@ import Testing
         try await source.createLabelDefinition(key: "work-type", color: "#445566")
         for i in 0..<5 {
             try await finished(source, start: 1_000 + i * 100, end: 1_050 + i * 100,
-                               labels: [SpanLabel(key: "repo", value: "primetime-\(i)")],
+                               labels: [SpanLabel(key: "repo", value: "moment-tally-\(i)")],
                                note: "finished \(i)")
         }
         _ = try await source.startTimeSpan(start: date(2_000),

@@ -24,14 +24,14 @@ import Testing
         try await backend.createLabelDefinition(key: "type", color: "#00ff00")
         let finished = try await backend.startTimeSpan(
             start: date(1_000_000),
-            labels: [SpanLabel(key: "repo", value: "primetime"),
+            labels: [SpanLabel(key: "repo", value: "moment-tally"),
                      SpanLabel(key: "type", value: "review")],
             note: "reviewing")
         _ = try await backend.stopTimeSpan(id: finished.id, end: date(1_003_600))
         let running = try await backend.startTimeSpan(
             start: date(1_010_000), labels: [], note: "")
-        try backend.saveValueColors([ValueColorKey.join("repo", "primetime"): "#123456"])
-        let set = TagSet(name: "Review", tags: [TagRow(key: "repo", value: "primetime")],
+        try backend.saveValueColors([ValueColorKey.join("repo", "moment-tally"): "#123456"])
+        let set = TagSet(name: "Review", tags: [TagRow(key: "repo", value: "moment-tally")],
                          symbolName: "hammer")
         // A quick-labels-only set: no members, card colour of its own.
         let gaming = TagSet(name: "Gaming", symbolName: "gamecontroller",
@@ -48,7 +48,7 @@ import Testing
         #expect(export.timeSpans == [
             LocalExport.Span(id: Int64(finished.id), start: date(1_000_000),
                              end: date(1_003_600), note: "reviewing",
-                             labels: [.init(key: "repo", value: "primetime"),
+                             labels: [.init(key: "repo", value: "moment-tally"),
                                       .init(key: "type", value: "review")]),
             LocalExport.Span(id: Int64(running.id), start: date(1_010_000),
                              end: nil, note: "", labels: []),
@@ -59,12 +59,12 @@ import Testing
             LabelDefinition(key: "type", color: "#00ff00"),
         ])
         #expect(export.valueColors == [
-            LocalExport.ValueColor(key: "repo", value: "primetime", color: "#123456"),
+            LocalExport.ValueColor(key: "repo", value: "moment-tally", color: "#123456"),
         ])
         #expect(export.labelSets == [
             LocalExport.LabelSet(id: set.id.uuidString, name: "Review",
                                  symbol: "hammer", color: nil,
-                                 labels: [.init(key: "repo", value: "primetime")]),
+                                 labels: [.init(key: "repo", value: "moment-tally")]),
             LocalExport.LabelSet(id: gaming.id.uuidString, name: "Gaming",
                                  symbol: "gamecontroller", color: "#aabbcc",
                                  labels: []),

@@ -16,7 +16,7 @@ struct HelpView: View {
                     HelpSectionCard(section: section, isExpanded: binding(for: section.id))
                 }
                 AcknowledgementsCard(isExpanded: binding(for: AcknowledgementsCard.id))
-                Text("PrimeTime \(Self.versionString)")
+                Text("Moment Tally \(Self.versionString)")
                     .font(.footnote)
                     .foregroundStyle(.tertiary)
                     .padding(.top, 6)
@@ -202,7 +202,7 @@ private struct HelpSection: Identifiable {
                     heading: "Mirror systems you'll join against",
                     detail: """
                     To line time up with source control, use the forge's exact naming \
-                    (`repo: sfi/PrimeTime`, not `repo: primetime`) — joins are literal.
+                    (`repo: sfi/moment-tally`, not `repo: moment-tally`) — joins are literal.
                     """),
                 Rule(
                     heading: "Decide what unlabelled means",
@@ -212,14 +212,14 @@ private struct HelpSection: Identifiable {
                     """),
             ],
             footer: """
-            A starter schema that covers most work: `repo: sfi/PrimeTime`, \
+            A starter schema that covers most work: `repo: sfi/moment-tally`, \
             `feat: label-review`, `type: review`, `client: acme` — hours per client, \
             review share per repo, and span-to-PR joins, with no hierarchy decided up \
             front. Start smaller if in doubt: a key is easy to add and painful to \
             rename (though Label Review can rescue a drifted schema after the fact).
 
             The full guide, with worked examples of schemas going wrong, is at \
-            [primetime.tools/docs/labels](https://primetime.tools/docs/labels).
+            [momenttally.com/docs/labels](https://momenttally.com/docs/labels).
             """),
         HelpSection(
             title: "Pro-Moves: set patterns that work",
@@ -423,7 +423,7 @@ struct Acknowledgement: Identifiable {
                 resource: "Sparkle-MIT"),
             Acknowledgement(
                 name: "swift-argument-parser",
-                detail: "command parsing in the bundled primetime CLI",
+                detail: "command parsing in the bundled moment-tally CLI",
                 license: "Apache License 2.0",
                 resource: "SwiftArgumentParser-Apache"),
         ]
@@ -462,7 +462,7 @@ struct AcknowledgementsCard: View {
 
             if isExpanded {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("PrimeTime builds on these open-source components.")
+                    Text("Moment Tally builds on these open-source components.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                     ForEach(Acknowledgement.all) { AcknowledgementRow(item: $0) }

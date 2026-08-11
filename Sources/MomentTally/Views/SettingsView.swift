@@ -196,7 +196,7 @@ struct GeneralSettingsView: View {
         if model.loginItem.isAvailable {
             @Bindable var loginItem = model.loginItem
             Section("Login") {
-                Toggle("Start PrimeTime at login", isOn: $loginItem.startsAtLogin)
+                Toggle("Start Moment Tally at login", isOn: $loginItem.startsAtLogin)
                 if loginItem.requiresApproval {
                     // Switched off behind the app's back — only System
                     // Settings can turn it back on.
@@ -208,7 +208,7 @@ struct GeneralSettingsView: View {
                         Button("Open Login Items…") { loginItem.openSystemSettings() }
                     }
                 } else {
-                    Text("Opens PrimeTime in the menu bar when you log in to this Mac. A per-Mac setting — it doesn’t sync.")
+                    Text("Opens Moment Tally in the menu bar when you log in to this Mac. A per-Mac setting — it doesn’t sync.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -310,7 +310,7 @@ struct GeneralSettingsView: View {
         panel.allowedContentTypes = [.json]
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
-        panel.nameFieldStringValue = "PrimeTime Export \(Self.filenameDate.string(from: Date())).json"
+        panel.nameFieldStringValue = "Moment Tally Export \(Self.filenameDate.string(from: Date())).json"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         exportedTo = nil
         exportError = nil

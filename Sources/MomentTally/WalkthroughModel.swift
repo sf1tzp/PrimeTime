@@ -56,22 +56,22 @@ final class WalkthroughModel {
     /// The other meetings deliberately carry no `repo` — "decide what
     /// untagged means" is part of the story.
     static let baseWeek: [DemoSpan] = [
-        DemoSpan(id: 0, day: 0, startHour: 9, hours: 2.5, labels: week("primetime", "onboarding", "development", "sfi")),
+        DemoSpan(id: 0, day: 0, startHour: 9, hours: 2.5, labels: week("moment-tally", "onboarding", "development", "sfi")),
         DemoSpan(id: 1, day: 0, startHour: 11.5, hours: 0.5, labels: [SpanLabel(key: "type", value: "meeting"), SpanLabel(key: "client", value: "sfi")]),
-        DemoSpan(id: 2, day: 0, startHour: 13, hours: 3, labels: week("primetime", "charts", "development", "sfi")),
+        DemoSpan(id: 2, day: 0, startHour: 13, hours: 3, labels: week("moment-tally", "charts", "development", "sfi")),
         DemoSpan(id: 3, day: 1, startHour: 9, hours: 1, labels: [SpanLabel(key: "type", value: "meeting"), SpanLabel(key: "client", value: "acme")]),
         DemoSpan(id: 4, day: 1, startHour: 10, hours: 3, labels: week("acme-app", "billing", "development", "acme")),
         DemoSpan(id: 5, day: 1, startHour: 14, hours: 2, labels: week("acme-app", "billing", "review", "acme")),
-        DemoSpan(id: 6, day: 2, startHour: 9, hours: 3, labels: week("primetime", "onboarding", "development", "sfi")),
+        DemoSpan(id: 6, day: 2, startHour: 9, hours: 3, labels: week("moment-tally", "onboarding", "development", "sfi")),
         DemoSpan(id: 7, day: 2, startHour: 13, hours: 2, labels: week("website", "landing", "development", "sfi")),
-        DemoSpan(id: 8, day: 2, startHour: 15, hours: 1, labels: week("primetime", "charts", "review", "sfi")),
+        DemoSpan(id: 8, day: 2, startHour: 15, hours: 1, labels: week("moment-tally", "charts", "review", "sfi")),
         DemoSpan(id: 9, day: 3, startHour: 9, hours: 2, labels: week("acme-app", "billing", "support", "acme")),
-        DemoSpan(id: 10, day: 3, startHour: 11, hours: 1, labels: week("primetime", "onboarding", "meeting", "sfi")),
-        DemoSpan(id: 11, day: 3, startHour: 13, hours: 4, labels: week("primetime", "onboarding", "development", "sfi")),
+        DemoSpan(id: 10, day: 3, startHour: 11, hours: 1, labels: week("moment-tally", "onboarding", "meeting", "sfi")),
+        DemoSpan(id: 11, day: 3, startHour: 13, hours: 4, labels: week("moment-tally", "onboarding", "development", "sfi")),
         DemoSpan(id: 12, day: 4, startHour: 9, hours: 2, labels: week("website", "landing", "review", "sfi")),
         DemoSpan(id: 13, day: 4, startHour: 11, hours: 1, labels: week("acme-app", "billing", "meeting", "acme")),
-        DemoSpan(id: 14, day: 4, startHour: 13, hours: 2, labels: week("primetime", "charts", "development", "sfi")),
-        DemoSpan(id: 15, day: 4, startHour: 15, hours: 1, labels: [SpanLabel(key: "repo", value: "primetime"), SpanLabel(key: "type", value: "ops"), SpanLabel(key: "client", value: "sfi")]),
+        DemoSpan(id: 14, day: 4, startHour: 13, hours: 2, labels: week("moment-tally", "charts", "development", "sfi")),
+        DemoSpan(id: 15, day: 4, startHour: 15, hours: 1, labels: [SpanLabel(key: "repo", value: "moment-tally"), SpanLabel(key: "type", value: "ops"), SpanLabel(key: "client", value: "sfi")]),
         DemoSpan(id: 16, day: 5, startHour: 10, hours: 2, labels: week("website", "landing", "development", "sfi")),
     ]
 
@@ -85,7 +85,7 @@ final class WalkthroughModel {
 
     // MARK: Schema smells
 
-    /// The four failure modes from the labels guide (primetime.tools/docs/
+    /// The four failure modes from the labels guide (momenttally.com/docs/
     /// labels), each a reversible corruption of the demo week. The copy lives
     /// here so every walkthrough presentation tells the identical story.
     enum SchemaSmell: String, CaseIterable, Identifiable {
@@ -112,7 +112,7 @@ final class WalkthroughModel {
             case .driftingKeys:
                 "A few recent spans say proj, the rest of the week says repo. Each chart only sees its own key; history silently splits into two series."
             case .approximateNaming:
-                "primetime and PrimeTime are the same project to you, but joins are exact — the charts count them as two."
+                "moment-tally and MomentTally are the same project to you, but joins are exact — the charts count them as two."
             }
         }
 
@@ -122,7 +122,7 @@ final class WalkthroughModel {
             case .unboundedValues:
                 "Values should mirror something — a feature, a ticket, a system you join against. feat: issue-12345 is great; if it helps you stay organized across systems, go with it. Mash that mirrors nothing belongs in the note."
             case .fusedFacts:
-                "One fact per key — repo: primetime, feat: onboarding, type: feature — so every question keeps an axis to group by."
+                "One fact per key — repo: moment-tally, feat: onboarding, type: feature — so every question keeps an axis to group by."
             case .driftingKeys:
                 "Pick key names once and stick to them. Label Review can merge a drifted key back into one series."
             case .approximateNaming:
@@ -148,7 +148,7 @@ final class WalkthroughModel {
             switch self {
             case .unboundedValues:
                 // Ticket numbers are the *forge-mirroring* pattern, not the
-                // smell (primetime.tools/case-study/joined-to-what-shipped).
+                // smell (momenttally.com/case-study/joined-to-what-shipped).
                 [("feat: onboarding", true),
                  ("feat: issue-12345", true),
                  ("feat: asdklfjasdf", false)]
@@ -167,7 +167,7 @@ final class WalkthroughModel {
             case .driftingKeys:
                 "Hours go missing: only the repo half of the week matches — the proj half silently drops out."
             case .approximateNaming:
-                "A consistency problem: primetime and PrimeTime count as two, and joins with other systems stop lining up."
+                "A consistency problem: moment-tally and MomentTally count as two, and joins with other systems stop lining up."
             }
         }
     }
@@ -212,7 +212,7 @@ final class WalkthroughModel {
                 return out
             }
         case .approximateNaming:
-            let nearMisses = ["primetime": "PrimeTime", "acme-app": "acme_app"]
+            let nearMisses = ["moment-tally": "MomentTally", "acme-app": "acme_app"]
             return spans.map { span in
                 // Only some spans drift — that's what makes it split rather
                 // than rename.
@@ -374,11 +374,11 @@ final class WalkthroughModel {
 
     /// Fixed per-`key: value` colours for every base-week value, modelled on
     /// `DemoSeed.valueColors` (reusing its hexes where the values overlap) —
-    /// colouring by pair rather than key is PrimeTime's headline improvement,
+    /// colouring by pair rather than key is Moment Tally's headline improvement,
     /// so the walkthrough demos it too, still without touching the user's
     /// palette.
     private static let valueColors: [String: String] = [
-        ValueColorKey.join("repo", "primetime"): "#f7b060ff",
+        ValueColorKey.join("repo", "moment-tally"): "#f7b060ff",
         ValueColorKey.join("repo", "website"): "#42a5f5",
         ValueColorKey.join("repo", "acme-app"): "#66bb6a",
         ValueColorKey.join("feat", "onboarding"): "#00acc1",
@@ -407,7 +407,7 @@ final class WalkthroughModel {
         // and chips read as distinct hues — the hash fallback happily
         // hands neighbours the same colour. Demo-seed hexes reused where
         // the values overlap (baldurs-gate, the-wayfinder).
-        ValueColorKey.join("repo", "sfi/PrimeTime"): "#00add8",   // traggo blue
+        ValueColorKey.join("repo", "sfi/moment-tally"): "#00add8",   // traggo blue
         ValueColorKey.join("course", "linear-algebra"): "#42a5f5",
         ValueColorKey.join("type", "lecture"): "#43a047",
         ValueColorKey.join("type", "group-session"): "#ffa726",
@@ -465,7 +465,7 @@ final class WalkthroughModel {
     /// The labels on the mocked running span. Starts mid-thought so the very
     /// first interaction is adding the missing pill.
     var mockupLabels: [SpanLabel] = [
-        SpanLabel(key: "repo", value: "primetime"),
+        SpanLabel(key: "repo", value: "moment-tally"),
         SpanLabel(key: "type", value: "feature"),
     ]
 

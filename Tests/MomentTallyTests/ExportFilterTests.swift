@@ -38,10 +38,10 @@ import Testing
     // MARK: Selector parsing
 
     @Test func selectorsSplitOnTheFirstColon() throws {
-        let pair = try #require(LabelSelector("repo:sfi/PrimeTime"))
+        let pair = try #require(LabelSelector("repo:sfi/moment-tally"))
         #expect(pair.key == "repo")
-        #expect(pair.value == "sfi/PrimeTime")
-        #expect(pair.rawValue == "repo:sfi/PrimeTime")
+        #expect(pair.value == "sfi/moment-tally")
+        #expect(pair.rawValue == "repo:sfi/moment-tally")
 
         // Values may contain ":" — only the first one splits.
         let colons = try #require(LabelSelector("url:https://example.com"))

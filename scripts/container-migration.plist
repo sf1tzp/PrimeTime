@@ -17,7 +17,7 @@
 	     re-test, delete the container folder and relaunch. -->
 	<key>Move</key>
 	<array>
-		<!-- The whole app-data folder: primetime.sqlite plus its -wal/-shm
+		<!-- The whole app-data folder: momenttally.sqlite plus its -wal/-shm
 		     journal siblings, and demo.sqlite (#39) if one exists. -->
 		<string>${ApplicationSupport}/com.streetfortress.MomentTally</string>
 	</array>

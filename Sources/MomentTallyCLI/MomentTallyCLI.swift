@@ -3,14 +3,14 @@ import Foundation
 import GRDB
 import MomentTallyCore
 
-/// The scriptable surface (#80): `primetime start/stop/status` for scripts
-/// and agent hooks (#79), `primetime export` for composable data access.
-/// Data goes to stdout; logs, progress, and errors go to stderr.
+/// The scriptable surface (#80): `moment-tally start/stop/status` for
+/// scripts and agent hooks (#79), `moment-tally export` for composable data
+/// access. Data goes to stdout; logs, progress, and errors go to stderr.
 @main
-struct PrimeTimeCommand: AsyncParsableCommand {
+struct MomentTallyCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "moment-tally",
-        abstract: "Scriptable access to the PrimeTime store: timer control and export.",
+        abstract: "Scriptable access to the Moment Tally store: timer control and export.",
         subcommands: [Start.self, Stop.self, Status.self, Export.self])
 }
 
@@ -33,7 +33,7 @@ func mappingErrors<T>(_ body: () async throws -> T) async throws -> T {
     } catch let exit as ExitCode {
         throw exit
     } catch {
-        log("primetime: \(error.localizedDescription)")
+        log("moment-tally: \(error.localizedDescription)")
         throw ExitCode(2)
     }
 }
@@ -43,7 +43,7 @@ func mappingErrors<T>(_ body: () async throws -> T) async throws -> T {
 /// Where the store lives and how to open it, shared by every subcommand.
 struct StoreOptions: ParsableArguments {
     @Option(name: .customLong("db"),
-            help: ArgumentHelp("Path to a primetime.sqlite store.",
+            help: ArgumentHelp("Path to a momenttally.sqlite store.",
                                discussion: "Defaults to the installed app's store, "
                                    + "then a dev build's; MOMENTTALLY_DB overrides."))
     var db: String?
@@ -57,19 +57,35 @@ struct StoreOptions: ParsableArguments {
     /// container comes first because the sandboxed app *moves* the store
     /// there on first launch (container-migration.plist) — anything left at
     /// the old path afterwards is another build's, not stale data.
+    ///
+    /// The pre-rename identity (#195) trails the current one: data that
+    /// scripts/migrate-container.sh has not moved yet still lives under the
+    /// tools.primetime.PrimeTime paths, and each directory may hold either
+    /// the current or the legacy store filename.
     static func candidateURLs() throws -> [URL] {
-        let bundleId = "tools.primetime.PrimeTime"
+        let bundleId = "com.streetfortress.MomentTally"
+        let legacyBundleId = "tools.primetime.PrimeTime"
         let support = try FileManager.default.url(for: .applicationSupportDirectory,
                                                   in: .userDomainMask,
                                                   appropriateFor: nil, create: false)
-        let containerSupport = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Containers/\(bundleId)"
-                + "/Data/Library/Application Support", isDirectory: true)
-        return [
-            containerSupport.appendingPathComponent(bundleId, isDirectory: true),
+        func containerSupport(_ id: String) -> URL {
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Containers/\(id)"
+                    + "/Data/Library/Application Support", isDirectory: true)
+        }
+        let directories = [
+            containerSupport(bundleId).appendingPathComponent(bundleId, isDirectory: true),
             support.appendingPathComponent(bundleId, isDirectory: true),
+            support.appendingPathComponent("MomentTally", isDirectory: true),
+            containerSupport(legacyBundleId)
+                .appendingPathComponent(legacyBundleId, isDirectory: true),
+            support.appendingPathComponent(legacyBundleId, isDirectory: true),
             support.appendingPathComponent("PrimeTime", isDirectory: true),
-        ].map { $0.appendingPathComponent("primetime.sqlite") }
+        ]
+        return directories.flatMap {
+            [$0.appendingPathComponent("momenttally.sqlite"),
+             $0.appendingPathComponent("primetime.sqlite")]
+        }
     }
 
     /// Resolve to an *existing* store. The CLI never creates one: a fresh
@@ -89,7 +105,7 @@ struct StoreOptions: ParsableArguments {
             return found
         }
         throw LocalBackend.Error(message: """
-            No PrimeTime store found. Looked for:
+            No Moment Tally store found. Looked for:
             \(candidates.map { "  " + $0.path }.joined(separator: "\n"))
             Is the app installed? (Or point at a store with --db / MOMENTTALLY_DB.)
             """)
@@ -114,7 +130,7 @@ struct StoreOptions: ParsableArguments {
 func notifyStoreChanged() {
     #if canImport(Darwin)
     DistributedNotificationCenter.default().postNotificationName(
-        .primeTimeStoreDidChange, object: nil, userInfo: nil, deliverImmediately: true)
+        .momentTallyStoreDidChange, object: nil, userInfo: nil, deliverImmediately: true)
     #endif
 }
 

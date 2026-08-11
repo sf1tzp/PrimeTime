@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 import MomentTallyCore
 
-// MARK: - primetime export
+// MARK: - moment-tally export
 
 struct Export: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -10,7 +10,7 @@ struct Export: AsyncParsableCommand {
         discussion: """
             The same schema-versioned document as the app's Settings export
             (deterministic key order, pretty-printed, span ids included), so
-            it pipes: `primetime export > backup.json`, `primetime export | jq`.
+            it pipes: `moment-tally export > backup.json`, `moment-tally export | jq`.
 
             --from/--to bound the export to local days (inclusive); a span
             counts when it overlaps the range, so one crossing midnight into

@@ -9,7 +9,7 @@ enum SyncStatus: Equatable {
     case error(String)
 }
 
-/// Reconciles the local store with a PrimeTime server (#33). Local-first:
+/// Reconciles the local store with a Moment Tally server (#33). Local-first:
 /// every write lands in SQLite immediately and this engine runs after the
 /// fact — pull the label-definition / label-set / preference snapshots and
 /// the timespan delta feed, merge with last-writer-wins per record, then
