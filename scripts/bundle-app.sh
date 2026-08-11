@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Assemble a PrimeTime.app bundle from the SwiftPM release build.
+# Assemble a MomentTally.app bundle from the SwiftPM release build.
 #
-# The bundle ships under the PrimeTime identity (#44); target and binary
-# are also named PrimeTime since the rename, so the copy is 1:1.
+# The bundle ships under the Moment Tally identity (#44); target and binary
+# are also named MomentTally since the rename, so the copy is 1:1.
 #
 # Two variants (#115):
-#   direct  (default) dist/PrimeTime.app — Sparkle + bundled CLI, signed by
+#   direct  (default) dist/MomentTally.app — Sparkle + bundled CLI, signed by
 #           sign-app.sh with Developer ID and notarized.
-#   mas     dist/mas/PrimeTime.app — the Mac App Store build: no Sparkle
+#   mas     dist/mas/MomentTally.app — the Mac App Store build: no Sparkle
 #           (the store owns updates; shipping an updater is a rejection),
 #           no bundled CLI (a cask concept the store can't install), and
 #           the store-only Info.plist tweaks. Signed + packaged by
@@ -23,7 +23,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="PrimeTime"
+APP_NAME="MomentTally"
 VARIANT="${VARIANT:-direct}"
 case "$VARIANT" in
     direct) APP="$ROOT/dist/$APP_NAME.app" ;;
@@ -35,14 +35,14 @@ VERSION="${VERSION:-$(git -C "$ROOT" describe --tags 2>/dev/null || echo 0.0.0)}
 VERSION="${VERSION#v}"
 BUILD="$(git -C "$ROOT" rev-list --count HEAD)"
 
-# The MAS variant builds with PRIMETIME_MAS=1 (Package.swift drops the
+# The MAS variant builds with MOMENTTALLY_MAS=1 (Package.swift drops the
 # Sparkle product and defines MAS_BUILD) in its own scratch path, so object
 # files compiled with different flags never mix with the direct build's.
 BUILD_ENV=()
 BUILD_FLAGS=()
 SCRATCH="$ROOT/.build"
 if [[ "$VARIANT" == mas ]]; then
-    BUILD_ENV=(PRIMETIME_MAS=1)
+    BUILD_ENV=(MOMENTTALLY_MAS=1)
     SCRATCH="$ROOT/.build/mas"
     BUILD_FLAGS=(--scratch-path "$SCRATCH")
 fi
@@ -78,13 +78,14 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 lipo_bin "$APP_NAME" "$APP/Contents/MacOS/$APP_NAME"
 if [[ "$VARIANT" == direct ]]; then
     # The scriptable CLI (#80) rides in the bundle under its user-facing name —
-    # the SwiftPM product is primetime-cli only to dodge the case-insensitive
-    # .build collision with the app binary. Users get it on PATH via the cask's
-    # binary stanza (or a manual symlink to Contents/Helpers/primetime).
+    # the SwiftPM product is moment-tally-cli to preserve the guard against a
+    # case-insensitive .build collision with the app binary. Users get it on
+    # PATH via the cask's binary stanza (or a manual symlink to
+    # Contents/Helpers/moment-tally).
     # Direct-only: sandboxed store apps can't install CLI tools, so the cask
     # channel owns the CLI (#115).
     mkdir -p "$APP/Contents/Helpers"
-    lipo_bin primetime-cli "$APP/Contents/Helpers/primetime"
+    lipo_bin moment-tally-cli "$APP/Contents/Helpers/moment-tally"
     # Sparkle rides along for auto-update (#46) — SwiftPM drops the framework
     # next to the binary; the bundled binary reaches this copy via the
     # @executable_path/../Frameworks rpath set in Package.swift.
@@ -101,8 +102,8 @@ cp "$ROOT/scripts/container-migration.plist" \
 # The SwiftPM resource bundle (brand font + masthead icon). Brand.resources
 # looks here — swift build's Bundle.module accessor does NOT check
 # Contents/Resources, only the .app root and the builder's absolute .build path.
-ditto "$REL/PrimeTime_PrimeTime.bundle" \
-      "$APP/Contents/Resources/PrimeTime_PrimeTime.bundle"
+ditto "$REL/MomentTally_MomentTally.bundle" \
+      "$APP/Contents/Resources/MomentTally_MomentTally.bundle"
 sed -e "s/@VERSION@/$VERSION/" -e "s/@BUILD@/$BUILD/" \
     "$ROOT/scripts/Info.plist.in" > "$APP/Contents/Info.plist"
 if [[ "$VARIANT" == mas ]]; then

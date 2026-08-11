@@ -2,10 +2,10 @@ build:
   swift build
 
 run:
-  ./.build/debug/PrimeTime
+  ./.build/debug/MomentTally
 
 demo:
-  ./.build/debug/PrimeTime --demo
+  ./.build/debug/MomentTally --demo
 
 # --- Release assets (capture pipeline) ---
 
@@ -25,7 +25,7 @@ export-captures *flags:
 
 # --- Distribution (#44) ---
 
-# Assemble dist/PrimeTime.app from a release build (arm64-only).
+# Assemble dist/MomentTally.app from a release build (arm64-only).
 bundle:
   scripts/bundle-app.sh
 
@@ -35,23 +35,23 @@ bundle:
 # Run `just sign-dist "TraggoMenuApp Dev"` for a local pipeline check without
 # the Developer ID cert (spctl will reject it, codesign --verify still passes).
 # NB the sandbox activates for dev-signed builds too: the first launch moves
-# real app data into ~/Library/Containers/tools.primetime.PrimeTime (see
+# real app data into ~/Library/Containers/com.streetfortress.MomentTally (see
 # scripts/container-migration.plist).
 sign-dist identity="Developer ID Application: Steven Fitzpatrick (2GY54R95TD)": bundle
-  scripts/sign-app.sh dist/PrimeTime.app "{{identity}}"
+  scripts/sign-app.sh dist/MomentTally.app "{{identity}}"
 
 # Submit the signed bundle for notarization and staple the ticket. The zip is
 # only the submission vehicle; the distributable is repacked post-staple by
-# `just release`. One-time setup: xcrun notarytool store-credentials primetime-notary
-notarize profile="primetime-notary":
-  ditto -c -k --keepParent dist/PrimeTime.app dist/notarize-upload.zip
+# `just release`. One-time setup: xcrun notarytool store-credentials momenttally-notary
+notarize profile="momenttally-notary":
+  ditto -c -k --keepParent dist/MomentTally.app dist/notarize-upload.zip
   xcrun notarytool submit dist/notarize-upload.zip --keychain-profile {{profile}} --wait
-  xcrun stapler staple dist/PrimeTime.app
+  xcrun stapler staple dist/MomentTally.app
 
 # Gatekeeper's verdict on the bundle (passes only once signed with a Developer
 # ID cert and notarized; the dev cert is expected to fail here).
 assess:
-  spctl --assess --type execute --verbose dist/PrimeTime.app
+  spctl --assess --type execute --verbose dist/MomentTally.app
 
 
 # Tag HEAD for release and push the tag. Accepts "1.2.3" or "v1.2.3" — any
@@ -74,7 +74,7 @@ tag version:
 # --- Release (#45) ---
 
 # Full pipeline from an exact vX.Y.Z tag on HEAD: build → sign → notarize →
-# staple → package dist/PrimeTime-<version>.zip → appcast → GitHub release on
+# staple → package dist/MomentTally-<version>.zip → appcast → GitHub release on
 # the public mirror → cask bump on sf1tzp/homebrew-tap. Pass --no-publish to
 # stop after the appcast.
 release *flags:
@@ -82,7 +82,7 @@ release *flags:
 
 # --- Mac App Store variant (#115) ---
 
-# Assemble dist/mas/PrimeTime.app: the store build — sandboxed like the
+# Assemble dist/mas/MomentTally.app: the store build — sandboxed like the
 # direct one, but with no Sparkle (the store owns updates), no bundled CLI
 # (that stays a cask concept), and the store-only Info.plist keys.
 bundle-mas:
@@ -94,7 +94,7 @@ bundle-mas:
 # provisioning profile (MAS_PROFILE=path/to/profile). App Review replaces
 # notarization on this channel, so the pkg uploads as-is.
 package-mas app_id="Apple Distribution" pkg_id="Mac Installer Distribution": bundle-mas
-  scripts/package-mas.sh dist/mas/PrimeTime.app "{{app_id}}" "{{pkg_id}}"
+  scripts/package-mas.sh dist/mas/MomentTally.app "{{app_id}}" "{{pkg_id}}"
 
 # --- Server distribution (#75) ---
 

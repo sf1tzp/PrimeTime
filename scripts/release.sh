@@ -8,14 +8,14 @@
 #   sign-dist  release build + .app assembly + Developer ID signing
 #   notarize   notarytool submit, wait, staple the ticket
 #   assess     Gatekeeper's verdict on the stapled bundle
-#   package    dist/PrimeTime-<version>.zip of the stapled bundle
+#   package    dist/MomentTally-<version>.zip of the stapled bundle
 #              (zip over DMG — Sparkle appcasts consume zips directly)
 #   appcast    EdDSA-sign the zip and generate dist/appcast/appcast.xml (#46);
 #              the app's SUFeedURL is the mirror's stable
 #              releases/latest/download/appcast.xml redirect, so publishing
 #              the appcast as a release asset *is* the feed update
 #   publish    GitHub release on the public mirror: artifact, appcast, notes
-#   cask bump  point sf1tzp/homebrew-tap's primetime cask at the new release
+#   cask bump  point sf1tzp/homebrew-tap's moment-tally cask at the new release
 #
 # Versioning: semver git tags (vX.Y.Z) are the source of truth. bundle-app.sh
 # stamps the tag into CFBundleShortVersionString and the commit count into
@@ -30,11 +30,11 @@
 # CLI-free bundle and the signed .pkg, uploaded via Transporter. App Review
 # replaces the notarize/staple/assess steps on that channel, and the
 # appcast/cask publishing here plays no part. Both channels are sandboxed
-# with the same containment (scripts/PrimeTime*.entitlements).
+# with the same containment (scripts/MomentTally*.entitlements).
 #
 # Secrets stay in the login keychain — the "Developer ID Application"
-# identity and the notarytool profile ("primetime-notary"; one-time setup:
-# xcrun notarytool store-credentials primetime-notary). Publishing needs the
+# identity and the notarytool profile ("momenttally-notary"; one-time setup:
+# xcrun notarytool store-credentials momenttally-notary). Publishing needs the
 # gh CLI authenticated against github.com (brew install gh && gh auth login).
 #
 # Usage:
@@ -44,7 +44,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-MIRROR="sf1tzp/PrimeTime"
+MIRROR="sf1tzp/moment-tally"
 
 PUBLISH=1
 for arg in "$@"; do
@@ -82,7 +82,7 @@ if command -v jq >/dev/null && [[ -f "$CAP_MANIFEST" ]]; then
     CAP_COMMIT="$(jq -r '.commit // empty' "$CAP_MANIFEST")"
     if [[ -n "$CAP_COMMIT" ]] && git -C "$ROOT" cat-file -e "$CAP_COMMIT^{commit}" 2>/dev/null; then
         CHANGED="$(git -C "$ROOT" diff --name-only "$CAP_COMMIT"..HEAD -- \
-                       Sources/PrimeTime Sources/PrimeTimeCore | wc -l | tr -d ' ')"
+                       Sources/MomentTally Sources/MomentTallyCore | wc -l | tr -d ' ')"
         if [[ "$CHANGED" != 0 ]]; then
             echo "note: $CHANGED UI source files changed since the last capture batch" \
                  "($(jq -r .describe "$CAP_MANIFEST"), $(jq -r .captured "$CAP_MANIFEST"))" \
@@ -107,8 +107,8 @@ just --justfile "$ROOT/justfile" assess
 # landing in Sparkle.framework's root break the code seal ("unsealed contents
 # present in the root directory of an embedded framework"), so Gatekeeper
 # rejects the quarantined app with the could-not-verify-malware dialog (#112).
-ARTIFACT="$ROOT/dist/PrimeTime-$VERSION.zip"
-ditto -c -k --norsrc --keepParent "$ROOT/dist/PrimeTime.app" "$ARTIFACT"
+ARTIFACT="$ROOT/dist/MomentTally-$VERSION.zip"
+ditto -c -k --norsrc --keepParent "$ROOT/dist/MomentTally.app" "$ARTIFACT"
 echo "==> packaged $ARTIFACT"
 
 # --- release notes -------------------------------------------------------------
@@ -118,7 +118,7 @@ echo "==> packaged $ARTIFACT"
 NOTES="$ROOT/dist/RELEASE_NOTES.md"
 PREV="$(git -C "$ROOT" describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)"
 {
-    echo "## PrimeTime $VERSION"
+    echo "## Moment Tally $VERSION"
     echo
     git -C "$ROOT" log --format='- %s' "${PREV:+$PREV..}$TAG"
 } > "$NOTES"
@@ -134,7 +134,7 @@ SPARKLE_BIN="$("$ROOT/scripts/sparkle-tools.sh")"
 APPCAST_DIR="$ROOT/dist/appcast"
 rm -rf "$APPCAST_DIR" && mkdir -p "$APPCAST_DIR"
 cp "$ARTIFACT" "$APPCAST_DIR/"
-cp "$NOTES" "$APPCAST_DIR/PrimeTime-$VERSION.md"   # embedded as the entry's notes
+cp "$NOTES" "$APPCAST_DIR/MomentTally-$VERSION.md"   # embedded as the entry's notes
 "$SPARKLE_BIN/generate_appcast" \
     --download-url-prefix "https://github.com/$MIRROR/releases/download/$TAG/" \
     --link "https://github.com/$MIRROR" \
@@ -160,7 +160,7 @@ MIRROR_SHA="$(gh api "repos/$MIRROR/git/ref/tags/$TAG" --jq .object.sha 2>/dev/n
 
 gh release create "$TAG" "$ARTIFACT" "$APPCAST_DIR/appcast.xml" \
     --repo "$MIRROR" \
-    --title "PrimeTime $VERSION" \
+    --title "Moment Tally $VERSION" \
     --notes-file "$NOTES" \
     --verify-tag
 echo "==> published https://github.com/$MIRROR/releases/tag/$TAG"
@@ -176,16 +176,16 @@ TAP="sf1tzp/homebrew-tap"
 SHA256="$(shasum -a 256 "$ARTIFACT" | cut -d' ' -f1)"
 TAP_DIR="$(mktemp -d)"
 gh repo clone "$TAP" "$TAP_DIR" -- --depth 1 --quiet
-git -C "$TAP_DIR" switch -qc "primetime-$VERSION"
+git -C "$TAP_DIR" switch -qc "moment-tally-$VERSION"
 sed -i '' \
     -e "s/^  version .*/  version \"$VERSION\"/" \
     -e "s/^  sha256 .*/  sha256 \"$SHA256\"/" \
-    "$TAP_DIR/Casks/primetime.rb"
-git -C "$TAP_DIR" commit -aqm "primetime $VERSION"
-git -C "$TAP_DIR" push -qu origin "primetime-$VERSION"
-gh pr create --repo "$TAP" --head "primetime-$VERSION" \
-    --title "primetime $VERSION" \
-    --body "Automated cask bump from PrimeTime's release pipeline ($TAG)."
-gh pr merge --repo "$TAP" "primetime-$VERSION" --squash --delete-branch
+    "$TAP_DIR/Casks/moment-tally.rb"
+git -C "$TAP_DIR" commit -aqm "moment-tally $VERSION"
+git -C "$TAP_DIR" push -qu origin "moment-tally-$VERSION"
+gh pr create --repo "$TAP" --head "moment-tally-$VERSION" \
+    --title "moment-tally $VERSION" \
+    --body "Automated cask bump from Moment Tally's release pipeline ($TAG)."
+gh pr merge --repo "$TAP" "moment-tally-$VERSION" --squash --delete-branch
 rm -rf "$TAP_DIR"
 echo "==> cask bumped to $VERSION on $TAP"

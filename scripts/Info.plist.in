@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>PrimeTime</string>
+	<string>MomentTally</string>
 	<key>CFBundleIdentifier</key>
-	<string>tools.primetime.PrimeTime</string>
+	<string>com.streetfortress.MomentTally</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>PrimeTime</string>
+	<string>Moment Tally</string>
 	<key>CFBundleDisplayName</key>
-	<string>PrimeTime</string>
+	<string>Moment Tally</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleIconFile</key>
@@ -35,7 +35,7 @@
 	     "latest release asset" redirect, so the appcast rides the same
 	     release-publish step as the app archive itself. -->
 	<key>SUFeedURL</key>
-	<string>https://github.com/sf1tzp/PrimeTime/releases/latest/download/appcast.xml</string>
+	<string>https://github.com/sf1tzp/moment-tally/releases/latest/download/appcast.xml</string>
 	<!-- Public half of the EdDSA pair; the private half signs release
 	     archives from the login keychain (generate_keys, see #45). -->
 	<key>SUPublicEDKey</key>
@@ -46,7 +46,7 @@
 	<true/>
 	<!-- Sandboxed Sparkle (#115): turn on the bundled Installer.xpc, the
 	     out-of-sandbox process that actually swaps the app on disk. Pairs
-	     with the mach-lookup exceptions in PrimeTime.entitlements. The
+	     with the mach-lookup exceptions in MomentTally.entitlements. The
 	     Downloader XPC stays off — the app holds network.client itself. -->
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>

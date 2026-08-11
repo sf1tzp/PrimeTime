@@ -27,7 +27,7 @@ that capture batch reproducible instead of a per-session improvisation.
 4. `just export-captures` — copies renditions into `readme-images/` here and
    into a matching dated worktree of the website repo, which it creates from
    origin/main under `~/worktrees/primetime-website/` (the primary website
-   checkout — `$PRIMETIME_WEBSITE_DIR`, default `~/primetime-website` — is
+   checkout — `$MOMENTTALLY_WEBSITE_DIR`, default `~/primetime-website` — is
    only used as the repo to branch from, never written to). Stamps provenance
    manifests in both. Pass an explicit directory to override the destination.
 5. Review the image diffs in both worktrees, commit and push each branch, and

@@ -4,7 +4,7 @@
 <dict>
 	<!-- Container migration manifest (#115). The first time the sandboxed
 	     app launches, macOS creates its container
-	     (~/Library/Containers/tools.primetime.PrimeTime) and processes this
+	     (~/Library/Containers/com.streetfortress.MomentTally) and processes this
 	     manifest — bundle-app.sh puts it at Contents/Resources/
 	     container-migration.plist, the filename the OS looks for. Each Move
 	     entry names a pre-sandbox path relative to the home folder
@@ -19,7 +19,7 @@
 	<array>
 		<!-- The whole app-data folder: primetime.sqlite plus its -wal/-shm
 		     journal siblings, and demo.sqlite (#39) if one exists. -->
-		<string>${ApplicationSupport}/tools.primetime.PrimeTime</string>
+		<string>${ApplicationSupport}/com.streetfortress.MomentTally</string>
 	</array>
 </dict>
 </plist>

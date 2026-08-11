@@ -19,7 +19,7 @@ sign() { codesign --force --options runtime --timestamp --sign "$IDENTITY" "$@";
 
 # The app's sandbox claim (#115) — embedding it in the signature is what
 # turns the sandbox on; there is no build-time step.
-APP_ENTITLEMENTS="$ROOT/scripts/PrimeTime.entitlements"
+APP_ENTITLEMENTS="$ROOT/scripts/MomentTally.entitlements"
 
 # Hardened-runtime library validation only loads libraries from the same
 # team, and the self-signed dev cert has no Team ID — so a dev-signed app
@@ -66,7 +66,7 @@ sign "$SPARKLE"
 # *not* sandboxed: it is its own process (the app's sandbox never extends to
 # it), has no bundle identity to hang a container on, and its job is plain
 # filesystem access to the store from a terminal.
-sign "$APP/Contents/Helpers/primetime"
+sign "$APP/Contents/Helpers/moment-tally"
 sign --entitlements "$APP_ENTITLEMENTS" "$APP"
 
 codesign --verify --strict --verbose=2 "$APP"

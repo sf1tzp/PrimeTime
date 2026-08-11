@@ -2,7 +2,7 @@
 import Foundation
 import PackageDescription
 
-// Mac App Store variant (#115): `PRIMETIME_MAS=1 swift build` builds the
+// Mac App Store variant (#115): `MOMENTTALLY_MAS=1 swift build` builds the
 // store flavour. Sparkle must not merely be unused but unlinked — shipping
 // an updater framework in a store build is a rejection — so the product
 // dependency drops out of the app target and MAS_BUILD gates the sources
@@ -12,25 +12,26 @@ import PackageDescription
 // accepted cost. Always give the variant its own scratch path
 // (bundle-app.sh uses .build/mas) so object files built with different
 // flags never mix.
-let masBuild = ProcessInfo.processInfo.environment["PRIMETIME_MAS"] == "1"
+let masBuild = ProcessInfo.processInfo.environment["MOMENTTALLY_MAS"] == "1"
 
 let appDependencies: [Target.Dependency] = masBuild
-    ? ["PrimeTimeCore"]
-    : ["PrimeTimeCore", .product(name: "Sparkle", package: "Sparkle")]
+    ? ["MomentTallyCore"]
+    : ["MomentTallyCore", .product(name: "Sparkle", package: "Sparkle")]
 
 let package = Package(
-    name: "PrimeTime",
+    name: "MomentTally",
     platforms: [
         // macOS 14 gives us MenuBarExtra + the Observation framework (@Observable).
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "PrimeTime", targets: ["PrimeTime"]),
-        // The scriptable CLI (#80). The product is `primetime-cli`, not
-        // `primetime`: on a case-insensitive filesystem that binary would
-        // collide with the app's inside .build/. Distribution installs it
-        // under the plain name (see bundle-app.sh).
-        .executable(name: "primetime-cli", targets: ["PrimeTimeCLI"])
+        .executable(name: "MomentTally", targets: ["MomentTally"]),
+        // The scriptable CLI (#80). The product is `moment-tally-cli`, not
+        // `moment-tally`: keeping the -cli suffix preserves the guard against
+        // a case-insensitive .build/ collision with the app's binary (the
+        // trap the pre-rename `primetime` product would have hit).
+        // Distribution installs it under the plain name (see bundle-app.sh).
+        .executable(name: "moment-tally-cli", targets: ["MomentTallyCLI"])
     ],
     dependencies: [
         // The local store (LocalBackend.swift): SQLite chosen over SwiftData
@@ -49,16 +50,16 @@ let package = Package(
         // bookkeeping, demo seeding. The cross-module surface uses `package`
         // access, so extracting the library makes nothing public API.
         .target(
-            name: "PrimeTimeCore",
+            name: "MomentTallyCore",
             dependencies: [
                 .product(name: "GRDB", package: "GRDB.swift")
             ],
-            path: "Sources/PrimeTimeCore"
+            path: "Sources/MomentTallyCore"
         ),
         .executableTarget(
-            name: "PrimeTime",
+            name: "MomentTally",
             dependencies: appDependencies,
-            path: "Sources/PrimeTime",
+            path: "Sources/MomentTally",
             // The brand font (OFL text rides alongside) and the icon the
             // onboarding masthead draws. Resolved via Brand.resources, which
             // handles both unbundled builds (swift run) and the .app, where
@@ -90,23 +91,23 @@ let package = Package(
         ),
         // The scriptable surface (#80): export to stdout, timer start/stop/
         // status for scripts and agent hooks (#79). Talks to the same store
-        // file the app uses, through the same PrimeTimeCore code.
+        // file the app uses, through the same MomentTallyCore code.
         .executableTarget(
-            name: "PrimeTimeCLI",
+            name: "MomentTallyCLI",
             dependencies: [
-                "PrimeTimeCore",
+                "MomentTallyCore",
                 .product(name: "GRDB", package: "GRDB.swift"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ],
-            path: "Sources/PrimeTimeCLI"
+            path: "Sources/MomentTallyCLI"
         ),
         .testTarget(
-            name: "PrimeTimeTests",
+            name: "MomentTallyTests",
             // GRDB so tests can hand LocalBackend an in-memory DatabaseQueue
             // and inspect rows directly.
-            dependencies: ["PrimeTime", "PrimeTimeCore",
+            dependencies: ["MomentTally", "MomentTallyCore",
                            .product(name: "GRDB", package: "GRDB.swift")],
-            path: "Tests/PrimeTimeTests"
+            path: "Tests/MomentTallyTests"
         )
     ],
     // Tools 6.0 only for the Swift Testing integration; the code stays in the

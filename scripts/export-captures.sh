@@ -7,7 +7,7 @@
 #                  dated worktree of the website checkout
 #                  (~/worktrees/primetime-website/captures-<date>, branched
 #                  from origin/main) — the primary checkout
-#                  ($PRIMETIME_WEBSITE_DIR, default ~/primetime-website) is
+#                  ($MOMENTTALLY_WEBSITE_DIR, default ~/primetime-website) is
 #                  never written to directly, per the worktree-PR convention
 #   to: appstore → this repo (captures/appstore/) — hand-uploaded to App
 #                  Store Connect, committed for provenance like readme assets
@@ -35,9 +35,9 @@ done
 if [[ $# -ge 1 ]]; then
     WEBSITE="$1"
 else
-    REPO="${PRIMETIME_WEBSITE_DIR:-$HOME/primetime-website}"
+    REPO="${MOMENTTALLY_WEBSITE_DIR:-$HOME/primetime-website}"
     [[ -e "$REPO/.git" ]] \
-        || { echo "error: '$REPO' is not a git checkout (set PRIMETIME_WEBSITE_DIR)" >&2; exit 1; }
+        || { echo "error: '$REPO' is not a git checkout (set MOMENTTALLY_WEBSITE_DIR)" >&2; exit 1; }
     # Local date, not UTC: the capture worktree convention (captures-<date>)
     # uses local dates, and a UTC evening rollover otherwise splits the pair
     # into two differently-dated worktrees.

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Sandbox (#115), direct/Developer ID variant. Both distribution
+	     channels are sandboxed so they never diverge on containment; this
+	     file is the direct build's claim of what the app may touch, embedded
+	     into the signature by sign-app.sh. Every key here is proven needed —
+	     nothing speculative. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- Outgoing connections: sync with a self-hosted Moment Tally Server
+	     (SyncEngine), the one-shot Traggo import (#30), and Sparkle's appcast
+	     check + update download (#46). Nothing listens, so no network.server. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Powerbox: the JSON export (#57) writes to wherever the user picks in
+	     the NSSavePanel; without this key the sandbox would deny the write to
+	     the chosen path. Grants access only to files the user selects. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<!-- Sparkle 2 under sandbox: the app talks to its out-of-sandbox
+	     installer through these two mach services (status: -spks,
+	     installer: -spki); Sparkle's Info.plist key
+	     SUEnableInstallerLauncherService turns the XPC service on, these
+	     exceptions let the sandboxed app look the services up. Names are
+	     the bundle id + Sparkle's fixed suffixes.
+	     https://sparkle-project.org/documentation/sandboxing/ -->
+	<key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+	<array>
+		<string>com.streetfortress.MomentTally-spks</string>
+		<string>com.streetfortress.MomentTally-spki</string>
+	</array>
+</dict>
+</plist>

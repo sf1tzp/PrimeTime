@@ -8,7 +8,7 @@
 #                 Distribution" signs the .pkg — neither is the Developer ID
 #                 pair, and notarytool plays no part: App Review replaces
 #                 notarization for store builds.
-#   entitlements  scripts/PrimeTime-MAS.entitlements, plus the two App Store
+#   entitlements  scripts/MomentTally-MAS.entitlements, plus the two App Store
 #                 identity keys injected here (com.apple.application-identifier
 #                 = TEAMID.bundle-id, com.apple.developer.team-identifier) —
 #                 the store requires them and validates both against the
@@ -60,7 +60,7 @@ fi
 # throwaway copy so the checked-in file stays team-free.
 ENTITLEMENTS="$(mktemp -t mas-entitlements).plist"
 trap 'rm -f "$ENTITLEMENTS"' EXIT
-cp "$ROOT/scripts/PrimeTime-MAS.entitlements" "$ENTITLEMENTS"
+cp "$ROOT/scripts/MomentTally-MAS.entitlements" "$ENTITLEMENTS"
 /usr/libexec/PlistBuddy \
     -c "Add :com.apple.application-identifier string $TEAM_ID.$BUNDLE_ID" \
     -c "Add :com.apple.developer.team-identifier string $TEAM_ID" \
