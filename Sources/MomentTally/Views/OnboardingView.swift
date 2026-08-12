@@ -80,31 +80,58 @@ extension OnboardingFooter where Secondary == EmptyView {
 
 private struct WelcomeStep: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorScheme) private var colorScheme
     var onContinue: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
+            // The collapsed layout fits the fixed window with no scrollbar;
+            // the scroll view is only overflow headroom for the cards'
+            // disclosed forms.
             ScrollView {
-                VStack(spacing: 8) {
-                    // The masthead: the app icon over the branded wordmark
-                    // and the tagline, as on the website.
-                    if let icon = Brand.appIcon {
-                        Image(nsImage: icon)
+                VStack(spacing: 0) {
+                    // The masthead leads with the tagline, as on the website:
+                    // the real-face lockup renders where bundled, the system
+                    // stand-ins as fallback.
+                    if let tagline = Brand.taglineLockup(for: colorScheme) {
+                        Image(nsImage: tagline)
                             .resizable()
                             .interpolation(.high)
-                            .frame(width: 84, height: 84)
-                            .padding(.top, 40)
+                            .scaledToFit()
+                            .frame(height: 54)
+                            .accessibilityLabel("Count what counts.")
+                    } else {
+                        Text("Count what counts.")
+                            .font(Brand.promo(40))
                     }
-                    (Text("Welcome to ").font(.largeTitle.weight(.semibold))
-                        + Brand.wordmark(size: 34))
-                    Text("Count what counts.")
-                        .font(Brand.promo(16))
+                    Text("Mark the moments of your day and see where the effort goes")
+                        .font(.title3)
                         .foregroundStyle(.secondary)
-                    Text("A menu-bar time tracker where marks do the organising — no folders, no projects tree, just moments and their key: value marks.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 440)
+                        .padding(.top, 14)
+
+                    // The welcome line, demoted under the masthead. The
+                    // wordmark rides inline; its render's bottom edge is the
+                    // y-descender tip, ~17% of its height below the baseline,
+                    // so the alignment guide hoists it back onto the text's.
+                    HStack(alignment: .firstTextBaseline, spacing: 9) {
+                        Text("Welcome to Moment Tally")
+                            .font(.system(size: 28))
+                            .foregroundStyle(.secondary)
+                        // if let wordmark = Brand.wordmarkLockup(for: colorScheme) {
+                        //     Image(nsImage: wordmark)
+                        //         .resizable()
+                        //         .interpolation(.high)
+                        //         .scaledToFit()
+                        //         .frame(height: 36)
+                        //         .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 7 }
+                        //         .accessibilityLabel("Moment Tally")
+                        //         .padding(.leading, -4)
+                        //
+                        // } else {
+                        //     Brand.wordmark(size: 28)
+                        // }
+                    }
+                    .padding(.top, 56)
 
                     // The cards stay visible in demo mode, just disabled — the
                     // "a demo never reaches a real server" invariant holds via
@@ -123,10 +150,15 @@ private struct WelcomeStep: View {
                             .foregroundStyle(.tertiary)
                     }
                     .frame(maxWidth: 460)
-                    .padding(.top, 24)
+                    .padding(.top, 12)
                 }
+                // Clear of the floating traffic lights (the window is
+                // .fullSizeContentView) and roomy, per the website masthead.
+                .padding(.top, 52)
+                .padding(.bottom, 12)
                 .frame(maxWidth: .infinity)
             }
+            .scrollBounceBehavior(.basedOnSize)
             Divider()
             OnboardingFooter(primaryTitle: "Continue", primaryAction: onContinue)
         }
@@ -143,8 +175,7 @@ private struct SyncConnectCard: View {
     @State private var password = ""
 
     var body: some View {
-        WelcomeActionCard(title: Text("Connecting to a ") + Brand.wordmark(size: 13)
-                              + Text(" server?"),
+        WelcomeActionCard(title: Text("Connecting to a Moment Tally Server?"),
                           subtitle: "Sync moments, marks, and colours across your Macs.",
                           expanded: $expanded) {
             if let icon = Brand.appIcon {
@@ -210,7 +241,7 @@ private struct TraggoImportCard: View {
     var body: some View {
         @Bindable var model = model
         WelcomeActionCard(title: Text("Coming from Traggo?"),
-                          subtitle: "Copy a Traggo history — moments, mark keys, colours — into the local database.",
+                          subtitle: "Copy a Traggo history — time spans, tags, and colours — into the local database.",
                           expanded: $expanded) {
             Image(systemName: "square.and.arrow.down")
                 .font(.title3)

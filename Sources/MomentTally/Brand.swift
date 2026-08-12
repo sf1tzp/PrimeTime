@@ -14,7 +14,10 @@ import MomentTallyCore
 /// and their files must never be committed here (the repo mirrors to public
 /// GitHub, which would be redistribution). Until an app license lands,
 /// `display` approximates Morganite with SF compressed-black oblique and
-/// `promo` approximates Palm Springs with the system serif.
+/// `promo` approximates Palm Springs with the system serif. Display-size
+/// spots use the real faces anyway, as rasterised art: `wordmarkLockup` /
+/// `taglineLockup` load PNG exports of the website lockups, cleared for
+/// interim use while the app license is negotiated.
 enum Brand {
 
     /// The SwiftPM resource bundle. `swift build`'s generated `Bundle.module`
@@ -152,6 +155,28 @@ enum Brand {
     /// `NSApp.applicationIconImage` would be the generic executable icon).
     static var appIcon: NSImage? {
         resources.url(forResource: "AppIcon", withExtension: "icns")
+            .flatMap { NSImage(contentsOf: $0) }
+    }
+
+    /// The wordmark as the website actually sets it — real Morganite, ink
+    /// "Moment", gradient "Tally" — for display-size spots where `wordmark`'s
+    /// system stand-in is most visibly not the brand face. Appearance-keyed
+    /// because the renders bake their ink colour in (the masters are
+    /// dark-background exports); both variants regenerate from the repo-root
+    /// Resources/ masters via scripts/make-lockups.swift.
+    static func wordmarkLockup(for scheme: ColorScheme) -> NSImage? {
+        lockup("Wordmark", scheme)
+    }
+
+    /// "Count what counts." in the real tagline face, on the same terms as
+    /// `wordmarkLockup`.
+    static func taglineLockup(for scheme: ColorScheme) -> NSImage? {
+        lockup("Tagline", scheme)
+    }
+
+    private static func lockup(_ name: String, _ scheme: ColorScheme) -> NSImage? {
+        resources.url(forResource: "\(name)-\(scheme == .dark ? "dark" : "light")",
+                      withExtension: "png")
             .flatMap { NSImage(contentsOf: $0) }
     }
 

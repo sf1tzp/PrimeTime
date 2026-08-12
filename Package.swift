@@ -67,6 +67,14 @@ let package = Package(
             // swift build's Bundle.module accessor can't find it there.
             resources: [
                 .copy("Resources/AppIcon.icns"),
+                // Masthead lockups: rasterised exports of the real brand
+                // faces (the faces themselves stay unlicensed for embedding
+                // — see Brand.swift). Light/dark pairs; regenerate from the
+                // repo-root Resources/ masters with scripts/make-lockups.swift.
+                .copy("Resources/Wordmark-dark.png"),
+                .copy("Resources/Wordmark-light.png"),
+                .copy("Resources/Tagline-dark.png"),
+                .copy("Resources/Tagline-light.png"),
                 // License texts surfaced in Help → Acknowledgements (#115).
                 // All ride in both variants (inert text either way); what
                 // varies is the entry list in HelpView, where MAS_BUILD drops
