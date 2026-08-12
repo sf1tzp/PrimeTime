@@ -221,10 +221,10 @@ extension NSColorPanel {
 }
 
 /// Shared metrics for key: value editor rows. Every label editor (popover
-/// timer editor, Label Sets pane, log editor, the onboarding editors) follows
+/// timer editor, Tallies pane, log editor, the onboarding editors) follows
 /// the same anatomy: chip-shaped colour swatch, narrow key field with a "key"
 /// hint, standalone colon, wide value field with a "value" hint, then a
-/// borderless "+ Add Label" button directly after the rows.
+/// borderless "+ Add Mark" button directly after the rows.
 enum LabelEditorStyle {
     /// Keys are short (`repo`, `feat`) — the value field takes the rest.
     static let keyFieldWidth: CGFloat = 96
@@ -237,7 +237,7 @@ enum LabelEditorStyle {
 /// Rebuilds the window's key-view loop (the Tab order) when `token` changes.
 ///
 /// The Moment Tally window computes the loop once and never revisits it when
-/// SwiftUI inserts fields later — an "+ Add Label" row, or a whole editor
+/// SwiftUI inserts fields later — an "+ Add Mark" row, or a whole editor
 /// expanding in place — so those fields are unreachable by Tab (resizing the
 /// window doesn't recompute it either). NSPopover's window evidently does
 /// recalculate on its own, which is why the popover editor never shows this.
@@ -275,7 +275,7 @@ extension View {
 /// A stand-in for `TagColorPicker`'s well — the popover picker's swatch
 /// button face, and the swatch in editors that must not read or write the
 /// user's palette (the walkthrough's mock editor). Sized and shaped to match
-/// the native `ColorPicker` well in the window editors (Label Sets, Log), a
+/// the native `ColorPicker` well in the window editors (Tallies, Log), a
 /// 48×20 capsule, so every label-editor row reads the same.
 struct TagColorChip: View {
     let color: Color

@@ -40,7 +40,7 @@ final class SettingsWindowManager: NSObject, NSWindowDelegate {
 
         tabController.addTabViewItem(item("Launcher", symbol: "square.grid.2x2",
                                           content: LauncherView(), model: model, size: size))
-        tabController.addTabViewItem(item("Label Sets", symbol: "tag",
+        tabController.addTabViewItem(item("Tallies", symbol: "tag",
                                           content: TagSetsSettingsView(), model: model, size: size))
         tabController.addTabViewItem(item("Log", symbol: "list.bullet.rectangle",
                                           content: LogView(), model: model, size: size))
@@ -48,7 +48,7 @@ final class SettingsWindowManager: NSObject, NSWindowDelegate {
                                           content: CalendarView(), model: model, size: size))
         tabController.addTabViewItem(item("History", symbol: "chart.pie",
                                           content: HistoryChartsView(), model: model, size: size))
-        tabController.addTabViewItem(item("Label Review", symbol: "stethoscope",
+        tabController.addTabViewItem(item("Mark Review", symbol: "stethoscope",
                                           content: TagReviewView(), model: model, size: size))
         tabController.addTabViewItem(item("Help", symbol: "questionmark.circle",
                                           content: HelpView(), model: model, size: size))

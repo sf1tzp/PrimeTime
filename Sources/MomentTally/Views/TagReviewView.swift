@@ -126,7 +126,7 @@ struct TagReviewView: View {
 
             Spacer()
 
-            Text("\(review.keyStats.count) keys · \(review.scannedCount) timespans")
+            Text("\(review.keyStats.count) keys · \(review.scannedCount) moments")
                 .font(.subheadline.monospacedDigit())
                 .foregroundStyle(.secondary)
         }
@@ -320,7 +320,7 @@ struct TagReviewView: View {
                 .font(.system(size: 32))
                 .foregroundStyle(.secondary)
             Text(model.review.isScanning
-                 ? "Scanning…" : "No labels in the scanned range")
+                 ? "Scanning…" : "No marks in the scanned range")
                 .foregroundStyle(.secondary)
             Spacer()
         }
@@ -440,15 +440,15 @@ struct TagReviewView: View {
                 TagPill(key: change.fromKey, value: "", color: fromColor)
                 Text("to")
                 TagPill(key: toKey, value: "", color: toColor)
-                Text("(\(count) spans)").foregroundStyle(.secondary)
+                Text("(\(count) moments)").foregroundStyle(.secondary)
             } else if toKey == change.fromKey {
                 Text("Rename \(count)")
                 TagPill(key: change.fromKey, value: fromValue, color: fromColor)
-                Text("spans to “\(toKey):”")
+                Text("moments to “\(toKey):”")
             } else {
                 Text("Move \(count)")
                 TagPill(key: change.fromKey, value: fromValue, color: fromColor)
-                Text("spans to")
+                Text("moments to")
                 TagPill(key: toKey, value: "", color: toColor)
             }
         }
@@ -487,7 +487,7 @@ private struct RenameSheet: View {
         let count = review.movableMatches(key: key, value: value).count
         VStack(alignment: .leading, spacing: 12) {
             Text(isKeyRename
-                 ? "Rename label key “\(key)”"
+                 ? "Rename mark key “\(key)”"
                  : "Rename a value of “\(key)”")
                 .font(.headline)
 
@@ -495,8 +495,8 @@ private struct RenameSheet: View {
                 .textFieldStyle(.roundedBorder)
 
             Text(isKeyRename
-                 ? "Stages a rewrite of \(count) scanned \(count == 1 ? "timespan" : "timespans") to “\(normalizeKey(newSpelling))”, carrying the colour over. Applied from the Approve Changes pane; spans outside the scanned range keep the old key."
-                 : "Stages a rewrite of \(count) scanned \(count == 1 ? "timespan" : "timespans") carrying “\(key): \(value ?? "")”. Applied from the Approve Changes pane; spans outside the scanned range keep the old value.")
+                 ? "Stages a rewrite of \(count) scanned \(count == 1 ? "moment" : "moments") to “\(normalizeKey(newSpelling))”, carrying the colour over. Applied from the Approve Changes pane; moments outside the scanned range keep the old key."
+                 : "Stages a rewrite of \(count) scanned \(count == 1 ? "moment" : "moments") carrying “\(key): \(value ?? "")”. Applied from the Approve Changes pane; moments outside the scanned range keep the old value.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

@@ -72,13 +72,14 @@ private struct ColorPickerPanel: View {
     // Must outlive the async magnifier session or the callback never fires.
     @State private var sampler = NSColorSampler()
 
-    /// Warm-to-cool material shades in the demo palette's family, traggo blue
-    /// (#00add8) and the app's default tag blue (#2196f3) included.
+    /// Warm-to-cool through the persona palette (#201 — the website
+    /// launcher.ts hexes), with traggo blue (#00add8) and the app's default
+    /// tag blue (#2196f3) keeping their seats.
     private static let presets = [
-        "#e53935", "#d84315", "#ef6c00", "#f9a825",
-        "#7cb342", "#43a047", "#00897b", "#00add8",
-        "#2196f3", "#3949ab", "#5e35b1", "#8e24aa",
-        "#d81b60", "#6d4c41", "#546e7a", "#9e9e9e",
+        "#ff9500", "#f7b060", "#d84315", "#ff2d55",
+        "#ec407a", "#f06292", "#af52de", "#5856d6",
+        "#007aff", "#2196f3", "#42a5f5", "#30b0c7",
+        "#00add8", "#26a69a", "#34c759", "#66bb6a",
     ]
 
     var body: some View {

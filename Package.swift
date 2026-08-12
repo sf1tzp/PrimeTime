@@ -66,8 +66,6 @@ let package = Package(
             // bundle-app.sh copies the bundle into Contents/Resources —
             // swift build's Bundle.module accessor can't find it there.
             resources: [
-                .copy("Resources/BricolageGrotesque.ttf"),
-                .copy("Resources/BricolageGrotesque-OFL.txt"),
                 .copy("Resources/AppIcon.icns"),
                 // License texts surfaced in Help → Acknowledgements (#115).
                 // All ride in both variants (inert text either way); what

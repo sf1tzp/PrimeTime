@@ -3,7 +3,7 @@ import AppKit
 import Charts
 import MomentTallyCore
 
-/// The interactive walkthrough of the label model (issue #93), presented as
+/// The interactive walkthrough of the mark model (issue #93), presented as
 /// seven Next/Back pages. Every page reads and mutates the one shared
 /// `WalkthroughModel`, so state carries across pages deliberately: a smell
 /// activated on page 4 keeps corrupting the charts until it is healed.
@@ -12,7 +12,7 @@ import MomentTallyCore
 ///   schema-smell selection, aggregation, and colours.
 /// - `onBack` — return to the Welcome step.
 /// - `onContinue` — end onboarding (finished *or* skipped); the caller closes
-///   the window and opens the Label Sets tab.
+///   the window and opens the Tallies tab.
 struct WalkthroughView: View {
     @Bindable var walkthrough: WalkthroughModel
     var onBack: () -> Void
@@ -142,7 +142,7 @@ private extension View {
     }
 }
 
-// MARK: - Page 1: a span is its labels
+// MARK: - Page 1: a moment is its marks
 
 private struct SpanIsLabelsPage: View {
     @Bindable var walkthrough: WalkthroughModel
@@ -171,14 +171,14 @@ private struct SpanIsLabelsPage: View {
     private var anim: Animation? { reduceMotion ? nil : .easeOut(duration: 0.2) }
 
     var body: some View {
-        WalkthroughPage(index: 0, title: "A timer is nothing without its labels",
-                        subtitle: "No folders, no project tree — a timer records a stretch of time plus key: value labels and notes. This one is live: try it.") {
+        WalkthroughPage(index: 0, title: "A timer is nothing without its marks",
+                        subtitle: "No folders, no project tree — a timer records a stretch of time plus key: value marks and notes. This one is live: try it.") {
             VStack(alignment: .leading, spacing: 14) {
                 mockPopoverCard
                 Text(walkthrough.mockupSummary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("You can always start a blank timer and label it later, if you want.")
+                Text("You can always start a blank timer and mark it later, if you want.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -208,7 +208,7 @@ private struct SpanIsLabelsPage: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 elapsedText
                 if walkthrough.mockupLabels.isEmpty {
-                    Text("No labels")
+                    Text("No marks")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -227,7 +227,7 @@ private struct SpanIsLabelsPage: View {
                 .buttonStyle(HoverIconButtonStyle())
                 .pointingHandCursor()
                 .discoveryGlow(pulsing)
-                .help("Edit labels and note")
+                .help("Edit marks and note")
                 Button(action: toggleTimer) {
                     Image(systemName: runningSince == nil ? "play.fill" : "stop.fill")
                 }
@@ -351,7 +351,7 @@ private struct SpanIsLabelsPage: View {
             Button {
                 tagDrafts.append(TagRow())
             } label: {
-                Label("Add Label", systemImage: "plus")
+                Label("Add Mark", systemImage: "plus")
             }
             .buttonStyle(.borderless)
             TextField("Add a note…", text: $noteDraft)
@@ -394,21 +394,21 @@ private struct SpanIsLabelsPage: View {
     }
 }
 
-// MARK: - Page 2: labels aggregate
+// MARK: - Page 2: marks aggregate
 
 private struct AggregatePage: View {
     @Bindable var walkthrough: WalkthroughModel
 
     var body: some View {
-        WalkthroughPage(index: 1, title: "Labels group up",
-                        subtitle: "This is what a typical week of labelled time spans looks like. See where time was spent simply by grouping these labels together.") {
+        WalkthroughPage(index: 1, title: "Marks group up",
+                        subtitle: "This is what a typical week of marked moments looks like. See where time was spent simply by grouping these marks together.") {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top, spacing: 20) {
                     weekList
                     MiniChartsPane(walkthrough: walkthrough)
                         .frame(width: 270)
                 }
-                Text("Colours follow labels around: the same color on the labels and in the charts. Customize colors to your liking in Settings!")
+                Text("Colours follow marks around: the same color on the marks and in the charts. Customize colors to your liking in Settings!")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -562,7 +562,7 @@ private struct MiniChartsPane: View {
     }
 }
 
-// MARK: - Page 3: labeling schemes
+// MARK: - Page 3: marking schemes
 
 /// Static copy page between the aggregation demo and the smells: keep the
 /// scheme small, put the overflow in notes — so "don't grow the scheme"
@@ -581,22 +581,22 @@ private struct LabelingSchemesPage: View {
     /// enough for a bookshelf, four run a software shop.
     private static let schemes: [Scheme] = [
         Scheme(keys: ["book"],
-               caption: "A simple 'book' label can track any number of books."),
+               caption: "A simple 'book' mark can track any number of books."),
         Scheme(keys: ["project", "type"],
-               caption: "Two labels can cover most general types of work."),
+               caption: "Two marks can cover most general types of work."),
         Scheme(keys: ["repo", "feat", "client", "type"],
-               caption: "Four labels can cover complex workflows."),
+               caption: "Four marks can cover complex workflows."),
     ]
 
     @State private var schemeIndex = 0
 
     var body: some View {
-        WalkthroughPage(index: 2, title: "Labeling schemes",
-                        subtitle: "Don't overcomplicate it — a timer that accumulates half a dozen or more labels gets complicated fast.") {
+        WalkthroughPage(index: 2, title: "Marking schemes",
+                        subtitle: "Don't overcomplicate it — a timer that accumulates half a dozen or more marks gets complicated fast.") {
             VStack(alignment: .leading, spacing: 14) {
                 rotatingSchemes
 
-                Text("Things will pop up that feel like they should be a label but don't fit your scheme — write those as notes instead:")
+                Text("Things will pop up that feel like they should be a mark but don't fit your scheme — write those as notes instead:")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -606,13 +606,13 @@ private struct LabelingSchemesPage: View {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: "stethoscope")
                         .foregroundStyle(.tint)
-                    Text("Label Review shows when notes develop a trend — problem: this, problem: that. If you notice that happening, it's okay to add to your scheme. Decide what works best in your workflow.")
+                    Text("Mark Review shows when notes develop a trend — problem: this, problem: that. If you notice that happening, it's okay to add to your scheme. Decide what works best in your workflow.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Text("Moment Tally lets you save custom labeling schemes as Label Sets — that's next.")
+                Text("Moment Tally lets you save custom marking schemes as Tallies — that's next.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -656,12 +656,12 @@ private struct LabelingSchemesPage: View {
     /// kept as a note so the context sticks to the span without a new key.
     private var dilemmaCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("“I'm on the backend feature but went down a rabbit hole setting up CA trust — should I label it problem: certificate-trust?”")
+            Text("“I'm on the backend feature but went down a rabbit hole setting up CA trust — should I mark it problem: certificate-trust?”")
                 .font(.callout.italic())
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             (Text("No — ").fontWeight(.semibold)
-                + Text("this information is better suited for a Note. Notes stick with the time span, so the context is preserved without complicating the scheme."))
+                + Text("this information is better suited for a Note. Notes stick with the moment, so the context is preserved without complicating the scheme."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -710,7 +710,7 @@ private struct SmellsPage: View {
 
     var body: some View {
         WalkthroughPage(index: 3, title: "Why schemes fail",
-                        subtitle: "Four ways a labeling scheme goes wrong — Moment Tally helps you dodge all of these by defining your labels up front. Click a card to corrupt the week; click it again and the charts heal.") {
+                        subtitle: "Four ways a marking scheme goes wrong — Moment Tally helps you dodge all of these by defining your marks up front. Click a card to corrupt the week; click it again and the charts heal.") {
             HStack(alignment: .top, spacing: 20) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
@@ -729,7 +729,7 @@ private struct SmellsPage: View {
                         smellDetail(smell)
                     } else {
                         Label {
-                            Text("A healthy scheme: every label lands in a slice, and both charts tell one story.")
+                            Text("A healthy scheme: every mark lands in a slice, and both charts tell one story.")
                                 .foregroundStyle(.secondary)
                         } icon: {
                             Image(systemName: "checkmark.circle")
@@ -773,7 +773,7 @@ private struct SmellsPage: View {
         case .driftingKeys:
             let pct = Int((walkthrough.missingSeconds(for: "repo")
                 / max(walkthrough.weekTotalSeconds, 1) * 100).rounded())
-            Text("You queried repo: — but \(pct)% of your time was accidentally labelled proj:. It rides along here greyed out as missing time; the real History tab would simply drop it.")
+            Text("You queried repo: — but \(pct)% of your time was accidentally marked proj:. It rides along here greyed out as missing time; the real History tab would simply drop it.")
                 .font(.caption)
                 .foregroundStyle(.red)
                 .fixedSize(horizontal: false, vertical: true)
@@ -847,10 +847,10 @@ private struct SmellsPage: View {
     }
 }
 
-// MARK: - Page 5: label sets, the anatomy
+// MARK: - Page 5: tallies, the anatomy
 
-/// The Label Sets concept page: one mock quick-start row wearing all three
-/// moving parts — baked-in labels, a valueless label, quick labels — each
+/// The Tallies concept page: one mock quick-start row wearing all three
+/// moving parts — baked-in marks, a valueless mark, quick marks — each
 /// tagged with a numbered callout the legend beside it explains. Interactive
 /// like the real popover row: chips apply and swap, the row body starts
 /// plain, and every start lands focus in the valueless label's field below,
@@ -879,8 +879,8 @@ private struct LabelSetsConceptPage: View {
     private var anim: Animation? { reduceMotion ? nil : .easeOut(duration: 0.2) }
 
     var body: some View {
-        WalkthroughPage(index: 4, title: "Label Sets",
-                        subtitle: "Save your labeling scheme as named sets that start with one click. This mock set wears all three moving parts — it's live, click around.") {
+        WalkthroughPage(index: 4, title: "Tallies",
+                        subtitle: "Save your marking scheme as named tallies that start with one click. This mock tally wears all three moving parts — it's live, click around.") {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .top, spacing: 24) {
                     mockRow
@@ -888,7 +888,7 @@ private struct LabelSetsConceptPage: View {
                     legend
                 }
                 preview
-                Text("A set can even be nothing but quick labels — a tidy home for hobbies: book:, game:, show:. Up next: create your own.")
+                Text("A tally can even be nothing but quick marks — a tidy home for hobbies: book:, game:, show:. Up next: create your own.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
@@ -937,7 +937,7 @@ private struct LabelSetsConceptPage: View {
             }
             .buttonStyle(.plain)
             .pointingHandCursor()
-            .help("Start with the set's labels")
+            .help("Start with the tally's marks")
         }
     }
 
@@ -975,12 +975,12 @@ private struct LabelSetsConceptPage: View {
 
     private var legend: some View {
         VStack(alignment: .leading, spacing: 12) {
-            legendRow(1, "Baked-in labels",
-                      "The Label Set's main labels. Clicking the row starts a timer with just the set's own labels.")
-            legendRow(2, "A valueless label",
-                      "Sometimes you don't know what the label should be until you're ready to start a timer. Leave the value field blank, then just type or paste the value when starting a timer")
-            legendRow(3, "Quick labels",
-                      "An optional extra label as you start. Useful for dividing up time into sub categories")
+            legendRow(1, "Baked-in marks",
+                      "The tally's main marks. Clicking the row starts a timer with just the tally's own marks.")
+            legendRow(2, "A valueless mark",
+                      "Sometimes you don't know what the mark should be until you're ready to start a timer. Leave the value field blank, then just type or paste the value when starting a timer")
+            legendRow(3, "Quick marks",
+                      "An optional extra mark as you start. Useful for dividing up time into sub categories")
         }
     }
 
@@ -1041,7 +1041,7 @@ private struct LabelSetsConceptPage: View {
     }
 }
 
-// MARK: - Page 6: create your first label sets
+// MARK: - Page 6: create your first tallies
 
 /// One way people run Moment Tally — a card on the create page, whose editor
 /// also includes the persona's suggested quick labels by default.
@@ -1141,7 +1141,7 @@ private struct CreateLabelSetsPage: View {
         var trimmedKey: String { key.trimmingCharacters(in: .whitespaces) }
         var trimmedValue: String { value.trimmingCharacters(in: .whitespaces) }
         /// Nothing typed at all — silently dropped on add, like an unused
-        /// "Add Label" click.
+        /// "Add Mark" click.
         var isBlank: Bool { trimmedKey.isEmpty && trimmedValue.isEmpty }
         /// A value with no key can't become a label — the one refusal left.
         var missingKey: Bool { trimmedKey.isEmpty && !trimmedValue.isEmpty }
@@ -1152,7 +1152,7 @@ private struct CreateLabelSetsPage: View {
     }
 
     @State private var editing: Persona?
-    /// The quick-label drafts, an editable list like the Label Sets tab's —
+    /// The quick-label drafts, an editable list like the Tallies tab's —
     /// seeded with the persona's three suggestions (or, in edit mode, the
     /// set's real quick labels).
     @State private var quickDrafts: [DraftRow] = []
@@ -1190,8 +1190,8 @@ private struct CreateLabelSetsPage: View {
     }
 
     var body: some View {
-        WalkthroughPage(index: 5, title: "Create your first Label Sets",
-                        subtitle: "Four ways people run Moment Tally. Open one, make it yours — it becomes a real one-click set, quick labels and all.") {
+        WalkthroughPage(index: 5, title: "Create your first Tallies",
+                        subtitle: "Four ways people run Moment Tally. Open one, make it yours — it becomes a real one-click tally, quick marks and all.") {
             Group {
                 if let persona = editing {
                     // The editor (labels + quick labels) can outgrow the
@@ -1229,7 +1229,7 @@ private struct CreateLabelSetsPage: View {
                                 // centres, below).
                                 .fixedSize(horizontal: false, vertical: true)
                             }
-                            Text("You can add as many Label Sets as you'd like in Settings after onboarding.")
+                            Text("You can add as many Tallies as you'd like in Settings after onboarding.")
                                 .font(.caption)
                                 .foregroundStyle(.tertiary)
                         }
@@ -1425,7 +1425,7 @@ private struct CreateLabelSetsPage: View {
             HStack(spacing: 8) {
                 Image(systemName: persona.symbol)
                     .foregroundStyle(.tint)
-                TextField("Set name", text: $draftName,
+                TextField("Tally name", text: $draftName,
                           prompt: Text(persona.nameHint))
                     .textFieldStyle(.roundedBorder)
                     .font(.body.weight(.medium))
@@ -1445,7 +1445,7 @@ private struct CreateLabelSetsPage: View {
                 draftRows.append(DraftRow(key: "", value: "",
                                           color: WalkthroughModel.keyColor("")))
             } label: {
-                Label("Add Label", systemImage: "plus")
+                Label("Add Mark", systemImage: "plus")
             }
             .buttonStyle(.borderless)
             if draftRows.contains(where: { $0.example != nil }) {
@@ -1454,7 +1454,7 @@ private struct CreateLabelSetsPage: View {
                     .foregroundStyle(.tertiary)
             }
             if draftRows.contains(where: \.valueless) {
-                Label("Blank label values are fine — the set will prompt for them when starting a timer.",
+                Label("Blank mark values are fine — the tally will prompt for them when starting a timer.",
                       systemImage: "info.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -1464,8 +1464,8 @@ private struct CreateLabelSetsPage: View {
             HStack {
                 Spacer()
                 Button("Cancel") { editing = nil }
-                Button(createdSet(for: persona) != nil ? "Save label set"
-                                                       : "Add label set") {
+                Button(createdSet(for: persona) != nil ? "Save tally"
+                                                       : "Add tally") {
                     add(persona)
                 }
                     .buttonStyle(.borderedProminent)
@@ -1479,7 +1479,7 @@ private struct CreateLabelSetsPage: View {
     }
 
     /// One key/value editor row — swatch, fields, remove — shared by the
-    /// label list and the quick-label list, like the Label Sets tab's twin
+    /// label list and the quick-label list, like the Tallies tab's twin
     /// lists. A persona example (when present) rides as placeholder with
     /// Tab completion.
     private func editorRow(_ row: Binding<DraftRow>,
@@ -1519,11 +1519,11 @@ private struct CreateLabelSetsPage: View {
     }
 
     /// The quick-label list, editable exactly like the labels above (and
-    /// like the Label Sets tab's own quick-label list) — seeded with the
+    /// like the Tallies tab's own quick-label list) — seeded with the
     /// persona's suggestions, all free to retype, remove, or extend.
     private var quickLabelsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Quick labels")
+            Text("Quick marks")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             ForEach($quickDrafts) { $row in
@@ -1533,10 +1533,10 @@ private struct CreateLabelSetsPage: View {
                 quickDrafts.append(DraftRow(key: Persona.quickKey, value: "",
                                             color: WalkthroughModel.keyColor(Persona.quickKey)))
             } label: {
-                Label("Add Quick Label", systemImage: "plus")
+                Label("Add Quick Mark", systemImage: "plus")
             }
             .buttonStyle(.borderless)
-            Text("Offered on the set's row as one-click swap-ins — a shared key means they swap with each other.")
+            Text("Offered on the tally's row as one-click swap-ins — a shared key means they swap with each other.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1661,18 +1661,18 @@ private struct SurfacesPage: View {
     // Blurbs mirror the website/readme feature copy.
     private static let surfaces: [Surface] = [
         Surface(symbol: "timer", name: "Menu-bar popover",
-                blurb: "Start and stop timers, add notes or change labels on the fly."),
+                blurb: "Start and stop timers, add notes or change marks on the fly."),
         Surface(symbol: "square.grid.2x2", name: "Launcher",
-                blurb: "Saved label sets as one-click cards — icons and colors for the way you actually organize work. Sets that are already running light up."),
-        Surface(symbol: "tag", name: "Label Sets",
-                blurb: "Name and edit the sets behind one-click timers. Set up quick labels to fit your workflow."),
+                blurb: "Saved tallies as one-click cards — icons and colors for the way you actually organize work. Tallies that are already running light up."),
+        Surface(symbol: "tag", name: "Tallies",
+                blurb: "Name and edit the tallies behind one-click timers. Set up quick marks to fit your workflow."),
         Surface(symbol: "list.bullet.rectangle", name: "Log",
-                blurb: "Review and freely edit timespans after-the-fact: because real work overlaps, gets interrupted, and needs correcting."),
+                blurb: "Review and freely edit moments after-the-fact: because real work overlaps, gets interrupted, and needs correcting."),
         Surface(symbol: "calendar", name: "Calendar",
                 blurb: "Your week laid out hour by hour. Overlapping timers share columns, so multi-tasking is visible instead of hidden."),
         Surface(symbol: "chart.pie", name: "History",
-                blurb: "Visualize your timespans with group-by based aggregations."),
-        Surface(symbol: "stethoscope", name: "Label Review",
+                blurb: "Visualize your moments with group-by based aggregations."),
+        Surface(symbol: "stethoscope", name: "Mark Review",
                 blurb: "Merge drifted keys and stray values. With Moment Tally it's easy to catch these outliers and correct them before they impact downstream."),
         Surface(symbol: "gear", name: "Settings",
                 blurb: "Sync, colours, and everything else."),
@@ -1695,12 +1695,12 @@ private struct SurfacesPage: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                Link(destination: URL(string: "https://momenttally.com/docs/labels")!) {
-                    Label("Read the full labelling guide", systemImage: "book")
+                Link(destination: URL(string: "https://momenttally.com/docs/marks")!) {
+                    Label("Read the full marking guide", systemImage: "book")
                 }
                 .font(.callout)
                 .padding(.top, 6)
-                Text("Hit Continue to finish — you'll land in the Label Sets tab, next to whatever you just created.")
+                Text("Hit Continue to finish — you'll land in the Tallies tab, next to whatever you just created.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }

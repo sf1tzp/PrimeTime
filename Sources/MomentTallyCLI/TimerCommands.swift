@@ -6,15 +6,15 @@ import MomentTallyCore
 
 struct Start: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        abstract: "Start a timespan.",
+        abstract: "Start a moment.",
         discussion: "Errors if a timer is already running — stop it first "
             + "(agent hooks that mean \"switch\" chain `moment-tally stop; moment-tally start ...`).")
 
     @Option(name: .customShort("l"),
-            help: ArgumentHelp("A key=value label; repeatable.", valueName: "key=value"))
+            help: ArgumentHelp("A key=value mark; repeatable.", valueName: "key=value"))
     var labels: [String] = []
 
-    @Option(help: "A note on the timespan.")
+    @Option(help: "A note on the moment.")
     var note: String = ""
 
     @OptionGroup var store: StoreOptions
@@ -47,7 +47,7 @@ struct Start: AsyncParsableCommand {
     func parsedLabels() throws -> [SpanLabel] {
         try labels.map { raw in
             guard let equals = raw.firstIndex(of: "="), raw.startIndex != equals else {
-                throw LocalBackend.Error(message: "Not a label (expected key=value): -l \(raw)")
+                throw LocalBackend.Error(message: "Not a mark (expected key=value): -l \(raw)")
             }
             return SpanLabel(key: normalizeKey(String(raw[..<equals])),
                              value: String(raw[raw.index(after: equals)...]))
@@ -59,8 +59,8 @@ struct Start: AsyncParsableCommand {
 
 struct Stop: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        abstract: "Stop the running timespan.",
-        discussion: "Stops every running timespan (the app allows several). "
+        abstract: "Stop the running moment.",
+        discussion: "Stops every running moment (the app allows several). "
             + "Exits 1 when none is running.")
 
     @OptionGroup var store: StoreOptions
@@ -89,7 +89,7 @@ struct Stop: AsyncParsableCommand {
 
 struct Status: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        abstract: "Show the running timespan, if any.",
+        abstract: "Show the running moment, if any.",
         discussion: "Exits 0 when a timer is running, 1 when idle — usable "
             + "directly in scripts: `if moment-tally status -q; then ...`.")
 

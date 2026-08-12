@@ -1,7 +1,7 @@
 import SwiftUI
 import MomentTallyCore
 
-/// The Log tab: a day-sectioned, scrollable list of the week's timespans.
+/// The Log tab: a day-sectioned, scrollable list of the week's moments.
 /// Clicking a row expands it into an inline `TimeSpanEditorView`.
 struct LogView: View {
     @Environment(AppModel.self) private var model
@@ -101,7 +101,7 @@ struct LogView: View {
             TextField("Filter — client:a, or text to search", text: $filterText)
                 .textFieldStyle(.plain)
                 .autocorrectionDisabled()
-                .help("key:value keeps spans whose value for that key starts with the text — quote it (key:\"value\") for an exact match; several AND together; other words search labels and notes.")
+                .help("key:value keeps moments whose value for that key starts with the text — quote it (key:\"value\") for an exact match; several AND together; other words search marks and notes.")
             if !filterText.isEmpty {
                 Button {
                     filterText = ""
@@ -220,7 +220,7 @@ struct LogView: View {
                         Image(systemName: "plus")
                     }
                     .buttonStyle(HoverIconButtonStyle())
-                    .help("Save these labels as a label set")
+                    .help("Save these marks as a tally")
                     .padding(.trailing, 10)
                 }
             }
@@ -233,7 +233,7 @@ struct LogView: View {
             Image(systemName: "list.bullet.rectangle")
                 .font(.system(size: 32))
                 .foregroundStyle(.secondary)
-            Text("No timespans this week")
+            Text("No moments this week")
                 .foregroundStyle(.secondary)
             Spacer()
         }
@@ -246,7 +246,7 @@ struct LogView: View {
             Image(systemName: "line.3.horizontal.decrease.circle")
                 .font(.system(size: 32))
                 .foregroundStyle(.secondary)
-            Text("No timespans match “\(filterText.trimmingCharacters(in: .whitespaces))”")
+            Text("No moments match “\(filterText.trimmingCharacters(in: .whitespaces))”")
                 .foregroundStyle(.secondary)
             Button("Clear Filter") { filterText = "" }
             Spacer()

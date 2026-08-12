@@ -134,9 +134,9 @@ package enum DemoSeed {
         //        symbolName: "briefcase"),
         // Quick-labels-only sets: no presets, so the card colour comes from
         // `colorHex` (matched to the key's definition colour below).
-        TagSet(name: "Gaming", symbolName: "gamecontroller", colorHex: "#7e57c2"),
-        TagSet(name: "Workout", symbolName: "figure.run", colorHex: "#a5dd77ff"),
-        TagSet(name: "Reading", symbolName: "book", colorHex: "#f4511e"),
+        TagSet(name: "Gaming", symbolName: "gamecontroller", colorHex: "#d84315"),
+        TagSet(name: "Workout", symbolName: "figure.run", colorHex: "#34c759"),
+        TagSet(name: "Reading", symbolName: "book", colorHex: "#26a69a"),
     ]
 
     // MARK: Quick labels (popover / Launcher hover chips)
@@ -181,26 +181,30 @@ package enum DemoSeed {
 
     // MARK: Colours
     //
-    // Balanced warm/cool on purpose: the brand palette (oranges, reds, dark
-    // greys) carries the hero label — `project:` and its spans dominate the
-    // demo, so it goes brand orange — while client/repo/type keep their cool
-    // hues as contrast anchors. Roughly half-and-half across the spectrum.
+    // The persona palette (#201) — the website's launcher.ts hexes, one per
+    // persona tile, spread across the demo's keys and values so every
+    // surface photographs in the same spectrum the momenttally.com persona
+    // ring uses. The hero label — `project: moment-tally` and its spans
+    // dominate the demo — carries the Programming persona's apricot; the
+    // rest balance warm/cool as contrast anchors instead of the old
+    // orange/red PrimeTime lean. `client: sfi` keeps streetfortress red
+    // deliberately (the company mark, not a palette pick).
 
     static let labelDefinitions: [LabelDefinition] = [
-        LabelDefinition(key: "client", color: "#795548"),
-        LabelDefinition(key: "project", color: "#d84315"),
-        LabelDefinition(key: "repo", color: "#2fd1c1ff"),
+        LabelDefinition(key: "client", color: "#5856d6"),   // Freelance
+        LabelDefinition(key: "project", color: "#f7b060"),  // Programming
+        LabelDefinition(key: "repo", color: "#007aff"),     // Side Project
         // Same colour as `repo` on purpose: the drifted key should look
         // like what it is — the same concept, misspelled — so the difference
         // shows up in Label Review, not on every pill.
-        LabelDefinition(key: "proj", color: "#00897b"),
-        LabelDefinition(key: "feature", color: "#8e24aa"),
-        LabelDefinition(key: "issue", color: "#ccf7b8ff"),
-        LabelDefinition(key: "type", color: "#1e88e5"),
-        LabelDefinition(key: "meeting", color: "#e53935"),
-        LabelDefinition(key: "game", color: "#7e57c2"),
-        LabelDefinition(key: "activity", color: "#43a047"),
-        LabelDefinition(key: "book", color: "#f4511e"),
+        LabelDefinition(key: "proj", color: "#007aff"),
+        LabelDefinition(key: "feature", color: "#ec407a"),  // Volunteering
+        LabelDefinition(key: "issue", color: "#66bb6a"),    // Gardening
+        LabelDefinition(key: "type", color: "#30b0c7"),     // Language
+        LabelDefinition(key: "meeting", color: "#af52de"),  // Music Practice
+        LabelDefinition(key: "game", color: "#d84315"),     // Streaming
+        LabelDefinition(key: "activity", color: "#34c759"), // Fitness
+        LabelDefinition(key: "book", color: "#26a69a"),     // Leisure
     ]
 
     /// Per-pair overrides, one hue per value so the colour-by-value story
@@ -208,39 +212,39 @@ package enum DemoSeed {
     /// the History donuts, and the combined view's type × client and
     /// meeting × client pairings stay tellable-apart.
     static let valueColors: [String: String] = [
-        ValueColorKey.join("project", "moment-tally"): "#f7b060ff",
-        ValueColorKey.join("project", "meridian"): "#9fe3f8ff",
-        ValueColorKey.join("project", "lighthouse"): "#fff126ff",
-        ValueColorKey.join("project", "velocity-consulting"): "#9ccc65",
-        ValueColorKey.join("client", "sfi"): "#d44141",
-        ValueColorKey.join("client", "acme-inc"): "#ffe082",
-        ValueColorKey.join("client", "code-corps"): "#8d6e63",
-        ValueColorKey.join("repo", "company-website"): "#42a5f5",
-        ValueColorKey.join("repo", "infrastructure"): "#d7ddddff",
+        ValueColorKey.join("project", "moment-tally"): "#f7b060",   // Programming
+        ValueColorKey.join("project", "meridian"): "#30b0c7",       // Language
+        ValueColorKey.join("project", "lighthouse"): "#ff9500",     // Cooking
+        ValueColorKey.join("project", "velocity-consulting"): "#66bb6a",
+        ValueColorKey.join("client", "sfi"): "#d44141",             // streetfortress red
+        ValueColorKey.join("client", "acme-inc"): "#ec407a",        // Volunteering
+        ValueColorKey.join("client", "code-corps"): "#26a69a",      // Leisure
+        ValueColorKey.join("repo", "company-website"): "#42a5f5",   // Studying
+        ValueColorKey.join("repo", "infrastructure"): "#af52de",    // Music Practice
         // Drift matches too — see `proj` above.
         ValueColorKey.join("proj", "company-website"): "#42a5f5",
-        ValueColorKey.join("feature", "checkout"): "#f06292",
-        ValueColorKey.join("feature", "search"): "#ba68c8",
-        ValueColorKey.join("feature", "billing"): "#ffb74d",
-        ValueColorKey.join("feature", "moment-tally-api"): "#4db6ac",
-        ValueColorKey.join("type", "planning"): "#f0ee73ff",
-        ValueColorKey.join("type", "coding"): "#5c6bc0",
-        ValueColorKey.join("type", "debugging"): "#fc3e3eff",
-        ValueColorKey.join("type", "review"): "#d2fcbaff",
-        ValueColorKey.join("type", "support"): "#78909c",
-        ValueColorKey.join("meeting", "standup"): "#ef5350",
-        ValueColorKey.join("meeting", "retrospective"): "#ab47bc",
-        ValueColorKey.join("meeting", "handoff"): "#43b4ffff",
-        ValueColorKey.join("meeting", "release-planning"): "#d4e157",
-        ValueColorKey.join("game", "baldurs-gate"): "#d84315",
+        ValueColorKey.join("feature", "checkout"): "#f06292",       // Creative Work
+        ValueColorKey.join("feature", "search"): "#30b0c7",
+        ValueColorKey.join("feature", "billing"): "#ff9500",
+        ValueColorKey.join("feature", "moment-tally-api"): "#26a69a",
+        ValueColorKey.join("type", "planning"): "#ff9500",
+        ValueColorKey.join("type", "coding"): "#007aff",
+        ValueColorKey.join("type", "debugging"): "#ff2d55",         // Job Hunt
+        ValueColorKey.join("type", "review"): "#34c759",            // Fitness
+        ValueColorKey.join("type", "support"): "#af52de",
+        ValueColorKey.join("meeting", "standup"): "#ec407a",
+        ValueColorKey.join("meeting", "retrospective"): "#af52de",
+        ValueColorKey.join("meeting", "handoff"): "#30b0c7",
+        ValueColorKey.join("meeting", "release-planning"): "#66bb6a",
+        ValueColorKey.join("game", "baldurs-gate"): "#d84315",      // Streaming
         ValueColorKey.join("game", "no-mans-sky"): "#26a69a",
-        ValueColorKey.join("game", "cyberpunk"): "#fdd835",
-        ValueColorKey.join("activity", "bike"): "#66bb6a",
-        ValueColorKey.join("activity", "run"): "#ffa726",
-        ValueColorKey.join("activity", "gym"): "#ef5350",
-        ValueColorKey.join("book", "the-director"): "#8d6e63",
-        ValueColorKey.join("book", "crux"): "#5c6bc0",
-        ValueColorKey.join("book", "the-wayfinder"): "#26a69a",
+        ValueColorKey.join("game", "cyberpunk"): "#f7b060",
+        ValueColorKey.join("activity", "bike"): "#66bb6a",          // Gardening
+        ValueColorKey.join("activity", "run"): "#ff9500",
+        ValueColorKey.join("activity", "gym"): "#ff2d55",
+        ValueColorKey.join("book", "the-director"): "#5856d6",
+        ValueColorKey.join("book", "crux"): "#007aff",
+        ValueColorKey.join("book", "the-wayfinder"): "#26a69a",     // the Leisure chip
     ]
 
     // MARK: Spans

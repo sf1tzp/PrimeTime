@@ -1,7 +1,7 @@
 import SwiftUI
 import MomentTallyCore
 
-/// The Label Sets editor's preview (#179), floating above the form on the
+/// The Tallies editor's preview (#179), floating above the form on the
 /// window background — no section box — centred, with air before the fields
 /// below: the set rendered as its two start surfaces — a Launcher card and a
 /// popover Quick start row — live off the editor's binding, so edits show up
@@ -9,7 +9,7 @@ import MomentTallyCore
 /// the fields scroll. The card is the real `TagSetCard` in preview mode
 /// (hover still reveals the quick labels, clicks are inert); the row is a
 /// lookalike with the chips permanently revealed — the state the onboarding
-/// walkthrough's Quick Labels page shows, since in the real popover they
+/// walkthrough's Quick Marks page shows, since in the real popover they
 /// only appear on hover.
 struct TagSetPreview: View {
     let tagSet: TagSet

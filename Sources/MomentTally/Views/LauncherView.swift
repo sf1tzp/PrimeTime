@@ -5,7 +5,7 @@ import MomentTallyCore
 /// list (#7): every tag set as a clickable card in a grid. Clicking a card
 /// starts the set, same as a Quick start row; a running set's card stops it.
 /// Dragging a card reorders the sets (#178) — there is deliberately no
-/// launcher-only order: this is the one shared order, the same the Label Sets
+/// launcher-only order: this is the one shared order, the same the Tallies
 /// sidebar edits and the popover's first-N cap reads.
 ///
 /// The reorder is a plain `DragGesture`, like the popover editor's
@@ -146,7 +146,7 @@ private struct NewTagSetCard: View {
             VStack(spacing: 8) {
                 Image(systemName: "plus")
                     .font(.system(size: 28))
-                Text("New Label Set")
+                Text("New Tally")
                     .font(.headline)
             }
             .frame(maxWidth: .infinity, minHeight: 96)
@@ -160,7 +160,7 @@ private struct NewTagSetCard: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .help("Create a label set")
+        .help("Create a tally")
     }
 }
 
@@ -177,7 +177,7 @@ private struct NewTagSetCard: View {
 struct TagSetCard: View {
     @Environment(AppModel.self) private var model
     let set: TagSet
-    /// The Label Sets editor embeds the card as a live preview (#179): the
+    /// The Tallies editor embeds the card as a live preview (#179): the
     /// full hover choreography stays (that's what's being previewed), but
     /// clicks are inert and the running/busy states don't leak in.
     var isPreview = false
@@ -192,12 +192,7 @@ struct TagSetCard: View {
     @State private var chipsShown = false
     @State private var chipIntent: Task<Void, Never>?
 
-    private var tint: Color {
-        if let first = set.labels.first {
-            return model.tagColor(for: first.key, value: first.value)
-        }
-        return set.colorHex.flatMap(Color.init(hex:)) ?? .accentColor
-    }
+    private var tint: Color { model.cardTint(for: set) }
 
     private var isRunning: Bool { !isPreview && model.isRunning(set) }
     private var busy: Bool { !isPreview && model.isBusy }
@@ -221,8 +216,13 @@ struct TagSetCard: View {
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, minHeight: 96)
-            .foregroundStyle(tint.contrastingTextColor)
-            .background(RoundedRectangle(cornerRadius: 10).fill(tint))
+            .foregroundStyle(model.gradientLauncherCards
+                             ? Brand.tileGlyph(for: tint)
+                             : tint.contrastingTextColor)
+            .background(RoundedRectangle(cornerRadius: 10).fill(
+                model.gradientLauncherCards
+                ? AnyShapeStyle(Brand.tileGradient(for: tint))
+                : AnyShapeStyle(tint)))
             .overlay {
                 if isRunning && hovering {
                     RoundedRectangle(cornerRadius: 10)
@@ -279,7 +279,7 @@ struct TagSetCard: View {
         .help(isRunning
               ? "Stop the running timer"
               : set.labels.isEmpty
-              ? "Start with no labels"
+              ? "Start with no marks"
               : "Start " + set.labels.map {
                     $0.value.isEmpty ? $0.key : "\($0.key): \($0.value)"
                 }.joined(separator: ", "))
@@ -300,5 +300,29 @@ struct TagSetCard: View {
         } else {
             withAnimation(.snappy(duration: 0.18)) { chipsShown = false }
         }
+    }
+}
+
+/// A launcher card in miniature — the same icon on the same tile treatment
+/// (gradient or flat, per the preference) at row scale, so the popover's
+/// quick-start rows read as the same objects as the Launcher grid's cards
+/// (#201).
+struct LauncherTileIcon: View {
+    @Environment(AppModel.self) private var model
+    let set: TagSet
+    var size: CGFloat = 22
+
+    var body: some View {
+        let tint = model.cardTint(for: set)
+        Image(systemName: set.symbol)
+            .font(.system(size: size * 0.5, weight: .medium))
+            .foregroundStyle(model.gradientLauncherCards
+                             ? Brand.tileGlyph(for: tint)
+                             : tint.contrastingTextColor)
+            .frame(width: size, height: size)
+            .background(RoundedRectangle(cornerRadius: size * 0.27).fill(
+                model.gradientLauncherCards
+                ? AnyShapeStyle(Brand.tileGradient(for: tint))
+                : AnyShapeStyle(tint)))
     }
 }

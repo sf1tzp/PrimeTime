@@ -180,7 +180,7 @@ struct TimeSpanEditorView: View {
                 // the drafted labels; this span (and any unsaved edits to
                 // it) stays put.
                 Button("Re-Open") { reopen() }
-                    .help("Clear the end — this span becomes the running timer again, absorbing the gap since it stopped")
+                    .help("Clear the end — this moment becomes the running timer again, absorbing the gap since it stopped")
                 Button("New Timer") {
                     Task {
                         isSaving = true
@@ -199,7 +199,7 @@ struct TimeSpanEditorView: View {
                         isSaving = false
                     }
                 }
-                .help("Start a new timer with these labels")
+                .help("Start a new timer with these marks")
             }
             .disabled(isSaving)
 
@@ -213,7 +213,7 @@ struct TimeSpanEditorView: View {
                 Button("Delete", role: .destructive) {
                     confirmingDelete = true
                 }
-                .confirmationDialog("Delete this timespan?",
+                .confirmationDialog("Delete this moment?",
                                     isPresented: $confirmingDelete) {
                     Button("Delete", role: .destructive) {
                         Task {
@@ -308,7 +308,7 @@ private struct RunningSessionEditor: View {
                 Button("Delete", role: .destructive) {
                     confirmingDelete = true
                 }
-                .confirmationDialog("Delete this timespan?",
+                .confirmationDialog("Delete this moment?",
                                     isPresented: $confirmingDelete) {
                     Button("Delete", role: .destructive) {
                         Task {
@@ -360,7 +360,7 @@ private struct RunningSessionEditor: View {
 }
 
 /// The label rows shared by both editor regimes: one row per tag (colour
-/// swatch, key, value, remove) plus the add-label button.
+/// swatch, key, value, remove) plus the add-mark button.
 private struct LabelRowsEditor: View {
     @Binding var rows: [TagRow]
     /// The row being drag-reordered — see RowReorder.swift.
@@ -394,7 +394,7 @@ private struct LabelRowsEditor: View {
             Button {
                 rows.append(TagRow())
             } label: {
-                Label("Add Label", systemImage: "plus")
+                Label("Add Mark", systemImage: "plus")
             }
             .buttonStyle(.borderless)
             .font(.callout)

@@ -85,8 +85,8 @@ final class WalkthroughModel {
 
     // MARK: Schema smells
 
-    /// The four failure modes from the labels guide (momenttally.com/docs/
-    /// labels), each a reversible corruption of the demo week. The copy lives
+    /// The four failure modes from the marks guide (momenttally.com/docs/
+    /// marks), each a reversible corruption of the demo week. The copy lives
     /// here so every walkthrough presentation tells the identical story.
     enum SchemaSmell: String, CaseIterable, Identifiable {
         case unboundedValues, fusedFacts, driftingKeys, approximateNaming
@@ -106,11 +106,11 @@ final class WalkthroughModel {
         var symptom: String {
             switch self {
             case .unboundedValues:
-                "Values become whatever got typed in the moment — keyboard mash that mirrors nothing — so no two spans agree and nothing accumulates."
+                "Values become whatever got typed in the moment — keyboard mash that mirrors nothing — so no two moments agree and nothing accumulates."
             case .fusedFacts:
-                "One label fuses repo, feature, and type into a single value — group by any one of them and there is nothing left to join on."
+                "One mark fuses repo, feature, and type into a single value — group by any one of them and there is nothing left to join on."
             case .driftingKeys:
-                "A few recent spans say proj, the rest of the week says repo. Each chart only sees its own key; history silently splits into two series."
+                "A few recent moments say proj, the rest of the week says repo. Each chart only sees its own key; history silently splits into two series."
             case .approximateNaming:
                 "moment-tally and MomentTally are the same project to you, but joins are exact — the charts count them as two."
             }
@@ -124,9 +124,9 @@ final class WalkthroughModel {
             case .fusedFacts:
                 "One fact per key — repo: moment-tally, feat: onboarding, type: feature — so every question keeps an axis to group by."
             case .driftingKeys:
-                "Pick key names once and stick to them. Label Review can merge a drifted key back into one series."
+                "Pick key names once and stick to them. Mark Review can merge a drifted key back into one series."
             case .approximateNaming:
-                "Mirror the exact names of systems you join against, letter for letter. Label Review can merge the strays."
+                "Mirror the exact names of systems you join against, letter for letter. Mark Review can merge the strays."
             }
         }
 
@@ -358,15 +358,15 @@ final class WalkthroughModel {
     static func keyColor(_ key: String) -> Color {
         let hex: String
         switch key {
-        case "repo": hex = "#00897b"
-        case "feat": hex = "#8e24aa"
-        case "type": hex = "#1e88e5"
-        case "client": hex = "#f9a825"
-        case "proj": hex = "#d84315"
-        case "work": hex = "#e53935"
-        case "issue": hex = "#ef6c00"   // the concept page's valueless label
-        case "topic": hex = "#ab47bc"   // the Studying card's valueless label
-        case "book": hex = "#b39ddb"   // pastel purple, distinct from feat's
+        case "repo": hex = "#007aff"
+        case "feat": hex = "#ec407a"
+        case "type": hex = "#30b0c7"
+        case "client": hex = "#5856d6"
+        case "proj": hex = "#007aff"   // drifted `repo` — same hue on purpose
+        case "work": hex = "#ff2d55"
+        case "issue": hex = "#66bb6a"   // the concept page's valueless label
+        case "topic": hex = "#af52de"   // the Studying card's valueless label
+        case "book": hex = "#26a69a"   // the Leisure persona's teal
         default: hex = "#546e7a"
         }
         return Color(hex: hex) ?? .gray
@@ -378,46 +378,45 @@ final class WalkthroughModel {
     /// so the walkthrough demos it too, still without touching the user's
     /// palette.
     private static let valueColors: [String: String] = [
-        ValueColorKey.join("repo", "moment-tally"): "#f7b060ff",
+        ValueColorKey.join("repo", "moment-tally"): "#f7b060",   // Programming
         ValueColorKey.join("repo", "website"): "#42a5f5",
         ValueColorKey.join("repo", "acme-app"): "#66bb6a",
-        ValueColorKey.join("feat", "onboarding"): "#00acc1",
-        ValueColorKey.join("feat", "charts"): "#7e57c2",
+        ValueColorKey.join("feat", "onboarding"): "#30b0c7",
+        ValueColorKey.join("feat", "charts"): "#af52de",
         ValueColorKey.join("feat", "billing"): "#f06292",
-        ValueColorKey.join("feat", "landing"): "#9ccc65",
-        ValueColorKey.join("type", "development"): "#3949ab",
-        ValueColorKey.join("type", "review"): "#c1f893ff",
+        ValueColorKey.join("feat", "landing"): "#66bb6a",
+        ValueColorKey.join("type", "development"): "#007aff",
+        ValueColorKey.join("type", "review"): "#34c759",
         // Meetings are overhead, not identity — a muted tinted grey, so they
         // recede next to the work types.
         ValueColorKey.join("type", "meeting"): "#8d6e63",
-        ValueColorKey.join("type", "support"): "#f53293ff",
+        ValueColorKey.join("type", "support"): "#af52de",
         ValueColorKey.join("type", "ops"): "#66bb6a",
         // The planning / review / debugging trio the concept page's mock
-        // set and the Programming persona share — light yellow / green /
-        // red, the demo seed's hues (debugging lightened to sit in the
-        // same pastel family as its two neighbours).
-        ValueColorKey.join("type", "planning"): "#f0ee73ff",
-        ValueColorKey.join("type", "debugging"): "#f89393ff",
+        // set and the Programming persona share — the demo seed's hues
+        // (persona orange / green / red, one per value).
+        ValueColorKey.join("type", "planning"): "#ff9500",
+        ValueColorKey.join("type", "debugging"): "#ff2d55",
         // SFI in company red — sfi-website's streetfortress wordmark fill
         // (`text only.svg`, = --streetfortress-red); the contract client in
-        // a light yellow.
+        // the Volunteering persona's pink.
         ValueColorKey.join("client", "sfi"): "#d44141",
-        ValueColorKey.join("client", "acme"): "#ffe082",
+        ValueColorKey.join("client", "acme"): "#ec407a",
         // The persona cards' example pairs, pinned so each card's pills
         // and chips read as distinct hues — the hash fallback happily
         // hands neighbours the same colour. Demo-seed hexes reused where
         // the values overlap (baldurs-gate, the-wayfinder).
         ValueColorKey.join("repo", "sfi/moment-tally"): "#00add8",   // traggo blue
-        ValueColorKey.join("course", "linear-algebra"): "#42a5f5",
-        ValueColorKey.join("type", "lecture"): "#43a047",
-        ValueColorKey.join("type", "group-session"): "#ffa726",
+        ValueColorKey.join("course", "linear-algebra"): "#42a5f5",   // Studying
+        ValueColorKey.join("type", "lecture"): "#34c759",
+        ValueColorKey.join("type", "group-session"): "#ff9500",
         ValueColorKey.join("type", "homework"): "#ec407a",
-        ValueColorKey.join("project", "wedding-shoot"): "#f06292",
-        ValueColorKey.join("type", "photoshoot"): "#29b6f6",
-        ValueColorKey.join("type", "editing"): "#7e57c2",
-        ValueColorKey.join("book", "the-wayfinder"): "#26a69a",
-        ValueColorKey.join("game", "baldurs-gate"): "#d84315",
-        ValueColorKey.join("show", "ted-lasso"): "#fdd835",
+        ValueColorKey.join("project", "wedding-shoot"): "#f06292",   // Creative Work
+        ValueColorKey.join("type", "photoshoot"): "#42a5f5",
+        ValueColorKey.join("type", "editing"): "#5856d6",
+        ValueColorKey.join("book", "the-wayfinder"): "#26a69a",      // Leisure
+        ValueColorKey.join("game", "baldurs-gate"): "#d84315",       // Streaming
+        ValueColorKey.join("show", "ted-lasso"): "#ff9500",
     ]
 
     /// The colour for a demo pill or chart series: the fixed pair colour when
@@ -438,8 +437,8 @@ final class WalkthroughModel {
         return fallbackPalette[stableHash("\(lookupKey):\(value)") % fallbackPalette.count]
     }
 
-    private static let fallbackPalette = ["#00897b", "#8e24aa", "#1e88e5", "#fdf39aff",
-                                          "#d84315", "#3949ab", "#43a047", "#6d4c41"]
+    private static let fallbackPalette = ["#f7b060", "#42a5f5", "#f06292", "#26a69a",
+                                          "#34c759", "#ff9500", "#5856d6", "#af52de"]
         .compactMap { Color(hex: $0) }
 
     /// djb2 — `String.hashValue` is seeded per process, and these colours
@@ -493,10 +492,10 @@ final class WalkthroughModel {
     /// The mockup's one-line moral: what the span *is*, given its labels.
     var mockupSummary: String {
         guard !mockupLabels.isEmpty else {
-            return "No labels: this span can only ever answer “how long?”."
+            return "No marks: this moment can only ever answer “how long?”."
         }
         let keys = mockupLabels.map(\.key)
-        return "With these labels, this timer can be found by \(keys.formatted(.list(type: .or)))."
+        return "With these marks, this timer can be found by \(keys.formatted(.list(type: .or)))."
     }
 
     // MARK: Created label sets (the create page)

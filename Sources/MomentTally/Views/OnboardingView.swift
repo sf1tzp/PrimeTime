@@ -2,9 +2,9 @@ import SwiftUI
 import MomentTallyCore
 
 /// The first-run sequence (issue #93): Welcome (optionally connect a sync
-/// server or import from Traggo) → interactive walkthrough of the label model
-/// (skippable), whose final pages create the user's first label sets → land
-/// in the Label Sets tab. Hosted by `OnboardingWindowManager`; the walkthrough
+/// server or import from Traggo) → interactive walkthrough of the mark model
+/// (skippable), whose final pages create the user's first tallies → land
+/// in the Tallies tab. Hosted by `OnboardingWindowManager`; the walkthrough
 /// step itself lives in `WalkthroughView` with `WalkthroughModel` as its
 /// shared dataset.
 struct OnboardingView: View {
@@ -98,9 +98,9 @@ private struct WelcomeStep: View {
                     (Text("Welcome to ").font(.largeTitle.weight(.semibold))
                         + Brand.wordmark(size: 34))
                     Text("Count what counts.")
-                        .font(.headline)
+                        .font(Brand.promo(16))
                         .foregroundStyle(.secondary)
-                    Text("A menu-bar time tracker where labels do the organising — no folders, no projects tree, just spans and their key: value labels.")
+                    Text("A menu-bar time tracker where marks do the organising — no folders, no projects tree, just moments and their key: value marks.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -145,7 +145,7 @@ private struct SyncConnectCard: View {
     var body: some View {
         WelcomeActionCard(title: Text("Connecting to a ") + Brand.wordmark(size: 13)
                               + Text(" server?"),
-                          subtitle: "Sync spans, labels, and colours across your Macs.",
+                          subtitle: "Sync moments, marks, and colours across your Macs.",
                           expanded: $expanded) {
             if let icon = Brand.appIcon {
                 Image(nsImage: icon)
@@ -210,7 +210,7 @@ private struct TraggoImportCard: View {
     var body: some View {
         @Bindable var model = model
         WelcomeActionCard(title: Text("Coming from Traggo?"),
-                          subtitle: "Copy a Traggo history — spans, tag keys, colours — into the local database.",
+                          subtitle: "Copy a Traggo history — moments, mark keys, colours — into the local database.",
                           expanded: $expanded) {
             Image(systemName: "square.and.arrow.down")
                 .font(.title3)
@@ -236,7 +236,7 @@ private struct TraggoImportCard: View {
                 HStack {
                     if model.isImporting {
                         ProgressView().controlSize(.small)
-                        Text("Imported \(model.importedSpanCount) timespans…")
+                        Text("Imported \(model.importedSpanCount) moments…")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -248,7 +248,7 @@ private struct TraggoImportCard: View {
             }
             .disabled(model.isDemo)
             if let summary = model.importSummary {
-                Label("Imported \(summary.spansImported) timespans and \(summary.definitionsCreated + summary.definitionsRecolored) label keys.",
+                Label("Imported \(summary.spansImported) moments and \(summary.definitionsCreated + summary.definitionsRecolored) mark keys.",
                       systemImage: "checkmark.circle.fill")
                     .font(.caption)
                     .foregroundStyle(.green)

@@ -3,12 +3,12 @@ import Charts
 
 /// The History tab: a donut + totals breakdown and a daily stacked bar chart
 /// for the displayed window — the shared week by default, or a trailing
-/// range picked like the Label Review's scan window (#163), with the bars
+/// range picked like the Mark Review's scan window (#163), with the bars
 /// widening from days to weeks to months as the window grows. Instead of the
 /// web UI's build-your-own dashboards, flexibility lives in the grouping
 /// controls: two side-by-side donut columns, each with its own "Group by"
 /// picker (any tag key, or a Tag Set — one series per member tag), so two
-/// breakdowns of the same window sit next to each other. A "Count labels"
+/// breakdowns of the same window sit next to each other. A "Count marks"
 /// toggle (#109) in the header row can instead nest the first grouping
 /// inside the second ("in Groups"): one full-width donut and one daily stack
 /// of strict "outer · inner" pairs (#151).
@@ -100,10 +100,10 @@ struct HistoryChartsView: View {
         return HStack(spacing: 6) {
             // fixedSize: the navigator row resolves its Spacer by squeezing
             // flexible children, which wrapped this caption onto two lines.
-            Text("Count labels")
+            Text("Count marks")
                 .foregroundStyle(.secondary)
                 .fixedSize()
-            Picker("Count labels", selection: $history.chartsCombined) {
+            Picker("Count marks", selection: $history.chartsCombined) {
                 Text("Separately").tag(false)
                 Text("in Groups").tag(true)
             }
@@ -157,7 +157,7 @@ struct HistoryChartsView: View {
             if let grouping = selection.wrappedValue {
                 let totals = folded(model.history.totals(for: grouping))
                 if totals.isEmpty {
-                    placeholderDonut("No labelled time")
+                    placeholderDonut("No marked time")
                 } else {
                     let colors = colorMap(for: totals, grouping: grouping)
                     let grand = totals.reduce(0) { $0 + $1.seconds }
@@ -251,7 +251,7 @@ struct HistoryChartsView: View {
         let totals = folded(model.history.combinedTotals(outer: outer, inner: inner))
         if totals.isEmpty {
             // Strict pairing: only spans carrying BOTH dimensions count.
-            placeholderDonut("No time labelled with both groupings")
+            placeholderDonut("No time marked with both groupings")
                 .frame(maxWidth: .infinity)
         } else {
             let colors = paletteSlots(for: totals)
@@ -286,7 +286,7 @@ struct HistoryChartsView: View {
         let marks = dailyMarks
         if marks.isEmpty {
             Text(model.history.chartRange == nil
-                 ? "No labelled time this week" : "No labelled time in this range")
+                 ? "No marked time this week" : "No marked time in this range")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
@@ -354,14 +354,14 @@ struct HistoryChartsView: View {
             if includeNone {
                 Text("None").tag(ChartGrouping?.none)
             }
-            Section("Label keys") {
+            Section("Mark keys") {
                 ForEach(model.history.groupableKeys, id: \.self) { key in
                     Text(key).tag(ChartGrouping?.some(.key(key)))
                 }
             }
             let sets = model.tagSets.filter { !$0.labels.isEmpty }
             if !sets.isEmpty {
-                Section("Label sets") {
+                Section("Tallies") {
                     ForEach(sets) { set in
                         Text(set.name.isEmpty ? "Untitled" : set.name)
                             .tag(ChartGrouping?.some(.tagSet(set.id)))

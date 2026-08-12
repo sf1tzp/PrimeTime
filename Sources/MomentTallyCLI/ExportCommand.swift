@@ -9,15 +9,15 @@ struct Export: AsyncParsableCommand {
         abstract: "Write the store as JSON to stdout.",
         discussion: """
             The same schema-versioned document as the app's Settings export
-            (deterministic key order, pretty-printed, span ids included), so
+            (deterministic key order, pretty-printed, moment ids included), so
             it pipes: `moment-tally export > backup.json`, `moment-tally export | jq`.
 
-            --from/--to bound the export to local days (inclusive); a span
+            --from/--to bound the export to local days (inclusive); a moment
             counts when it overlaps the range, so one crossing midnight into
-            the range is kept, and a running span never ends before it.
-            --include/--exclude take label selectors — `key:value`, or a bare
-            `key` for "has any label with this key". Every --include must
-            match; any matching --exclude drops the span. A filtered document
+            the range is kept, and a running moment never ends before it.
+            --include/--exclude take mark selectors — `key:value`, or a bare
+            `key` for "has any mark with this key". Every --include must
+            match; any matching --exclude drops the moment. A filtered document
             records its filter, so a partial export can't masquerade as a
             full backup.
             """)
@@ -30,11 +30,11 @@ struct Export: AsyncParsableCommand {
                                valueName: "YYYY-MM-DD"))
     var to: String?
 
-    @Option(help: ArgumentHelp("Keep only spans matching every selector; repeatable.",
+    @Option(help: ArgumentHelp("Keep only moments matching every selector; repeatable.",
                                valueName: "key[:value]"))
     var include: [String] = []
 
-    @Option(help: ArgumentHelp("Drop spans matching any selector; repeatable.",
+    @Option(help: ArgumentHelp("Drop moments matching any selector; repeatable.",
                                valueName: "key[:value]"))
     var exclude: [String] = []
 
@@ -51,9 +51,9 @@ struct Export: AsyncParsableCommand {
             FileHandle.standardOutput.write(data)
             FileHandle.standardOutput.write(Data("\n".utf8))
             if filter.isEmpty {
-                log("Exported \(filtered.timeSpans.count) timespans.")
+                log("Exported \(filtered.timeSpans.count) moments.")
             } else {
-                log("Exported \(filtered.timeSpans.count) of \(document.timeSpans.count) timespans (filtered).")
+                log("Exported \(filtered.timeSpans.count) of \(document.timeSpans.count) moments (filtered).")
             }
         }
     }

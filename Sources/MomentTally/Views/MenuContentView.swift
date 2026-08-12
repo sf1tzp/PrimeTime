@@ -110,7 +110,7 @@ struct MenuContentView: View {
             .foregroundStyle(.secondary)
 
         if model.tagSets.isEmpty {
-            Text("No label sets yet — add some in Settings.")
+            Text("No tallies yet — add some in Settings.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         } else {
@@ -149,14 +149,14 @@ struct MenuContentView: View {
         Divider()
 
         // Full-width rows, like Rectangle's menu: quick access to the content
-        // tabs of the settings window, then the config surfaces (Label Sets,
+        // tabs of the settings window, then the config surfaces (Tallies,
         // Settings) and Quit.
         VStack(spacing: 2) {
 
             Button {
                 openSettings(tab: .tagSets)
             } label: {
-                Label("Label Sets", systemImage: "tag")
+                Label("Tallies", systemImage: "tag")
             }
             .buttonStyle(MenuRowButtonStyle())
 
@@ -231,14 +231,20 @@ struct MenuContentView: View {
             Button {
                 Task { await quickStart(labels: set.labels) }
             } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(set.name.isEmpty ? "Untitled" : set.name)
-                    let tags = set.tags.filter { !$0.key.isEmpty }
-                    if !tags.isEmpty {
-                        FlowLayout(spacing: 4) {
-                            ForEach(tags) { tag in
-                                TagPill(key: tag.key, value: tag.value,
-                                        color: model.tagColor(for: tag.key, value: tag.value))
+                // The mini tile carries the set's launcher-card identity into
+                // the popover (#201); .top so it stays with the name row when
+                // pills wrap below.
+                HStack(alignment: .top, spacing: 8) {
+                    LauncherTileIcon(set: set)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(set.name.isEmpty ? "Untitled" : set.name)
+                        let tags = set.tags.filter { !$0.key.isEmpty }
+                        if !tags.isEmpty {
+                            FlowLayout(spacing: 4) {
+                                ForEach(tags) { tag in
+                                    TagPill(key: tag.key, value: tag.value,
+                                            color: model.tagColor(for: tag.key, value: tag.value))
+                                }
                             }
                         }
                     }
@@ -350,7 +356,7 @@ struct MenuContentView: View {
                 .monospacedDigit()
             let tags = timer.labels
             if tags.isEmpty {
-                Text("No labels")
+                Text("No marks")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -374,7 +380,7 @@ struct MenuContentView: View {
                 Image(systemName: "pencil")
             }
             .buttonStyle(HoverIconButtonStyle())
-            .help("Edit labels and note")
+            .help("Edit marks and note")
             Button {
                 Task { await model.stop(id: timer.id) }
             } label: {
@@ -444,7 +450,7 @@ struct MenuContentView: View {
             Button {
                 session.tagDrafts.append(TagRow())
             } label: {
-                Label("Add Label", systemImage: "plus")
+                Label("Add Mark", systemImage: "plus")
             }
             .buttonStyle(.borderless)
             TextField("Add a note…", text: $session.noteDraft)

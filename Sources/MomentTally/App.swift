@@ -11,12 +11,6 @@ struct MomentTallyApp: App {
     // object; SwiftUI keeps it alive for the app's lifetime.
     @State private var model = AppModel()
 
-    init() {
-        // The onboarding masthead sets the wordmark in the brand font; the
-        // registration must precede the first render.
-        Brand.registerFonts()
-    }
-
     var body: some Scene {
         MenuBarExtra {
             MenuContentView()
@@ -30,7 +24,7 @@ struct MomentTallyApp: App {
                 if let label = model.menuBarLabel {
                     Text(label)
                 } else {
-                    Image(systemName: "timer")
+                    Image(nsImage: Brand.menuBarIcon)
                 }
             }
             // The label is the only view alive from launch (the popover exists

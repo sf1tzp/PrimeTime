@@ -108,6 +108,14 @@ final class AppModel {
         }
     }
 
+    /// Launcher cards (and the popover's mini tiles) draw the Studio tile
+    /// gradient derived from their colour (#201) instead of a flat fill.
+    /// Purely cosmetic, so deliberately local-only like `TagSet.colorHex` —
+    /// no `preferenceChanged()`, no sync schema change.
+    var gradientLauncherCards: Bool {
+        didSet { defaults.set(gradientLauncherCards, forKey: Keys.gradientLauncherCards) }
+    }
+
     // MARK: Runtime state (observed by the UI)
 
     var user: User?
@@ -195,6 +203,7 @@ final class AppModel {
         static let colorTagsByValue = "colorTagsByValue"
         static let valueColors = "valueColors"
         static let menuTagSetLimit = "menuTagSetLimit"
+        static let gradientLauncherCards = "gradientLauncherCards"
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
         /// Keychain accounts: the sync server's device token, and the legacy
         /// traggo token the importer still reuses.
@@ -219,6 +228,8 @@ final class AppModel {
             ? true : defaults.bool(forKey: Keys.colorTagsByValue)  // default on
         menuTagSetLimit = defaults.object(forKey: Keys.menuTagSetLimit) == nil
             ? 5 : defaults.integer(forKey: Keys.menuTagSetLimit)  // 0 = all
+        gradientLauncherCards = defaults.object(forKey: Keys.gradientLauncherCards) == nil
+            ? true : defaults.bool(forKey: Keys.gradientLauncherCards)  // default on
         // Into a local first: `token` is observation-tracked, and a tracked
         // property can't be *read* before the whole object is initialised.
         // A demo never reads the real token — nothing in a demo may reach a
@@ -785,6 +796,17 @@ final class AppModel {
             return color
         }
         return Color(hex: "#2196f3") ?? .blue
+    }
+
+    /// The colour a set's launcher card carries: the first mark's colour,
+    /// then the set's own fallback (the quick-marks-only case), then accent.
+    /// Shared by the Launcher cards and the popover rows' mini tiles, so the
+    /// two surfaces always agree.
+    func cardTint(for set: TagSet) -> Color {
+        if let first = set.labels.first {
+            return tagColor(for: first.key, value: first.value)
+        }
+        return set.colorHex.flatMap(Color.init(hex:)) ?? .accentColor
     }
 
     // MARK: Per-value colour overrides

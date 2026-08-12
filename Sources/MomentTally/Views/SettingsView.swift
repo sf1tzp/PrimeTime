@@ -42,7 +42,7 @@ struct GeneralSettingsView: View {
                         .textSelection(.enabled)
                 }
                 HStack {
-                    Text("Save every timespan, label, colour, and label set as a JSON file — an archive of the database above.")
+                    Text("Save every moment, mark, colour, and tally as a JSON file — an archive of the database above.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -113,11 +113,11 @@ struct GeneralSettingsView: View {
                         model.disconnectSyncServer()
                     }
                 }
-                Text("Everything syncs: timespans, label keys and colours, label sets, and the settings below. Edits made offline catch up on the next sync.")
+                Text("Everything syncs: moments, mark keys and colours, tallies, and the settings below. Edits made offline catch up on the next sync.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Optional: connect a sync server to share timespans, label sets, and colours across your Macs. Everything keeps working offline; changes sync in the background.")
+                Text("Optional: connect a sync server to share moments, tallies, and colours across your Macs. Everything keeps working offline; changes sync in the background.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 TextField("Server URL", text: $syncURL)
@@ -172,7 +172,7 @@ struct GeneralSettingsView: View {
             let limit = Binding(
                 get: { model.menuTagSetLimit },
                 set: { model.menuTagSetLimit = max(0, min(99, $0)) })
-            LabeledContent("Quick-start label sets") {
+            LabeledContent("Quick-start tallies") {
                 HStack(spacing: 2) {
                     TextField("", value: limit, format: .number)
                         .multilineTextAlignment(.trailing)
@@ -181,12 +181,18 @@ struct GeneralSettingsView: View {
                         .labelsHidden()
                 }
             }
-            Text("How many label sets the popover lists (0 shows all), in the order from the Label Sets tab — drag to reorder there. The rest stay a click away behind a “more…” row.")
+            Text("How many tallies the popover lists (0 shows all), in the order from the Tallies tab — drag to reorder there. The rest stay a click away behind a “more…” row.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        Section("Labels") {
-            Toggle("Colour labels by value", isOn: $model.colorTagsByValue)
+        Section("Launcher") {
+            Toggle("Gradient launcher cards", isOn: $model.gradientLauncherCards)
+            Text("Cards (and the menu's quick-start tiles) take a colour gradient derived from their colour — the momenttally.com tile look. Off keeps flat colour fills.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        Section("Marks") {
+            Toggle("Colour marks by value", isOn: $model.colorTagsByValue)
             Text("Pick a colour per key: value pair, so e.g. repo: foo and repo: bar look different. Pairs without an override keep their key colour.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -242,7 +248,7 @@ struct GeneralSettingsView: View {
     private var importSection: some View {
         @Bindable var model = model
         return Section("Import from Traggo") {
-            Text("Copy a Traggo server’s full history — finished and running timespans, plus tag keys and their colours — into the local database. Safe to run again: timespans already imported are updated, not duplicated.")
+            Text("Copy a Traggo server’s full history — finished and running moments, plus mark keys and their colours — into the local database. Safe to run again: moments already imported are updated, not duplicated.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             TextField("Server URL", text: $model.serverURL)
@@ -258,7 +264,7 @@ struct GeneralSettingsView: View {
             HStack {
                 if model.isImporting {
                     ProgressView().controlSize(.small)
-                    Text("Imported \(model.importedSpanCount) timespans…")
+                    Text("Imported \(model.importedSpanCount) moments…")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -282,14 +288,14 @@ struct GeneralSettingsView: View {
     }
 
     private func summaryText(_ summary: ImportSummary) -> String {
-        var parts = ["Imported \(summary.spansImported) timespans"]
+        var parts = ["Imported \(summary.spansImported) moments"]
         if summary.spansUpdated > 0 {
             parts.append("(\(summary.spansInserted) new, \(summary.spansUpdated) updated)")
         }
         if summary.runningSpans > 0 {
             parts.append("— \(summary.runningSpans) still running —")
         }
-        parts.append("and \(summary.definitionsCreated + summary.definitionsRecolored) label keys.")
+        parts.append("and \(summary.definitionsCreated + summary.definitionsRecolored) mark keys.")
         return parts.joined(separator: " ")
     }
 
@@ -331,7 +337,7 @@ struct GeneralSettingsView: View {
     }()
 }
 
-// MARK: - Label Sets
+// MARK: - Tallies
 
 struct TagSetsSettingsView: View {
     @Environment(AppModel.self) private var model
@@ -358,7 +364,7 @@ struct TagSetsSettingsView: View {
                     }
                 }
             } message: {
-                Text("This will remove the label set. Existing timespan labels will be unaffected.")
+                Text("This will remove the tally. Existing moment marks will be unaffected.")
             }
     }
 
@@ -424,7 +430,7 @@ struct TagSetsSettingsView: View {
             } else {
                 VStack {
                     Spacer()
-                    Text("Select or add a label set")
+                    Text("Select or add a tally")
                         .foregroundStyle(.secondary)
                     Spacer()
                 }
@@ -452,7 +458,7 @@ struct TagSetDetailView: View {
 
     private var editorForm: some View {
         Form {
-            Section("Label set") {
+            Section("Tally") {
                 // "Untitled" matches the fallback shown wherever an unnamed
                 // set is listed, so the placeholder tells the truth (#134).
                 // An explicit label + hidden-label field, like the key/value
@@ -468,7 +474,7 @@ struct TagSetDetailView: View {
                         .focused($nameFocused)
                 }
             }
-            Section("Labels") {
+            Section("Marks") {
                 ForEach($tagSet.tags) { $tag in
                     HStack(spacing: 6) {
                         RowReorderGrip(tag: tag, dragged: $dragged)
@@ -520,7 +526,7 @@ struct TagSetDetailView: View {
                     Button {
                         tagSet.tags.append(TagRow())
                     } label: {
-                        Label("Add Label", systemImage: "plus")
+                        Label("Add Mark", systemImage: "plus")
                     }
                     .buttonStyle(.borderless)
                 }
@@ -531,7 +537,7 @@ struct TagSetDetailView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if tagSet.labels.isEmpty {
-                    Text("With no labels, the swatch picks this set’s Launcher card colour instead. Card colours are saved on this Mac.")
+                    Text("With no marks, the swatch picks this tally’s Launcher card colour instead. Card colours are saved on this Mac.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -593,15 +599,15 @@ struct TagSetDetailView: View {
             Button {
                 quickRows.wrappedValue.append(TagRow())
             } label: {
-                Label("Add Quick Label", systemImage: "plus")
+                Label("Add Quick Mark", systemImage: "plus")
             }
             .buttonStyle(.borderless)
-            Text("Offered as one-click chips when hovering this set in the menu or Launcher: click one to start the set plus that label. If the set already carries the same key, the quick label’s value wins.")
+            Text("Offered as one-click chips when hovering this tally in the menu or Launcher: click one to start the tally plus that mark. If the tally already carries the same key, the quick mark’s value wins.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         } header: {
             HStack {
-                Text("Quick labels")
+                Text("Quick marks")
                 Spacer()
                 Button("Copy") {
                     model.quickLabelsClipboard = quickRows.wrappedValue
@@ -632,7 +638,7 @@ struct TagSetDetailView: View {
     private var colorCaption: String {
         model.colorTagsByValue
             ? "Colours are saved per key: value pair and override the key’s colour. Right-click a swatch to go back to the key colour."
-            : "Colours are saved per label key, so recolouring a key here also changes it in every other label set that uses it."
+            : "Colours are saved per mark key, so recolouring a key here also changes it in every other tally that uses it."
     }
 }
 
