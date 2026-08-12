@@ -1,4 +1,4 @@
-PrimeTime server {{ include "primetime-server.imageTag" . }} is deploying as
+Moment Tally server {{ include "moment-tally-server.imageTag" . }} is deploying as
 release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
 
 The server speaks GraphQL on POST /graphql (port {{ .Values.service.port }}).
@@ -10,7 +10,7 @@ Reachable via ingress:
 {{- else }}
 
 No ingress is enabled. Port-forward to reach it:
-  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "primetime-server.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "moment-tally-server.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
   # then POST to http://localhost:{{ .Values.service.port }}/graphql
 {{- end }}
 
@@ -18,10 +18,10 @@ No ingress is enabled. Port-forward to reach it:
 {{- if eq .Values.admin.password "admin" }}
 
 WARNING: the admin password is the default "admin". Change it:
-  kubectl --namespace {{ .Release.Namespace }} exec deploy/{{ include "primetime-server.fullname" . }} -- \
+  kubectl --namespace {{ .Release.Namespace }} exec deploy/{{ include "moment-tally-server.fullname" . }} -- \
     ./admin reset-password -name {{ .Values.admin.username }} -pass <new-password>
 {{- end }}
 {{- end }}
 
 User administration (the image ships the admin CLI):
-  kubectl --namespace {{ .Release.Namespace }} exec deploy/{{ include "primetime-server.fullname" . }} -- ./admin list-users
+  kubectl --namespace {{ .Release.Namespace }} exec deploy/{{ include "moment-tally-server.fullname" . }} -- ./admin list-users

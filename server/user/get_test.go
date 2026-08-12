@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/test"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/test"
 )
 
 func TestGQL_Users(t *testing.T) {

@@ -5,9 +5,9 @@ import (
 
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/test"
-	"primetime.tools/server/test/fake"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/test"
+	"momenttally.com/server/test/fake"
 )
 
 func TestUpdate_withKey(t *testing.T) {

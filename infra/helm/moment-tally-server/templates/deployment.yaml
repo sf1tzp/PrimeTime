@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "primetime-server.fullname" . }}
+  name: {{ include "moment-tally-server.fullname" . }}
   labels:
-    {{- include "primetime-server.labels" . | nindent 4 }}
+    {{- include "moment-tally-server.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   # SQLite is a single writer sharing one PVC — never run two pods at once.
@@ -11,7 +11,7 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "primetime-server.selectorLabels" . | nindent 6 }}
+      {{- include "moment-tally-server.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -21,7 +21,7 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "primetime-server.selectorLabels" . | nindent 8 }}
+        {{- include "moment-tally-server.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -30,8 +30,8 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: primetime-server
-          image: "{{ .Values.image.repository }}:{{ include "primetime-server.imageTag" . }}"
+        - name: moment-tally-server
+          image: "{{ .Values.image.repository }}:{{ include "moment-tally-server.imageTag" . }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -40,25 +40,25 @@ spec:
               containerPort: 3030
               protocol: TCP
           env:
-            - name: TRAGGO_PORT
+            - name: MOMENTTALLY_PORT
               value: "3030"
-            - name: TRAGGO_LOG_LEVEL
+            - name: MOMENTTALLY_LOG_LEVEL
               value: {{ .Values.config.logLevel | quote }}
-            - name: TRAGGO_PASS_STRENGTH
+            - name: MOMENTTALLY_PASS_STRENGTH
               value: {{ .Values.config.passStrength | quote }}
-            - name: TRAGGO_DATABASE_DIALECT
+            - name: MOMENTTALLY_DATABASE_DIALECT
               value: sqlite3
-            - name: TRAGGO_DATABASE_CONNECTION
+            - name: MOMENTTALLY_DATABASE_CONNECTION
               value: {{ .Values.config.databaseConnection | quote }}
-            - name: TRAGGO_DEFAULT_USER_NAME
+            - name: MOMENTTALLY_DEFAULT_USER_NAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "primetime-server.adminSecretName" . }}
+                  name: {{ include "moment-tally-server.adminSecretName" . }}
                   key: username
-            - name: TRAGGO_DEFAULT_USER_PASS
+            - name: MOMENTTALLY_DEFAULT_USER_PASS
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "primetime-server.adminSecretName" . }}
+                  name: {{ include "moment-tally-server.adminSecretName" . }}
                   key: password
           # No dedicated health endpoint; a listening socket means ready.
           startupProbe:
@@ -76,14 +76,14 @@ spec:
             periodSeconds: 10
           volumeMounts:
             - name: data
-              mountPath: /opt/primetime/data
+              mountPath: /opt/moment-tally/data
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - name: data
         {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "primetime-server.pvcName" . }}
+            claimName: {{ include "moment-tally-server.pvcName" . }}
         {{- else }}
           emptyDir: {}
         {{- end }}

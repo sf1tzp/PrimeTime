@@ -8,13 +8,13 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog"
-	"primetime.tools/server/config/mode"
+	"momenttally.com/server/config/mode"
 )
 
 var (
-	prefix        = "traggo"
+	prefix        = "momenttally"
 	files         = []string{".env.development.local", ".env.development", ".env.local", ".env"}
-	absoluteFiles = []string{"/etc/traggo/server.ini"}
+	absoluteFiles = []string{"/etc/momenttally/server.ini"}
 	osExecutable  = os.Executable
 	osStat        = os.Stat
 )
@@ -27,7 +27,7 @@ type Config struct {
 	DefaultUserPass    string   `default:"admin" split_words:"true"`
 	PassStrength       int      `default:"10" split_words:"true"`
 	DatabaseDialect    string   `default:"sqlite3" split_words:"true"`
-	DatabaseConnection string   `default:"data/traggo.db" split_words:"true"`
+	DatabaseConnection string   `default:"data/momenttally.db" split_words:"true"`
 }
 
 // Get loads the application config.
@@ -97,7 +97,7 @@ func getFiles(relativeTo string) []string {
 	}
 	homeDir, err := os.UserHomeDir()
 	if err == nil {
-		result = append(result, filepath.Join(homeDir, ".config/traggo/server.ini"))
+		result = append(result, filepath.Join(homeDir, ".config/momenttally/server.ini"))
 	}
 	result = append(result, absoluteFiles...)
 	return result

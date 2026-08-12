@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/jinzhu/copier"
-	"primetime.tools/server/auth"
-	"primetime.tools/server/generated/gqlmodel"
+	"momenttally.com/server/auth"
+	"momenttally.com/server/generated/gqlmodel"
 )
 
 // RemoveCurrentDevice removes the current authenticated device

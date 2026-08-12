@@ -1,8 +1,8 @@
 package graphql
 
 import (
-	"primetime.tools/server/auth"
-	"primetime.tools/server/generated/gqlschema"
+	"momenttally.com/server/auth"
+	"momenttally.com/server/generated/gqlschema"
 )
 
 // NewDirective creates a new directive.

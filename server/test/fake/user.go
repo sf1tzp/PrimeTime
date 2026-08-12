@@ -3,8 +3,8 @@ package fake
 import (
 	"context"
 
-	"primetime.tools/server/auth"
-	"primetime.tools/server/model"
+	"momenttally.com/server/auth"
+	"momenttally.com/server/model"
 )
 
 // User create a context with a fake user.

@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
-	"primetime.tools/server/test"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
+	"momenttally.com/server/test"
 )
 
 func TestGQL_CreateUser_succeeds_addsUser(t *testing.T) {

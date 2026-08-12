@@ -10,8 +10,8 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres" // enable the postgres dialect
 	_ "github.com/jinzhu/gorm/dialects/sqlite"   // enable the sqlite3 dialect
 	"github.com/rs/zerolog/log"
-	"primetime.tools/server/logger"
-	"primetime.tools/server/model"
+	"momenttally.com/server/logger"
+	"momenttally.com/server/model"
 )
 
 var mkdirAll = os.MkdirAll

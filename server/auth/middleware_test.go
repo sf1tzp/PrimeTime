@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"primetime.tools/server/test"
+	"momenttally.com/server/test"
 )
 
 func TestMiddleware_noAuthentication_noAuthentication(t *testing.T) {

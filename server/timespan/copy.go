@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"primetime.tools/server/auth"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
+	"momenttally.com/server/auth"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
 )
 
 // CopyTimeSpan copies a time span.

@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"primetime.tools/server/auth"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
-	"primetime.tools/server/test"
+	"momenttally.com/server/auth"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
+	"momenttally.com/server/test"
 )
 
 var (

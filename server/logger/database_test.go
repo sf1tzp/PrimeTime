@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"primetime.tools/server/logger"
-	"primetime.tools/server/test"
+	"momenttally.com/server/logger"
+	"momenttally.com/server/test"
 )
 
 type Test struct {

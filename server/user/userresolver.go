@@ -2,7 +2,7 @@ package user
 
 import (
 	"github.com/jinzhu/gorm"
-	"primetime.tools/server/user/password"
+	"momenttally.com/server/user/password"
 )
 
 var createPassword = password.CreatePassword

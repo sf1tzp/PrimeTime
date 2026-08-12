@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/jinzhu/copier"
-	"primetime.tools/server/auth"
-	"primetime.tools/server/auth/rand"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
-	"primetime.tools/server/user/password"
+	"momenttally.com/server/auth"
+	"momenttally.com/server/auth/rand"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
+	"momenttally.com/server/user/password"
 )
 
 var (

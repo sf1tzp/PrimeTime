@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"primetime.tools/server/auth"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
+	"momenttally.com/server/auth"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
 )
 
 // Stats groups the time spans by tag key.

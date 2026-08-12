@@ -15,8 +15,8 @@
 #     which is also the by-hand fallback for everything here
 #   - the app release: Mac-bound signing/notarization, scripts/release.sh
 #   - first-push package visibility: GHCR creates packages private and has
-#     no API to change that — flip primetime-server and
-#     charts/primetime-server to public once in the web UI
+#     no API to change that — flip moment-tally-server and
+#     charts/moment-tally-server to public once in the web UI
 name: release-server
 
 on:
@@ -50,8 +50,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/sf1tzp/primetime-server:${{ github.ref_name }}
-            ghcr.io/sf1tzp/primetime-server:latest
+            ghcr.io/sf1tzp/moment-tally-server:${{ github.ref_name }}
+            ghcr.io/sf1tzp/moment-tally-server:latest
           build-args: |
             VERSION=${{ github.ref_name }}
             COMMIT=${{ steps.meta.outputs.commit }}
@@ -67,6 +67,6 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin \
               <<< "${{ secrets.GITHUB_TOKEN }}"
-          helm package infra/helm/primetime-server \
+          helm package infra/helm/moment-tally-server \
               --version "$VERSION" --app-version "$VERSION" -d dist
-          helm push "dist/primetime-server-$VERSION.tgz" oci://ghcr.io/sf1tzp/charts
+          helm push "dist/moment-tally-server-$VERSION.tgz" oci://ghcr.io/sf1tzp/charts

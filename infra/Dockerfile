@@ -1,5 +1,5 @@
-# PrimeTime server image. Build from the repository root:
-#   docker build -f infra/Dockerfile -t primetime-server .
+# Moment Tally server image. Build from the repository root:
+#   docker build -f infra/Dockerfile -t moment-tally-server .
 # or via infra/docker-compose.yml.
 #
 # Version stamping: pass --build-arg VERSION=$(git describe --tags) (and
@@ -26,7 +26,7 @@ RUN gqlgen
 RUN CGO_ENABLED=1 go build -a \
         -ldflags "-s -w -linkmode external -extldflags '-static' -X main.BuildMode=prod -X main.BuildVersion=${VERSION} -X main.BuildCommit=${COMMIT} -X main.BuildDate=${DATE}" \
         -tags 'netgo osusergo sqlite_omit_load_extension' \
-        -o /out/primetime-server . \
+        -o /out/moment-tally-server . \
     && CGO_ENABLED=1 go build -a \
         -ldflags "-s -w -linkmode external -extldflags '-static'" \
         -tags 'netgo osusergo sqlite_omit_load_extension' \
@@ -34,15 +34,15 @@ RUN CGO_ENABLED=1 go build -a \
 
 FROM scratch
 # The source label links the GHCR package to the public mirror repo (#75).
-LABEL org.opencontainers.image.source="https://github.com/sf1tzp/PrimeTime" \
-      org.opencontainers.image.description="PrimeTime sync server — headless GraphQL time-tracking backend (SQLite)" \
+LABEL org.opencontainers.image.source="https://github.com/sf1tzp/moment-tally" \
+      org.opencontainers.image.description="Moment Tally sync server — headless GraphQL time-tracking backend (SQLite)" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later AND GPL-3.0-only"
-WORKDIR /opt/primetime
-COPY --from=builder /out/primetime-server /opt/primetime/primetime-server
-COPY --from=builder /out/admin /opt/primetime/admin
+WORKDIR /opt/moment-tally
+COPY --from=builder /out/moment-tally-server /opt/moment-tally/moment-tally-server
+COPY --from=builder /out/admin /opt/moment-tally/admin
 # Licensing (per server/NOTICE — a GPL-3.0 §13 combination with AGPL-3.0):
 # ship the notices in the image so the source-availability obligation travels
 # with the binary.
-COPY --from=builder /src/LICENSE /src/LICENSE.AGPL-3.0 /src/NOTICE /opt/primetime/
+COPY --from=builder /src/LICENSE /src/LICENSE.AGPL-3.0 /src/NOTICE /opt/moment-tally/
 EXPOSE 3030
-ENTRYPOINT ["./primetime-server"]
+ENTRYPOINT ["./moment-tally-server"]

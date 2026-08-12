@@ -9,7 +9,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
-	"primetime.tools/server/config/mode"
+	"momenttally.com/server/config/mode"
 )
 
 func TestMain(m *testing.M) {
@@ -25,8 +25,8 @@ func TestGet_withoutFiles_containsDefault(t *testing.T) {
 }
 
 func TestGet_withoutFiles_usesEnvVariables(t *testing.T) {
-	assert.Nil(t, os.Setenv("TRAGGO_PORT", "9999"))
-	defer os.Unsetenv("TRAGGO_PORT")
+	assert.Nil(t, os.Setenv("MOMENTTALLY_PORT", "9999"))
+	defer os.Unsetenv("MOMENTTALLY_PORT")
 
 	conf, logs := Get()
 
@@ -35,8 +35,8 @@ func TestGet_withoutFiles_usesEnvVariables(t *testing.T) {
 }
 
 func TestGet_withFile_usesFile(t *testing.T) {
-	defer os.Unsetenv("TRAGGO_PORT")
-	assert.Nil(t, ioutil.WriteFile(".env", []byte("TRAGGO_PORT=5555"), 0777))
+	defer os.Unsetenv("MOMENTTALLY_PORT")
+	assert.Nil(t, ioutil.WriteFile(".env", []byte("MOMENTTALLY_PORT=5555"), 0777))
 	defer os.Remove(".env")
 
 	conf, logs := Get()
@@ -50,20 +50,20 @@ func TestGet_withFile_usesFile(t *testing.T) {
 }
 
 func TestGet_withInvalidEnvParam_errs(t *testing.T) {
-	assert.Nil(t, os.Setenv("TRAGGO_PORT", "asdasd"))
-	defer os.Unsetenv("TRAGGO_PORT")
+	assert.Nil(t, os.Setenv("MOMENTTALLY_PORT", "asdasd"))
+	defer os.Unsetenv("MOMENTTALLY_PORT")
 
 	_, logs := Get()
 
 	expected := []FutureLog{{
-		Msg:   `cannot parse env params: envconfig.Process: assigning TRAGGO_PORT to Port: converting 'asdasd' to type int. details: strconv.ParseInt: parsing "asdasd": invalid syntax`,
+		Msg:   `cannot parse env params: envconfig.Process: assigning MOMENTTALLY_PORT to Port: converting 'asdasd' to type int. details: strconv.ParseInt: parsing "asdasd": invalid syntax`,
 		Level: zerolog.FatalLevel,
 	}}
 	assert.Equal(t, expected, logs)
 }
 
 func TestGet_prodMode_findFileRelativeToExecutable(t *testing.T) {
-	defer os.Unsetenv("TRAGGO_PORT")
+	defer os.Unsetenv("MOMENTTALLY_PORT")
 	oldMode := mode.Get()
 	mode.Set(mode.Prod)
 	defer func() {
@@ -79,7 +79,7 @@ func TestGet_prodMode_findFileRelativeToExecutable(t *testing.T) {
 	assert.Nil(t, os.MkdirAll("./testpath", 0777))
 	defer os.RemoveAll("./testpath")
 
-	assert.Nil(t, ioutil.WriteFile("./testpath/.env", []byte("TRAGGO_PORT=6666"), 0777))
+	assert.Nil(t, ioutil.WriteFile("./testpath/.env", []byte("MOMENTTALLY_PORT=6666"), 0777))
 
 	conf, logs := Get()
 
@@ -92,7 +92,7 @@ func TestGet_prodMode_findFileRelativeToExecutable(t *testing.T) {
 }
 
 func TestGet_errsOnOsExecutable(t *testing.T) {
-	defer os.Unsetenv("TRAGGO_PORT")
+	defer os.Unsetenv("MOMENTTALLY_PORT")
 	oldMode := mode.Get()
 	mode.Set(mode.Prod)
 	defer func() {
@@ -116,7 +116,7 @@ func TestGet_errsOnOsExecutable(t *testing.T) {
 }
 
 func TestGet_withoutFilePermission(t *testing.T) {
-	defer os.Unsetenv("TRAGGO_PORT")
+	defer os.Unsetenv("MOMENTTALLY_PORT")
 	old := osStat
 	defer func() {
 		osStat = old
@@ -138,7 +138,7 @@ func TestGet_withoutFilePermission(t *testing.T) {
 }
 
 func TestGet_checksAbsoluteFiles(t *testing.T) {
-	defer os.Unsetenv("TRAGGO_PORT")
+	defer os.Unsetenv("MOMENTTALLY_PORT")
 	assert.Nil(t, os.MkdirAll("./absolutepath", 0777))
 	defer os.RemoveAll("./absolutepath")
 	path, err := filepath.Abs("./absolutepath/.env")
@@ -147,7 +147,7 @@ func TestGet_checksAbsoluteFiles(t *testing.T) {
 	defer func() {
 		absoluteFiles = []string{}
 	}()
-	assert.Nil(t, ioutil.WriteFile("./absolutepath/.env", []byte("TRAGGO_PORT=7777"), 0777))
+	assert.Nil(t, ioutil.WriteFile("./absolutepath/.env", []byte("MOMENTTALLY_PORT=7777"), 0777))
 
 	conf, logs := Get()
 

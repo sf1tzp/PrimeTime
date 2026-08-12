@@ -3,9 +3,9 @@ package timespan
 import (
 	"context"
 
-	"primetime.tools/server/auth"
+	"momenttally.com/server/auth"
 
-	"primetime.tools/server/model"
+	"momenttally.com/server/model"
 )
 
 // SuggestLabelValue suggests a tag value.

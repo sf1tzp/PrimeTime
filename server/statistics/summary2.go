@@ -4,16 +4,16 @@ import (
 	"context"
 	stdtime "time"
 
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
-	"primetime.tools/server/time"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
+	"momenttally.com/server/time"
 )
 
 // Stats2 another version of the stats endpoint
 func (r *ResolverForStatistics) Stats2(ctx context.Context, now model.Time, stats gqlmodel.InputStatsSelection) ([]*gqlmodel.RangedStatisticsEntries, error) {
 	var ranges []*gqlmodel.Range
 
-	// PrimeTime v1 has no per-user week configuration: weeks run
+	// Moment Tally v1 has no per-user week configuration: weeks run
 	// Monday through Sunday.
 	staticRanges, err := time.ParseRange(now.OmitTimeZone(),
 		time.RelativeRange{From: stats.Range.From, To: stats.Range.To},

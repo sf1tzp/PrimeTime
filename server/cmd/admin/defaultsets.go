@@ -15,8 +15,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/jinzhu/gorm"
-	"primetime.tools/server/labelset"
-	"primetime.tools/server/model"
+	"momenttally.com/server/labelset"
+	"momenttally.com/server/model"
 )
 
 func listDefaultSets(db *gorm.DB) {

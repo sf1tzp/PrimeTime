@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
-	"primetime.tools/server/test"
-	"primetime.tools/server/test/fake"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
+	"momenttally.com/server/test"
+	"momenttally.com/server/test/fake"
 )
 
 // clockAt pins the sync clock to a fixed RFC3339 instant, restoring the

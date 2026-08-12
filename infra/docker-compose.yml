@@ -1,31 +1,31 @@
 services:
-  primetime-server:
+  moment-tally-server:
     # Builds the image from source so any clean host can `docker compose up
     # --build` without a Go toolchain. To run a published image instead,
-    # override with `image:` (e.g. gitea.zen.lofi/sfi/primetime-server:v0.2.0).
+    # override with `image:` (e.g. gitea.zen.lofi/sfi/moment-tally-server:v0.2.0).
     build:
       context: ..
       dockerfile: infra/Dockerfile
       # Stamp the release version into a compose-built binary when the caller
       # exports these; a plain `up --build` reports 'develop', which is honest.
       args:
-        VERSION: ${PRIMETIME_VERSION:-develop}
-        COMMIT: ${PRIMETIME_COMMIT:--}
-        DATE: ${PRIMETIME_DATE:-unknown}
+        VERSION: ${MOMENTTALLY_VERSION:-develop}
+        COMMIT: ${MOMENTTALLY_COMMIT:--}
+        DATE: ${MOMENTTALLY_DATE:-unknown}
     environment:
       # A default admin user is created only when the database is empty.
       # Change the password afterwards, or manage users with the admin CLI:
-      #   docker compose exec primetime-server ./admin -h
-      TRAGGO_DEFAULT_USER_NAME: admin
-      TRAGGO_DEFAULT_USER_PASS: admin
-      TRAGGO_DATABASE_DIALECT: sqlite3
-      TRAGGO_DATABASE_CONNECTION: data/primetime.db
-      TRAGGO_LOG_LEVEL: info
+      #   docker compose exec moment-tally-server ./admin -h
+      MOMENTTALLY_DEFAULT_USER_NAME: admin
+      MOMENTTALLY_DEFAULT_USER_PASS: admin
+      MOMENTTALLY_DATABASE_DIALECT: sqlite3
+      MOMENTTALLY_DATABASE_CONNECTION: data/momenttally.db
+      MOMENTTALLY_LOG_LEVEL: info
     ports:
       - "3030:3030"
     volumes:
-      - primetime-data:/opt/primetime/data
+      - momenttally-data:/opt/moment-tally/data
     restart: unless-stopped
 
 volumes:
-  primetime-data:
+  momenttally-data:

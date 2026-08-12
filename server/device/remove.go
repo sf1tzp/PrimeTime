@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/jinzhu/copier"
-	"primetime.tools/server/auth"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
+	"momenttally.com/server/auth"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
 )
 
 // RemoveDevice removes a device

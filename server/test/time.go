@@ -3,7 +3,7 @@ package test
 import (
 	"time"
 
-	"primetime.tools/server/model"
+	"momenttally.com/server/model"
 )
 
 // Time parses a time panics if not valid

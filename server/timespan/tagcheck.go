@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jinzhu/gorm"
-	"primetime.tools/server/model"
+	"momenttally.com/server/model"
 )
 
 func tagsExist(db *gorm.DB, userID int, tags []model.TimeSpanTag) error {

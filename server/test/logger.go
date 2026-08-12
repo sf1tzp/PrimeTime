@@ -4,7 +4,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
-	"primetime.tools/server/logger"
+	"momenttally.com/server/logger"
 )
 
 // Logger the test logger with util methods

@@ -11,7 +11,7 @@ import "time"
 // defaults apply (see DefaultUserPreferences).
 type UserPreferences struct {
 	UserID int `gorm:"primary_key;unique_index"`
-	// ColorByValue colours timespans by label value (PrimeTime's default
+	// ColorByValue colours timespans by label value (Moment Tally's default
 	// behaviour); key colours remain for navigating Label Review.
 	ColorByValue bool
 	// MenuLabelSetLimit is how many label sets the menu shows (0 = all).

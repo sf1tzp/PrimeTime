@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"primetime.tools/server/model"
-	"primetime.tools/server/test"
+	"momenttally.com/server/model"
+	"momenttally.com/server/test"
 )
 
 func TestGQL_RemoveUser_succeeds_removesUser(t *testing.T) {

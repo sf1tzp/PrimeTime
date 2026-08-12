@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"primetime.tools/server/test"
-	"primetime.tools/server/test/fake"
+	"momenttally.com/server/test"
+	"momenttally.com/server/test/fake"
 )
 
 const date = "2019-06-10T18:30:00Z"

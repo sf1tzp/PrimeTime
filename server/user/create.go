@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/jinzhu/copier"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/labelset"
-	"primetime.tools/server/model"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/labelset"
+	"momenttally.com/server/model"
 )
 
 // CreateUser creates a user.
@@ -26,7 +26,7 @@ func (r *ResolverForUser) CreateUser(ctx context.Context, name string, pass stri
 		return nil, err
 	}
 
-	// New users start with the default label set collection (PrimeTime v1).
+	// New users start with the default label set collection (Moment Tally v1).
 	if err := labelset.SeedDefaultLabelSets(r.DB, newUser.ID); err != nil {
 		return nil, err
 	}

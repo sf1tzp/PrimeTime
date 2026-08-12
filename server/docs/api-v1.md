@@ -1,17 +1,17 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <!-- Copyright (C) 2026 Steven Fitzpatrick -->
 
-# PrimeTime API v1
+# Moment Tally API v1
 
-The PrimeTime server speaks GraphQL on `POST /graphql`. This document
-describes the v1 contract — the first PrimeTime-owned schema, no longer
+The Moment Tally server speaks GraphQL on `POST /graphql`. This document
+describes the v1 contract — the first Moment Tally-owned schema, no longer
 traggo-compatible. The full schema is [`../schema.graphql`](../schema.graphql);
 this page covers the concepts and the operations a client needs.
 
 ## Vocabulary
 
 - **Label** — a `key: value` dimension attached to a timespan
-  (e.g. `repo: primetime`, `type: review`). The Prometheus mental model:
+  (e.g. `repo: moment-tally`, `type: review`). The Prometheus mental model:
   time series with dimensions.
 - **Label definition** — registers a key for a user: the key plus its
   display colour and any per-value colour overrides. A key must be defined
@@ -149,8 +149,8 @@ required `range` (static timestamps or relative expressions like
 
 Traggo's dashboards (dashboard/entry/range CRUD and their types) and
 `userSettings` (theme, date locale, week start, input style) are **not**
-part of v1: PrimeTime is opinionated — stats views belong to the client,
-and those settings were web-UI-shaped with no PrimeTime consumer.
+part of v1: Moment Tally is opinionated — stats views belong to the client,
+and those settings were web-UI-shaped with no Moment Tally consumer.
 
 ## User preferences
 
@@ -167,7 +167,7 @@ type UserPreferences {
 
 - `userPreferences: UserPreferences!` — the current user's preferences;
   fresh-user defaults are `colorByValue = true` (value-based colouring is
-  PrimeTime's default behaviour — key colours remain for navigating Label
+  Moment Tally's default behaviour — key colours remain for navigating Label
   Review) and `menuLabelSetLimit = 5`.
 - `setUserPreferences(preferences: InputUserPreferences!)` — replaces both
   values.
@@ -235,7 +235,7 @@ one record, both lists included.
 
 ## Renames from the traggo wire (for importers)
 
-| traggo (pre-v1)             | PrimeTime v1                          |
+| traggo (pre-v1)             | Moment Tally v1                          |
 |-----------------------------|---------------------------------------|
 | `tags` query                | `labelDefinitions`                    |
 | `TagDefinition`             | `LabelDefinition` (+ `valueColors`, − `user`) |

@@ -1,6 +1,6 @@
 apiVersion: v2
-name: primetime-server
-description: PrimeTime sync server — headless GraphQL time-tracking backend (SQLite).
+name: moment-tally-server
+description: Moment Tally sync server — headless GraphQL time-tracking backend (SQLite).
 type: application
 # Lockstep versioning (#48, #75): chart version = appVersion = the repo's
 # vX.Y.Z release tag; appVersion also derives the image tag (v-prefixed —
@@ -10,16 +10,16 @@ type: application
 # never depend on remembering to bump this file.
 version: 0.2.0
 appVersion: "0.2.0"
-home: https://primetime.tools
+home: https://momenttally.com
 sources:
-  - https://github.com/sf1tzp/PrimeTime
+  - https://github.com/sf1tzp/Moment Tally
 keywords:
   - time-tracking
   - graphql
 maintainers:
   - name: Steven Fitzpatrick
-# Licensing: the server is a GPL-3.0 §13 combination with PrimeTime's
+# Licensing: the server is a GPL-3.0 §13 combination with Moment Tally's
 # AGPL-3.0 additions. Notices ship in the chart (LICENSE, LICENSE.AGPL-3.0,
-# NOTICE) and in the image under /opt/primetime.
+# NOTICE) and in the image under /opt/moment-tally.
 annotations:
   licenses: AGPL-3.0-or-later AND GPL-3.0-only

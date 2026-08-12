@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"primetime.tools/server/logger"
+	"momenttally.com/server/logger"
 )
 
 func TestInit_LoggingWorks(t *testing.T) {

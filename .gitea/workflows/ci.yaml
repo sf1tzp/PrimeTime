@@ -1,4 +1,4 @@
-# Gitea Actions CI for PrimeTime — the internal half of server distribution
+# Gitea Actions CI for Moment Tally — the internal half of server distribution
 # (#48): check the Go server, build infra/Dockerfile, and push to the
 # built-in registry so staging can pull it. Public release (GHCR image + OCI
 # chart) is deliberately NOT here — #75 wires that into scripts/release.sh
@@ -10,8 +10,8 @@
 #                   the other repos' workflows use.
 #
 # The Swift targets are not built here: the runners have no Swift toolchain,
-# and the app + test targets need macOS regardless. PrimeTimeCore and
-# primetime-cli do build on Linux (#85), so a swiftly-based check job is
+# and the app + test targets need macOS regardless. MomentTallyCore and
+# moment-tally-cli do build on Linux (#85), so a swiftly-based check job is
 # possible later if compile drift becomes a problem.
 
 name: CI
@@ -23,7 +23,7 @@ env:
   REGISTRY: gitea.zen.lofi
   # Not derived from gitea.repository: the image is named for the component,
   # not the repo (and registry names are lowercase).
-  IMAGE: gitea.zen.lofi/sfi/primetime-server
+  IMAGE: gitea.zen.lofi/sfi/moment-tally-server
 
 jobs:
   server-check:

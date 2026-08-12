@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
-	"primetime.tools/server/test"
-	"primetime.tools/server/test/fake"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
+	"momenttally.com/server/test"
+	"momenttally.com/server/test/fake"
 )
 
 func labels(pairs ...string) []*gqlmodel.InputLabel {
@@ -233,9 +233,9 @@ func TestGQL_CreateLabelSet_withQuickLabels(t *testing.T) {
 
 	resolver := ResolverForLabelSet{DB: db.DB}
 	set, err := resolver.CreateLabelSet(fake.User(5), "Deep Work", "brain",
-		labels("project", "primetime"), labels("type", "review", "type", "debugging"), nil)
+		labels("project", "moment-tally"), labels("type", "review", "type", "debugging"), nil)
 	require.Nil(t, err)
-	require.Equal(t, []*gqlmodel.Label{{Key: "project", Value: "primetime"}}, set.Labels)
+	require.Equal(t, []*gqlmodel.Label{{Key: "project", Value: "moment-tally"}}, set.Labels)
 	require.Equal(t, []*gqlmodel.Label{
 		{Key: "type", Value: "review"},
 		{Key: "type", Value: "debugging"},
@@ -254,7 +254,7 @@ func TestGQL_UpdateLabelSet_nilQuickLabels_preservesThem(t *testing.T) {
 
 	resolver := ResolverForLabelSet{DB: db.DB}
 	set, err := resolver.CreateLabelSet(fake.User(5), "Deep Work", "brain",
-		labels("project", "primetime"), labels("type", "review"), nil)
+		labels("project", "moment-tally"), labels("type", "review"), nil)
 	require.Nil(t, err)
 
 	// An older client updates without the quickLabels argument: regular
@@ -273,17 +273,17 @@ func TestGQL_UpdateLabelSet_quickLabels_replaceAndClear(t *testing.T) {
 
 	resolver := ResolverForLabelSet{DB: db.DB}
 	set, err := resolver.CreateLabelSet(fake.User(5), "Deep Work", "brain",
-		labels("project", "primetime"), labels("type", "review"), nil)
+		labels("project", "moment-tally"), labels("type", "review"), nil)
 	require.Nil(t, err)
 
 	updated, err := resolver.UpdateLabelSet(fake.User(5), set.ID, "Deep Work",
-		"brain", labels("project", "primetime"), labels("type", "debugging"), nil)
+		"brain", labels("project", "moment-tally"), labels("type", "debugging"), nil)
 	require.Nil(t, err)
 	require.Equal(t, []*gqlmodel.Label{{Key: "type", Value: "debugging"}}, updated.QuickLabels)
 
 	// An explicit empty list clears them.
 	cleared, err := resolver.UpdateLabelSet(fake.User(5), set.ID, "Deep Work",
-		"brain", labels("project", "primetime"), labels(), nil)
+		"brain", labels("project", "moment-tally"), labels(), nil)
 	require.Nil(t, err)
 	require.Equal(t, []*gqlmodel.Label{}, cleared.QuickLabels)
 
@@ -299,7 +299,7 @@ func TestGQL_RemoveLabelSet_deletesQuickMembers(t *testing.T) {
 
 	resolver := ResolverForLabelSet{DB: db.DB}
 	set, err := resolver.CreateLabelSet(fake.User(5), "Deep Work", "brain",
-		labels("project", "primetime"), labels("type", "review"), nil)
+		labels("project", "moment-tally"), labels("type", "review"), nil)
 	require.Nil(t, err)
 
 	removed, err := resolver.RemoveLabelSet(fake.User(5), set.ID)

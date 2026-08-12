@@ -6,7 +6,7 @@ package model
 import "time"
 
 // LabelSet is a named, ordered, launchable combination of labels (the
-// launcher cards in the PrimeTime app). Sets belong to a user; rows with a
+// launcher cards in the Moment Tally app). Sets belong to a user; rows with a
 // nil UserID and DefaultCollection set are templates — the "default
 // collection" copied to every newly created user.
 type LabelSet struct {

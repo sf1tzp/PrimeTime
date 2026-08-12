@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"primetime.tools/server/model"
-	"primetime.tools/server/test"
+	"momenttally.com/server/model"
+	"momenttally.com/server/test"
 )
 
 func TestInMemoryDB(t *testing.T) {

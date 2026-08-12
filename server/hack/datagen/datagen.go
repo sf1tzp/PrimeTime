@@ -8,11 +8,11 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"primetime.tools/server/database"
-	"primetime.tools/server/logger"
-	"primetime.tools/server/model"
-	"primetime.tools/server/time"
-	"primetime.tools/server/user/password"
+	"momenttally.com/server/database"
+	"momenttally.com/server/logger"
+	"momenttally.com/server/model"
+	"momenttally.com/server/time"
+	"momenttally.com/server/user/password"
 )
 
 func main() {

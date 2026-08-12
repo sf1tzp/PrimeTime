@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/jinzhu/copier"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
 )
 
 // RemoveUser removes a user

@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/99designs/gqlgen/handler"
-	"primetime.tools/server/generated/gqlschema"
-	"primetime.tools/server/logger"
+	"momenttally.com/server/generated/gqlschema"
+	"momenttally.com/server/logger"
 )
 
 // Handler combines graphql handler and playground handler.

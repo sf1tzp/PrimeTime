@@ -10,6 +10,6 @@ model:
 
 models:
   Time:
-    model: primetime.tools/server/model.Time
+    model: momenttally.com/server/model.Time
 
 struct_tag: json

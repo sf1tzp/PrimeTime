@@ -2,7 +2,7 @@ package test
 
 import (
 	"github.com/rs/zerolog"
-	"primetime.tools/server/logger"
+	"momenttally.com/server/logger"
 )
 
 func init() {

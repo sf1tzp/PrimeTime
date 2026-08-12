@@ -6,7 +6,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
-	"primetime.tools/server/test"
+	"momenttally.com/server/test"
 )
 
 func TestLogger_AssertCount_Succeeds(t *testing.T) {

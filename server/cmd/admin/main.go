@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Steven Fitzpatrick
 
-// Command admin is the PrimeTime server admin CLI. It covers the user
+// Command admin is the Moment Tally server admin CLI. It covers the user
 // administration the (removed) traggo web UI used to provide: creating
 // users, resetting passwords, and listing users/devices.
 //
-// It operates directly on the server database and reads the same TRAGGO_*
+// It operates directly on the server database and reads the same MOMENTTALLY_*
 // configuration (environment variables or .env files) as the server, so it
 // can be run alongside a server pointed at the same database.
 //
-// This file is new PrimeTime code (not derived from a traggo source file),
+// This file is new Moment Tally code (not derived from a traggo source file),
 // licensed AGPL-3.0-or-later; it links against the GPL-3.0 traggo-derived
 // packages of this tree (a combination GPLv3 section 13 permits — see NOTICE).
 package main
@@ -22,12 +22,12 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/rs/zerolog"
-	"primetime.tools/server/config"
-	"primetime.tools/server/database"
-	"primetime.tools/server/labelset"
-	"primetime.tools/server/logger"
-	"primetime.tools/server/model"
-	"primetime.tools/server/user/password"
+	"momenttally.com/server/config"
+	"momenttally.com/server/database"
+	"momenttally.com/server/labelset"
+	"momenttally.com/server/logger"
+	"momenttally.com/server/model"
+	"momenttally.com/server/user/password"
 )
 
 func usage() {
@@ -49,7 +49,7 @@ label sets copied to every newly created user. seed-user applies the
 collection to an existing user (it does not deduplicate — use it on users
 that have not been seeded).
 
-Database and password-strength settings come from the same TRAGGO_*
+Database and password-strength settings come from the same MOMENTTALLY_*
 configuration as the server (environment variables or .env files).
 `)
 	os.Exit(2)

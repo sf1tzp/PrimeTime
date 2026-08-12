@@ -1,9 +1,9 @@
-# PrimeTime v1 GraphQL schema.
+# Moment Tally v1 GraphQL schema.
 #
 # Vocabulary (see gitea issue #27): a *label* is a key: value dimension
 # attached to a timespan; *label definitions* register a key with its display
 # colours; *label sets* are reusable, launchable label combinations.
-# The wire contract is PrimeTime's own from v1 on — it is not
+# The wire contract is Moment Tally's own from v1 on — it is not
 # traggo-compatible, although much of the implementation derives from traggo.
 
 enum Role {
@@ -106,7 +106,7 @@ type DeletedTimeSpan {
 # remaining bits of per-user client state. Fresh-user defaults:
 # colorByValue = true, menuLabelSetLimit = 5.
 type UserPreferences {
-    # Colour timespans by label value — PrimeTime's default behaviour (key
+    # Colour timespans by label value — Moment Tally's default behaviour (key
     # colours remain for navigating Label Review).
     colorByValue: Boolean!
     # How many label sets the menu shows (0 = all).

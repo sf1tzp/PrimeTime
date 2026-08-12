@@ -5,8 +5,8 @@ package labelset
 
 import (
 	"github.com/jinzhu/gorm"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
 )
 
 // toExternal converts a label set (with members) to its external form,

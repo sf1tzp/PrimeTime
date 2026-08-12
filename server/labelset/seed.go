@@ -5,7 +5,7 @@ package labelset
 
 import (
 	"github.com/jinzhu/gorm"
-	"primetime.tools/server/model"
+	"momenttally.com/server/model"
 )
 
 // DefaultLabelColor is the colour given to label definitions created while

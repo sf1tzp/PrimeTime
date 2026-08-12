@@ -6,9 +6,9 @@ package timespan
 import (
 	"context"
 
-	"primetime.tools/server/auth"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
+	"momenttally.com/server/auth"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
 )
 
 // changesMaxLimit caps (and defaults) the page size of TimeSpanChanges.

@@ -6,7 +6,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/jmattheis/go-timemath"
 	"github.com/rs/zerolog/log"
-	"primetime.tools/server/model"
+	"momenttally.com/server/model"
 )
 
 var timeNow = time.Now

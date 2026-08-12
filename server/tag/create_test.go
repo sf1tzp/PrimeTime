@@ -5,10 +5,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
-	"primetime.tools/server/test"
-	"primetime.tools/server/test/fake"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
+	"momenttally.com/server/test"
+	"momenttally.com/server/test/fake"
 )
 
 func TestGQL_CreateTag_succeeds_addsTag(t *testing.T) {

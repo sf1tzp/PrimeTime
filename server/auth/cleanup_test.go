@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"primetime.tools/server/model"
-	"primetime.tools/server/test"
+	"momenttally.com/server/model"
+	"momenttally.com/server/test"
 )
 
 func TestCleanUp_stops(t *testing.T) {

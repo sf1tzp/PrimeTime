@@ -5,16 +5,16 @@ import (
 
 	"github.com/jinzhu/copier"
 	"github.com/jinzhu/gorm"
-	"primetime.tools/server/device"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/generated/gqlschema"
-	"primetime.tools/server/labelset"
-	"primetime.tools/server/model"
-	"primetime.tools/server/preference"
-	"primetime.tools/server/statistics"
-	"primetime.tools/server/tag"
-	"primetime.tools/server/timespan"
-	"primetime.tools/server/user"
+	"momenttally.com/server/device"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/generated/gqlschema"
+	"momenttally.com/server/labelset"
+	"momenttally.com/server/model"
+	"momenttally.com/server/preference"
+	"momenttally.com/server/statistics"
+	"momenttally.com/server/tag"
+	"momenttally.com/server/timespan"
+	"momenttally.com/server/user"
 )
 
 // NewResolver combines all resolvers to a resolver root.

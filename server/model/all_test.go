@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"primetime.tools/server/model"
+	"momenttally.com/server/model"
 )
 
 func TestAll_NoDuplicateEntries(t *testing.T) {

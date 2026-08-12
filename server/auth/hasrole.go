@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/99designs/gqlgen/graphql"
-	"primetime.tools/server/generated/gqlmodel"
+	"momenttally.com/server/generated/gqlmodel"
 )
 
 // HasRole checks if the current user has sufficient permissions.

@@ -5,8 +5,8 @@ import (
 
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
-	"primetime.tools/server/database"
-	"primetime.tools/server/model"
+	"momenttally.com/server/database"
+	"momenttally.com/server/model"
 )
 
 // InMemoryDB create a in memory database for testing.

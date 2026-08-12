@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	"github.com/rs/zerolog/log"
-	"primetime.tools/server/model"
+	"momenttally.com/server/model"
 )
 
 type key string

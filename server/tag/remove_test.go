@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"primetime.tools/server/test"
-	"primetime.tools/server/test/fake"
+	"momenttally.com/server/test"
+	"momenttally.com/server/test/fake"
 )
 
 func TestGQL_RemoveTag_succeeds_removesTag(t *testing.T) {

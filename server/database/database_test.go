@@ -7,7 +7,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
-	"primetime.tools/server/logger"
+	"momenttally.com/server/logger"
 )
 
 func TestMain(m *testing.M) {

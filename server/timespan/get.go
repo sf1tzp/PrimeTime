@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"primetime.tools/server/auth"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
+	"momenttally.com/server/auth"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
 )
 
 // TimeSpans returns all time spans for a user

@@ -21,17 +21,17 @@
 #   publish    push image to both registries, chart to GHCR OCI
 #
 # Registries:
-#   ghcr.io/sf1tzp/primetime-server              public image
-#   oci://ghcr.io/sf1tzp/charts/primetime-server public chart
-#   gitea.zen.lofi/sfi/primetime-server          internal/staging (#48)
+#   ghcr.io/sf1tzp/moment-tally-server              public image
+#   oci://ghcr.io/sf1tzp/charts/moment-tally-server public chart
+#   gitea.zen.lofi/sfi/moment-tally-server          internal/staging (#48)
 #
 # GHCR auth rides the gh CLI token; one-time setup:
 #   gh auth refresh -h github.com -s write:packages,read:packages
 # The internal push expects a prior `docker login gitea.zen.lofi`. The first
 # push of each GHCR package creates it PRIVATE — flip it to public once in
 # the package's web-UI settings (there is no API for visibility):
-#   https://github.com/users/sf1tzp/packages/container/primetime-server/settings
-#   https://github.com/users/sf1tzp/packages/container/charts%2Fprimetime-server/settings
+#   https://github.com/users/sf1tzp/packages/container/moment-tally-server/settings
+#   https://github.com/users/sf1tzp/packages/container/charts%2Fmoment-tally-server/settings
 #
 # Usage:
 #   git tag v1.2.0 && git push origin v1.2.0
@@ -41,10 +41,10 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GHCR_IMAGE="ghcr.io/sf1tzp/primetime-server"
+GHCR_IMAGE="ghcr.io/sf1tzp/moment-tally-server"
 GHCR_CHARTS="oci://ghcr.io/sf1tzp/charts"
-INTERNAL_IMAGE="gitea.zen.lofi/sfi/primetime-server"
-CHART_DIR="$ROOT/infra/helm/primetime-server"
+INTERNAL_IMAGE="gitea.zen.lofi/sfi/moment-tally-server"
+CHART_DIR="$ROOT/infra/helm/moment-tally-server"
 
 PUBLISH=1 INTERNAL=1
 for arg in "$@"; do
@@ -100,7 +100,7 @@ echo "==> built $GHCR_IMAGE:$TAG"
 mkdir -p "$ROOT/dist"
 helm package "$CHART_DIR" --version "$VERSION" --app-version "$VERSION" \
     -d "$ROOT/dist" >/dev/null
-CHART_TGZ="$ROOT/dist/primetime-server-$VERSION.tgz"
+CHART_TGZ="$ROOT/dist/moment-tally-server-$VERSION.tgz"
 [[ -f "$CHART_TGZ" ]] || { echo "chart: expected $CHART_TGZ after helm package" >&2; exit 1; }
 echo "==> packaged $CHART_TGZ"
 
@@ -124,5 +124,5 @@ if (( INTERNAL )); then
 fi
 
 helm push "$CHART_TGZ" "$GHCR_CHARTS"
-echo "==> pushed $GHCR_CHARTS/primetime-server:$VERSION"
+echo "==> pushed $GHCR_CHARTS/moment-tally-server:$VERSION"
 echo "==> if this was the first push, make the GHCR packages public (see header)"

@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "primetime-server.pvcName" . }}
+  name: {{ include "moment-tally-server.pvcName" . }}
   labels:
-    {{- include "primetime-server.labels" . | nindent 4 }}
+    {{- include "moment-tally-server.labels" . | nindent 4 }}
   annotations:
     # Keep the SQLite database across `helm uninstall`.
     helm.sh/resource-policy: keep

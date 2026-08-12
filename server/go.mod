@@ -1,4 +1,4 @@
-module primetime.tools/server
+module momenttally.com/server
 
 require (
 	github.com/99designs/gqlgen v0.17.85

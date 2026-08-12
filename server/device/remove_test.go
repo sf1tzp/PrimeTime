@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"primetime.tools/server/model"
-	"primetime.tools/server/test"
-	"primetime.tools/server/test/fake"
+	"momenttally.com/server/model"
+	"momenttally.com/server/test"
+	"momenttally.com/server/test/fake"
 )
 
 func TestGQL_RemoveDevice_succeeds_removesDevice(t *testing.T) {

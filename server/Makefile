@@ -27,6 +27,6 @@ install:
 	go mod download
 
 build-bin-local:
-	CGO_ENABLED=1 go build -a -ldflags '${LD_FLAGS}' -tags '${TAGS}' -o ${BUILD_DIR}/primetime-server
+	CGO_ENABLED=1 go build -a -ldflags '${LD_FLAGS}' -tags '${TAGS}' -o ${BUILD_DIR}/moment-tally-server
 
 .PHONY: download-tools generate lint format test install build-bin-local

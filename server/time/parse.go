@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/jmattheis/go-timemath"
-	"primetime.tools/server/model"
+	"momenttally.com/server/model"
 )
 
 const nowKey = "now"

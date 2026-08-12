@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
-	"primetime.tools/server/test"
+	"momenttally.com/server/test"
 )
 
 func TestShutdownOnErrorWhileShutdown(t *testing.T) {

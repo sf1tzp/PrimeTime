@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Steven Fitzpatrick
 
-// Value colours: per-value colour overrides for a label key (PrimeTime v1).
+// Value colours: per-value colour overrides for a label key (Moment Tally v1).
 // The key colour lives on the label definition; these mutations manage the
 // LabelValueColor rows layered on top of it.
 
@@ -12,9 +12,9 @@ import (
 	"fmt"
 
 	"github.com/jinzhu/gorm"
-	"primetime.tools/server/auth"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
+	"momenttally.com/server/auth"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
 )
 
 // SetLabelValueColor sets (or replaces) the colour override for one value of

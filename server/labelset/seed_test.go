@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"primetime.tools/server/model"
-	"primetime.tools/server/test"
-	"primetime.tools/server/test/fake"
+	"momenttally.com/server/model"
+	"momenttally.com/server/test"
+	"momenttally.com/server/test/fake"
 )
 
 func template(db *test.Database, position int, name string, symbol string, members ...model.LabelSetMember) model.LabelSet {

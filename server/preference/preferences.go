@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Steven Fitzpatrick
 
-// Package preference implements PrimeTime v1 user preferences: the small
+// Package preference implements Moment Tally v1 user preferences: the small
 // set of per-user client state a second device should inherit (colouring
 // data itself syncs via label definitions).
 package preference
@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/jinzhu/gorm"
-	"primetime.tools/server/auth"
-	"primetime.tools/server/generated/gqlmodel"
-	"primetime.tools/server/model"
+	"momenttally.com/server/auth"
+	"momenttally.com/server/generated/gqlmodel"
+	"momenttally.com/server/model"
 )
 
 // syncNow is the clock for sync timestamps (UpdatedAtUTC): whole seconds so
