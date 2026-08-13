@@ -163,6 +163,25 @@ skills, so the two don't drift.
   y-order — they sit below the quick-start sets, separated by the "N more…"
   row — and click via AX element reference, not coordinates.
 
+- **Onboarding-walkthrough drive that worked** (2026-08-13, rehearsed +
+  recorded, beats verified frame-by-frame): welcome→walkthrough is
+  `click UI element 2 of group 1 of window 1` (`button 2` errors — index by
+  element). Footer Back/Skip Tour/Next are the last three buttons; the
+  window stays fixed (700×592) so Next is one static point. Page beats:
+  p1 pencil → "+ Add Mark" → type into the new row via `cliclick t:`
+  (**editor fields shift ~14pt when the row appears — re-read the
+  AXTextField positions after Add Mark, and expect the whole hero to
+  re-centre when the editor opens**); p2 Group-by popup + menu type-select;
+  p4 a smell card click corrupts, the same point clicks again to heal;
+  p5 the mock-tally quick chips live in the bottom row of the card's one
+  AXButton (~78% of its 89pt height — clicking higher hits the card body,
+  which no-ops visibly), and same-key chips swap rather than stack;
+  p6 persona cards open on a hover-approach + body-centre click (the ⊕
+  ignores synthetic clicks), name field then sits at the editor top and
+  types reliably. All-cliclick driver, ~1.1× nominal sleeps for drift,
+  total ≈50s; a fresh `--demo` relaunch fully resets the walkthrough for
+  retakes.
+
 ## Screenshots & recordings
 
 - Stills: best results from `screencapture -x -l <CGWindowID>` — captures
@@ -241,3 +260,33 @@ skills, so the two don't drift.
   the end yields nothing even though `duration` includes it). Pad the cap
   a few seconds past the choreography's last beat, and verify beats with
   frames a couple of seconds *before* the nominal end.
+- **Check the display before any capture batch** (2026-08-13, aborted
+  refresh): if Steven is connected via Screen Sharing in High Performance
+  mode, the *only* display is a "Screen Sharing Virtual Display" — check
+  `system_profiler SPDisplaysDataType` for it and for "UI Looks like". It
+  ran 1x/30Hz, so window-ID stills AND recordings came out at HALF the
+  shipped 1784px density — a whole batch of unshippable assets. The menu
+  bar's mic pill + screen pill + ● timer belong to that session (clicking
+  the screen pill offers "Disconnect <ip>" — don't); they are NOT a stuck
+  screencapture. Capture batches need a real 2x display: lid open or a
+  HiDPI-mode monitor.
+- **`screencapture -v` can wedge for the rest of the session** (2026-08-13,
+  on the virtual display): after a few successful takes every new one hung
+  forever in `mach_msg` (no file, `-V` cap ignored, SIGINT exits without
+  finalizing) while short driverless probes still worked; `killall replayd`
+  and a ControlCenter restart changed nothing. `ffmpeg -f avfoundation
+  -i "Capture screen 0:none"` kept recording fine (full display; crop the
+  window region in post). Successful takes also repeatedly ended near the
+  driver's last event rather than the `-V` cap — always `ffprobe` the
+  duration and re-extract the final beats before accepting a take.
+- `screencapture -v` refuses to overwrite: an existing target file fails
+  the take at the very end with "Failed to save to final location" (the
+  choreography still runs and mutates state). `rm` the target first.
+- **Segmented controls by coordinates need the group's y-centre**: the
+  History "Count marks" AXRadioGroup is 24pt tall; a click 2pt *above* its
+  reported y silently misses (the pickers then get driven in the wrong
+  mode). Compute `y + 12` from the AXRadioGroup position, or click via AX.
+- The History Group-by aliasing above is **side-by-side-mode only**: in
+  combined ("in Groups") mode both pop-ups enumerate with correct positions
+  and values. And in side-by-side mode, an AX `click pop up button 1` opens
+  the *left* picker reliably — good enough for restoring its value.

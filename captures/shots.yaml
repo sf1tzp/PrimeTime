@@ -37,9 +37,9 @@ shots:
     surface: menu-bar popover
     scene: |
       Popover open under the menu-bar status item, idle (no timer running).
-      Quick-start rows for the seeded label sets (Moment Tally App, Project
-      Meridian, Gaming, Workout, Reading — the first two with their baked-in
-      label chips visible) plus the Label Sets / Log / Calendar / History /
+      Quick-start rows for the seeded tallies (Moment Tally App, Meridian
+      Website, Gaming, Workout, Reading — the first two with their baked-in
+      mark chips visible) plus the Tallies / Log / Calendar / History /
       Settings… rows below.
     outputs:
       - { to: appstore, path: captures/appstore/popover.png, format: png }
@@ -49,9 +49,9 @@ shots:
     surface: menu-bar popover
     scene: |
       ~20s. Start with the demo's running timer active. Click the status
-      item to open the popover; rest the pointer on the Project Meridian
-      quick-start row so its quick-label chips expand (the type:/meeting:
-      chip rows). Then start a timer using Meridian's "standup" quick label,
+      item to open the popover; rest the pointer on the Meridian Website
+      quick-start row so its quick-mark chips expand (the type:/meeting:
+      chip rows). Then start a timer using Meridian's "standup" quick mark,
       and stop the active "repo: infrastructure" timer.
       Record over a plain desktop (hide other windows, set a solid dark wallpaper) — the
       wallpaper shows through around the popover, and a detailed one
@@ -75,9 +75,9 @@ shots:
     surface: window / Launcher tab
     scene: |
       Launcher tab of the Moment Tally window: the quick-start grid of seeded
-      label sets — the work cards (Moment Tally App, Project Meridian) next to
-      the quick-labels-only hobby cards (Gaming, Workout, Reading), each
-      with its own icon and colour, plus the dashed New Label Set card.
+      tallies — the work cards (Moment Tally App, Meridian Website) next to
+      the quick-marks-only hobby cards (Gaming, Workout, Reading), each
+      with its own icon and colour, plus the dashed New Tally card.
     outputs:
       - { to: appstore, path: captures/appstore/launcher.png, format: png }
 
@@ -86,7 +86,7 @@ shots:
     surface: window / Launcher tab
     scene: |
       ~15s. Mouse over the hobby cards in turn — Gaming, Reading, then
-      Workout — letting each card's quick-label chips show; finish by
+      Workout — letting each card's quick-mark chips show; finish by
       clicking Workout's `+bike` chip so an `activity: bike` timer starts
       and the Workout card lights up as running.
     outputs:
@@ -94,11 +94,11 @@ shots:
 
   - id: label-sets
     kind: still
-    surface: window / Label Sets tab
+    surface: window / Tallies tab
     scene: |
-      Label Sets tab: the seeded sets in the sidebar (Moment Tally App, Project
-      Meridian, Gaming, Workout, Reading) with Moment Tally App selected — card
-      preview, labels editor, and its value-less `issue` label shown with an
+      Tallies tab: the seeded tallies in the sidebar (Moment Tally App, Meridian
+      Website, Gaming, Workout, Reading) with Moment Tally App selected — card
+      preview, marks editor, and its value-less `issue` mark shown with an
       empty value field.
     outputs:
       - { to: website, path: static/screenshots/label-sets.webp, format: webp }
@@ -151,7 +151,7 @@ shots:
     scene: |
       ~25s. Start on the separate side-by-side donuts (Group by type vs
       project), range set to Last 30 days so the full seeded month shows.
-      Flip Count labels to "in Groups" for the combined donut, then walk
+      Flip Count marks to "in Groups" for the combined donut, then walk
       its pickers through the three showcased pairings: type × project →
       type × client → meeting × client, pausing on each so the slices read.
     outputs:
@@ -159,9 +159,9 @@ shots:
 
   - id: label-review
     kind: still
-    surface: window / Label Review tab
+    surface: window / Marks tab
     scene: |
-      Label Review tab surfacing the demo seed's deliberate `proj:` vs
+      Marks tab surfacing the demo seed's deliberate `proj:` vs
       `project:` key drift — the `proj` key row expanded to show its lone
       `company-website` value (10×) beside the canonical `project` key.
     outputs:
@@ -170,7 +170,7 @@ shots:
 
   - id: label-review-motion
     kind: recording
-    surface: window / Label Review tab
+    surface: window / Marks tab
     scene: |
       ~20s. Expand the drifted `proj` key to surface its `company-website`
       value beside the canonical `project` key. Drag the `company-website`
@@ -185,7 +185,7 @@ shots:
     surface: window / Settings tab
     scene: |
       Settings tab in demo mode: the "Demo mode" banner in the Storage
-      section (with the Export-as-JSON row), plus the Menu and Labels
+      section (with the Export-as-JSON row), plus the Menu and Launcher
       sections.
     outputs:
       - { to: website, path: static/screenshots/settings.webp, format: webp }

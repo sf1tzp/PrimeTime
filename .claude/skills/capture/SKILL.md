@@ -13,6 +13,15 @@ must show and the renditions that ship. Read it first — it, not this file, is
 the source of truth for what to capture. See `captures/README.md` for the
 pipeline overview.
 
+> **Scripted choreography exists** — `captures/drivers/` holds committed,
+> window-origin-relative drivers for every shot (see its README for run
+> order and which are verified vs REHEARSE-VERIFY). Prefer running those
+> over re-deriving scenes interactively; fall back to hand-driving only
+> when a surface changed enough to break a driver, and fold fixes back
+> into the scripts. Before anything: `assert_2x` in `drivers/lib.zsh`
+> guards the 1x-display trap (Screen Sharing virtual display / native-1x
+> monitor modes) — captures must be 2x.
+
 ## Flow
 
 1. **Build from the commit you'll vouch for, in a worktree.** The provenance
