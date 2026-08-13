@@ -89,11 +89,12 @@ bundle-mas:
   VARIANT=mas scripts/bundle-app.sh
 
 # Sign the MAS bundle and wrap it in the signed installer .pkg that App Store
-# Connect ingests (upload via Transporter). Needs the store cert pair —
-# "Apple Distribution" + "Mac Installer Distribution" — and a Mac App Store
-# provisioning profile (MAS_PROFILE=path/to/profile). App Review replaces
-# notarization on this channel, so the pkg uploads as-is.
-package-mas app_id="Apple Distribution" pkg_id="Mac Installer Distribution": bundle-mas
+# Connect ingests (upload via Transporter). Needs the store cert pair — our
+# installer cert carries Apple's older "3rd Party Mac Developer Installer"
+# name — and a Mac App Store provisioning profile, defaulted from
+# ~/.sfi/provisioning (override with MAS_PROFILE=path/to/profile). App Review
+# replaces notarization on this channel, so the pkg uploads as-is.
+package-mas app_id="Apple Distribution" pkg_id="3rd Party Mac Developer Installer": bundle-mas
   scripts/package-mas.sh dist/mas/MomentTally.app "{{app_id}}" "{{pkg_id}}"
 
 # --- Server distribution (#75) ---

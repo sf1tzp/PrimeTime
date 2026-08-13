@@ -27,22 +27,32 @@
 # Usage: package-mas.sh <app-bundle> [<app-identity>] [<installer-identity>]
 # Env:
 #   TEAM_ID      Apple Developer team (default: 2GY54R95TD)
-#   MAS_PROFILE  path to the Mac App Store .provisionprofile (optional until
-#                the store certs/profile exist; a warning reminds you)
+#   MAS_PROFILE  path to the Mac App Store .provisionprofile (defaults to
+#                the profile in ~/.sfi/provisioning when present; a warning
+#                reminds you if neither exists)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP="$1"
 # Full identity names carry "…: Name (TEAMID)"; the prefix is enough for
-# codesign to find the cert once it exists in the keychain. Older installer
-# certs may be named "3rd Party Mac Developer Installer" — pass that if
-# that's what `security find-identity -v` shows.
+# codesign to find the cert once it exists in the keychain. Our installer
+# cert carries Apple's older "3rd Party Mac Developer Installer" name, not
+# the portal's "Mac Installer Distribution" label — match what
+# `security find-identity -v` shows.
 APP_IDENTITY="${2:-Apple Distribution}"
-PKG_IDENTITY="${3:-Mac Installer Distribution}"
+PKG_IDENTITY="${3:-3rd Party Mac Developer Installer}"
 TEAM_ID="${TEAM_ID:-2GY54R95TD}"
 
 BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
+
+# Provisioning material lives in ~/.sfi/provisioning on release machines;
+# fall back to it so the common path needs no env. An explicit MAS_PROFILE
+# still wins (and a bad explicit path fails hard at the cp below).
+DEFAULT_PROFILE="$HOME/.sfi/provisioning/Moment_Tally_MAS_Distribution_Profile.provisionprofile"
+if [[ -z "${MAS_PROFILE:-}" && -f "$DEFAULT_PROFILE" ]]; then
+    MAS_PROFILE="$DEFAULT_PROFILE"
+fi
 
 if [[ -n "${MAS_PROFILE:-}" ]]; then
     cp "$MAS_PROFILE" "$APP/Contents/embedded.provisionprofile"
