@@ -22,6 +22,16 @@ never touches the Keychain — token reads and sync connects are guarded by
 `!isDemo` — so the unsigned binary launches with zero prompts and is the
 preferred target for screenshots and AX driving there.
 
+**Brand fonts in unbundled builds (2026-08-13):** `bundle-app.sh` is the only
+thing that injects the licensed Palm Springs face (PR #204), so a bare
+`.build/debug` binary renders every `Brand.script` surface in the sans
+fallback — easy to mistake for a rendering bug when the same commit "worked"
+on a machine where the font is installed in Font Book. To see the real face,
+seed the fonts next to the binary after `swift build`:
+`mkdir -p .build/debug/Fonts && cp ~/.sfi/brand-assets/fonts/*.otf
+.build/debug/Fonts/`. Copy, don't symlink — `registerFonts()`'s
+`contentsOfDirectory(at:)` returns an empty list for a symlinked directory.
+
 **Keychain gotcha (fixed 2026-07-23 on macmini):** if launches prompt for the
 login-keychain password after every rebuild, the "TraggoMenuApp Dev" cert has
 no codeSign trust entry (`security find-identity -v -p codesigning` shows 0

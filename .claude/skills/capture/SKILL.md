@@ -20,9 +20,22 @@ pipeline overview.
    you run from — so work from a fresh worktree branch off origin/main
    (`git worktree add ~/worktrees/PrimeTime/captures-<date> -b
    captures-<date> origin/main`), never a primary checkout. There:
-   `swift build`, then launch `./.build/debug/MomentTally --demo` (demo mode
-   never touches the Keychain, so the unsigned binary launches with zero
-   prompts). Quit the installed app first — see the two-instances caveat in
+   `swift build`, then **seed the licensed brand fonts** (PR #204 injects
+   them only in `bundle-app.sh`; an unbundled binary resolves
+   `Resources/Fonts` to its own directory, so without this step every
+   `Brand.script` surface silently falls back to sans):
+
+   ```bash
+   mkdir -p .build/debug/Fonts
+   cp ~/.sfi/brand-assets/fonts/*.otf .build/debug/Fonts/
+   ```
+
+   Copy, don't symlink — `registerFonts()`'s `contentsOfDirectory(at:)`
+   returns an empty list for a symlinked directory. Seed after `swift build`
+   (`.build/debug` is a symlink the build creates). Then launch
+   `./.build/debug/MomentTally --demo` (demo mode never touches the
+   Keychain, so the unsigned binary launches with zero prompts). Quit the
+   installed app first — see the two-instances caveat in
    [shared/ax-driving.md](../shared/ax-driving.md).
 2. **Walk the shot list.** For each shot, stage the `scene` and capture into
    `captures/raw/` — `<id>.png` for stills, `<id>.mov` for recordings, native
