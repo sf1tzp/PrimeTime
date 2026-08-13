@@ -76,10 +76,12 @@ import Testing
         // D×5 at 6 spans = 144) + 8 weekend days alternating W1/W2 (24)
         // + today (6).
         #expect(spans.count == 174)
-        #expect(DemoSeed.tagSets.count == 9)
-        #expect(Set(DemoSeed.tagSets.compactMap(\.symbolName)).count == 9)  // distinct symbols
+        // Five cards since #189 culled the cast for screenshot presentation
+        // (the shelved sets survive as comments in DemoSeed.tagSets).
+        #expect(DemoSeed.tagSets.count == 5)
+        #expect(Set(DemoSeed.tagSets.compactMap(\.symbolName)).count == 5)  // distinct symbols
         #expect(DemoSeed.labelDefinitions.count == 11)
-        #expect(DemoSeed.valueColors.count == 31)
+        #expect(DemoSeed.valueColors.count == 32)
         // Notes on many spans, so Log and Calendar popovers have texture.
         #expect(spans.filter { !$0.note.isEmpty }.count >= 10)
     }
@@ -88,10 +90,12 @@ import Testing
         for now in [wednesday, sunday] {
             let spans = seed(now: now)
 
-            // Two running spans (live menu-bar timer + multi-timer popover),
-            // started recently enough to read as "just now".
+            // One running span (the live menu-bar timer), started recently
+            // enough to read as "just now" — #189 trimmed the second runner
+            // (the multi-timer popover story) for cleaner screenshots,
+            // leaving its slot as today's zero-length span.
             let running = spans.filter { $0.end == nil }
-            #expect(running.count == 2)
+            #expect(running.count == 1)
             #expect(running.allSatisfy {
                 $0.start > now.addingTimeInterval(-3600) && $0.start <= now
             })
@@ -126,8 +130,8 @@ import Testing
             #expect(values("activity") == ["bike", "run", "gym"])
             #expect(values("book") == ["the-director", "crux", "the-wayfinder"])
 
-            // At least one genuine overlap among *finished* spans (the
-            // running pair overlaps trivially).
+            // At least one genuine overlap among *finished* spans (a
+            // running span would overlap trivially).
             let finished = spans.filter { $0.end != nil }
             let overlaps = finished.contains { a in
                 finished.contains { b in
@@ -149,12 +153,12 @@ import Testing
             let quick = DemoSeed.quickLabels(forSetNamed: set.name)
             #expect(quick?.isEmpty == false, "\(set.name) has no quick labels")
         }
-        // The work sets carry the type trio; the full-service client sets
-        // add the meeting chips on top.
-        let type = DemoSeed.quickLabels(forSetNamed: "Frontend Work")!
-        #expect(type.map(\.value) == ["planning", "coding", "review"])
+        // The work set carries the type trio; the full-service client set
+        // adds the meeting chips on top.
+        let type = DemoSeed.quickLabels(forSetNamed: "Moment Tally App")!
+        #expect(type.map(\.value) == ["planning", "review", "debugging"])
         #expect(type.allSatisfy { $0.key == "type" })
-        #expect(DemoSeed.quickLabels(forSetNamed: "Blue Sky")!.count == 6)
+        #expect(DemoSeed.quickLabels(forSetNamed: "Meridian Website")!.count == 6)
         // The leisure sets are quick-labels-only: chips with no presets, and
         // a colorHex so their launcher cards aren't accent-grey.
         for name in ["Gaming", "Workout", "Reading"] {
@@ -165,24 +169,17 @@ import Testing
     }
 
     @Test func valuelessLabelsSeedTheFillInPerStartStory() {
-        func rows(_ name: String) -> [TagRow] {
-            DemoSeed.tagSets.first { $0.name == name }!.tags
-        }
-        // The shared value-less `feature:` on the work pair (#149/#162)...
-        for name in ["Frontend Work", "Backend Work"] {
-            #expect(rows(name).contains { $0.key == "feature" && $0.value.isEmpty })
-        }
-        // ...and value-less `repo:`/`issue:` on the full-service client sets.
-        for name in ["Blue Sky", "Meridian", "Lighthouse"] {
-            #expect(rows(name).contains { $0.key == "repo" && $0.value.isEmpty })
-            #expect(rows(name).contains { $0.key == "issue" && $0.value.isEmpty })
-        }
+        // Since the #189 cull the fill-in-per-start story (#149/#162) rides
+        // on one card: Moment Tally App's value-less `issue:` — quick-starting
+        // it opens the editor with the empty value focused.
+        let rows = DemoSeed.tagSets.first { $0.name == "Moment Tally App" }!.tags
+        #expect(rows.contains { $0.key == "issue" && $0.value.isEmpty })
     }
 
     @Test func valueColorsDifferentiateTheCompanyRepos() {
         let colors = DemoSeed.valueColors
         let website = colors[ValueColorKey.join("repo", "company-website")]
-        let server = colors[ValueColorKey.join("repo", "company-server")]
+        let server = colors[ValueColorKey.join("repo", "infrastructure")]
         #expect(website != nil && server != nil && website != server)
         // The drifted spelling matches the canonical one, so the mistake
         // reads in Label Review rather than on every pill.

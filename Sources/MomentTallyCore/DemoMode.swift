@@ -63,25 +63,27 @@ package extension LocalBackend {
 // MARK: - Seed content
 
 /// The demo dataset, renovated for the onboarding "Pro-Moves" examples
-/// (#172). Content is designed around the surfaces it has to photograph
-/// well, and the persona is a contractor whose scheme shows all three
-/// recommended patterns:
+/// (#172) and culled to a five-card cast for screenshot presentation (#189
+/// — the shelved sets survive as comments below). Content is designed
+/// around the surfaces it has to photograph well, and the persona is a
+/// contractor whose scheme shows all three recommended patterns:
 ///
 /// - **Quick-labels-only sets** (Gaming, Workout, Reading): no preset
 ///   labels, one chip per game/activity/book — easy to add or remove
 ///   without touching history.
-/// - **Value-less labels** (Frontend/Backend Work's `feature:`, the client
-///   sets' `repo:`/`issue:`): quick-starting one opens the popover editor
-///   with the empty value focused, ready for a pasted issue number (#149,
-///   #162).
-/// - **Multi-client, multi-project sets** (Moment Tally, Meridian, Lighthouse,
-///   Velocity Consulting): `client:` + `project:` presets with `type:` and
-///   `meeting:` quick labels, so History's combined view has real
-///   type × project, type × client and meeting × client axes to group by.
+/// - **Value-less labels** (Moment Tally App's `issue:`): quick-starting
+///   one opens the popover editor with the empty value focused, ready for
+///   a pasted issue number (#149, #162).
+/// - **Multi-client, multi-project sets** (Moment Tally App, Meridian
+///   Website): `client:` + `project:` presets with `type:`/`meeting:`
+///   quick labels. The *spans* still carry the wider engagement cast
+///   (Lighthouse, Velocity Consulting), so History's combined view keeps
+///   real type × project, type × client and meeting × client axes to
+///   group by.
 ///
 /// Spans cover a trailing month — enough for the History range selector's
 /// "Last 30 days" — with work-day clustering, overlaps, notes, evening and
-/// weekend leisure spans, two running spans, unlabelled ad-hoc spans, and a
+/// weekend leisure spans, a running span, unlabelled ad-hoc spans, and a
 /// deliberate `proj:` vs `repo:` key drift for Label Review to move
 /// (`proj: company-website` → `repo: company-website`).
 ///
@@ -406,9 +408,11 @@ package enum DemoSeed {
 
     /// Today, laid out backwards from `now` (in minutes) so it always fits
     /// whatever the launch time is; a nil duration is a *running* span. The
-    /// last two power the live menu-bar timer and the popover's multi-timer
-    /// rows; the support span matches no saved set, so its Log row shows the
-    /// save-as-set ＋; the empty entry is today's ad-hoc unlabelled span.
+    /// last powers the live menu-bar timer (#189 stopped the second runner —
+    /// and the multi-timer popover story with it — for cleaner screenshots,
+    /// leaving it as the 0-duration entry); the support span matches no
+    /// saved set, so its Log row shows the save-as-set ＋; the empty entry
+    /// is today's ad-hoc unlabelled span.
     private static let todayTemplate: [(minutesBeforeNow: Int, durationMinutes: Int?,
                                         labels: [SpanLabel], note: String)] = [
         (220, 75, engagement("sfi", "moment-tally", "issue", "231")
