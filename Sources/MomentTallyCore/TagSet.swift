@@ -67,6 +67,26 @@ package struct TagSet: Identifiable, Codable, Hashable {
         let key = normalizeKey(quick.key)
         return (tags.filter { normalizeKey($0.key) != key } + [quick]).labels
     }
+
+    /// Whether a timespan carrying these labels counts as *this set* running —
+    /// the Launcher card's dim-while-running rule. True on any labelling a
+    /// start from the set can produce: the set's own labels, or the labels a
+    /// quick-label chip starts (`labels(applying:)` per quick) — a set is no
+    /// less "running" for having been honed at start. Within a candidate
+    /// labelling, a value-less label (`issue:` — the fill-in-the-value-per-
+    /// start workflow, #149) is a slot, not a literal: it matches whatever
+    /// value the span carries for that key, since the value arrives in the
+    /// editor moments after the start. The key itself must still be there.
+    package func matches(spanLabels: [SpanLabel], quicks: [TagRow]) -> Bool {
+        let candidates = [labels] + quicks.map { labels(applying: $0) }
+        return candidates.contains { want in
+            let slots = Set(want.filter(\.value.isEmpty).map(\.key))
+            let got = spanLabels.map {
+                slots.contains($0.key) ? SpanLabel(key: $0.key, value: "") : $0
+            }
+            return Set(got) == Set(want)
+        }
+    }
 }
 
 /// Traggo tag keys must be lower-case with no spaces. Surrounding whitespace

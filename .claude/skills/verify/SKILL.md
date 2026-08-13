@@ -17,7 +17,7 @@ just build          # swift build + codesign with "TraggoMenuApp Dev"
 ```
 
 On a machine with no codesigning identity (e.g. macbook-air), skip `just
-build` and use plain `swift build`. Demo mode (`--demo` or `PRIMETIME_DEMO=1`)
+build` and use plain `swift build`. Demo mode (`--demo` or `MOMENTTALLY_DEMO=1`)
 never touches the Keychain — token reads and sync connects are guarded by
 `!isDemo` — so the unsigned binary launches with zero prompts and is the
 preferred target for screenshots and AX driving there.

@@ -737,27 +737,32 @@ final class AppModel {
         }
     }
 
-    /// Whether some running timespan carries exactly this set's tags — used to
-    /// hide a quick-start set while "it" runs. Matching by tags (not by which
-    /// row was clicked) also catches a matching timespan started from the web
-    /// UI, and the set reappears naturally when the timespan stops.
+    /// Whether some running timespan reads as this set running — used to dim
+    /// the set's Launcher card. Matching by tags (not by which surface was
+    /// clicked) also catches a matching timespan started from the web UI, and
+    /// the card lights back up naturally when the timespan stops. The rule
+    /// (`TagSet.matches(spanLabels:quicks:)`) covers the set's quick-label
+    /// starts too — a timer started from a card's quick-mark chip lights that
+    /// card (regression flagged in #207).
     func isRunning(_ set: TagSet) -> Bool {
         runningTimer(for: set) != nil
     }
 
-    /// The running timespan carrying exactly this set's tags, if any — same
-    /// tag-equality rule as `isRunning(_:)`. Lets a surface that shows sets
-    /// (the Launcher) stop "the set's" timer by id.
+    /// The running timespan reading as this set, if any — same rule as
+    /// `isRunning(_:)`. Lets a surface that shows sets (the Launcher) stop
+    /// "the set's" timer by id.
     func runningTimer(for set: TagSet) -> TimeSpan? {
-        let want = Set(set.labels)
-        return activeTimers.first { Set($0.labels) == want }
+        let quicks = quickLabels(for: set)
+        return activeTimers.first {
+            set.matches(spanLabels: $0.labels, quicks: quicks)
+        }
     }
 
     // MARK: Creating tag sets from existing tags
 
     /// Whether some saved tag set carries exactly these tags — exact set
-    /// equality, same rule as `isRunning(_:)`. Log rows without a match offer
-    /// "save these tags as a tag set".
+    /// equality. Log rows without a match offer "save these tags as a tag
+    /// set".
     func hasTagSet(matching tags: [SpanLabel]) -> Bool {
         let want = Set(tags)
         return tagSets.contains { Set($0.labels) == want }

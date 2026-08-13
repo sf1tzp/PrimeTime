@@ -101,4 +101,93 @@ import Testing
         #expect(set.labels(applying: TagRow(key: "type", value: "review"))
                 == [SpanLabel(key: "type", value: "review")])
     }
+
+    // MARK: Running-span matching (matches(spanLabels:quicks:))
+
+    @Test func matchesOwnLabels() {
+        let set = TagSet(tags: [TagRow(key: "repo", value: "a")])
+        #expect(set.matches(spanLabels: [SpanLabel(key: "repo", value: "a")],
+                            quicks: []))
+        // Order-insensitive, like every other set comparison.
+        let two = TagSet(tags: [TagRow(key: "repo", value: "a"),
+                                TagRow(key: "client", value: "b")])
+        #expect(two.matches(spanLabels: [SpanLabel(key: "client", value: "b"),
+                                         SpanLabel(key: "repo", value: "a")],
+                            quicks: []))
+    }
+
+    @Test func matchesQuickStartOverMarklessSet() {
+        // The launcher regression's simplest shape (#207): a set with no
+        // marks of its own, started via a quick-mark chip — the span carries
+        // only the quick mark, and must still read as the set running.
+        let set = TagSet(name: "Workout")
+        let quick = TagRow(key: "kind", value: "run")
+        #expect(set.matches(spanLabels: [SpanLabel(key: "kind", value: "run")],
+                            quicks: [quick]))
+        #expect(!set.matches(spanLabels: [SpanLabel(key: "kind", value: "run")],
+                             quicks: []))
+    }
+
+    @Test func matchesQuickStartReplacingBakedInValue() {
+        // The honing shape: `+review` over the set's baked-in
+        // `type: programming` — the span's differing value for the same key
+        // must still match through the quick.
+        let set = TagSet(tags: [TagRow(key: "repo", value: "a"),
+                                TagRow(key: "type", value: "programming")])
+        let quick = TagRow(key: "type", value: "review")
+        #expect(set.matches(spanLabels: [SpanLabel(key: "repo", value: "a"),
+                                         SpanLabel(key: "type", value: "review")],
+                            quicks: [quick]))
+    }
+
+    @Test func valuedQuickRequiresItsExactValue() {
+        // A quick's declared value is exact — an unrelated value for the same
+        // key is some other timer, not this set's quick start.
+        let set = TagSet(tags: [TagRow(key: "repo", value: "a")])
+        let quick = TagRow(key: "type", value: "review")
+        #expect(!set.matches(spanLabels: [SpanLabel(key: "repo", value: "a"),
+                                          SpanLabel(key: "type", value: "qa")],
+                             quicks: [quick]))
+    }
+
+    @Test func valueLessQuickMatchesAnyFilledValue() {
+        // `issue:` starts blank and the editor fills the value moments later
+        // (#149) — the card must stay lit through and after that fill-in.
+        let set = TagSet(tags: [TagRow(key: "repo", value: "a")])
+        let quick = TagRow(key: "issue", value: "")
+        #expect(set.matches(spanLabels: [SpanLabel(key: "repo", value: "a"),
+                                         SpanLabel(key: "issue", value: "")],
+                            quicks: [quick]))
+        #expect(set.matches(spanLabels: [SpanLabel(key: "repo", value: "a"),
+                                         SpanLabel(key: "issue", value: "123")],
+                            quicks: [quick]))
+        // But not without the set's own marks under it.
+        #expect(!set.matches(spanLabels: [SpanLabel(key: "issue", value: "123")],
+                             quicks: [quick]))
+    }
+
+    @Test func bakedValueLessMarkIsAFillInSlotToo() {
+        // A set can bake the fill-in slot in (`issue:` as a set mark, not a
+        // quick) — the card must stay lit after the editor fills the value.
+        let set = TagSet(tags: [TagRow(key: "project", value: "mt"),
+                                TagRow(key: "issue", value: "")])
+        #expect(set.matches(spanLabels: [SpanLabel(key: "project", value: "mt"),
+                                         SpanLabel(key: "issue", value: "141")],
+                            quicks: []))
+        // The slot's key must still be present on the span.
+        #expect(!set.matches(spanLabels: [SpanLabel(key: "project", value: "mt")],
+                             quicks: []))
+    }
+
+    @Test func extraOrMissingMarksDoNotMatch() {
+        // A span carrying more (or fewer) marks than any startable labelling
+        // is a different timer — a superset must not dim the card.
+        let set = TagSet(tags: [TagRow(key: "repo", value: "a")])
+        let quick = TagRow(key: "type", value: "review")
+        #expect(!set.matches(spanLabels: [SpanLabel(key: "repo", value: "a"),
+                                          SpanLabel(key: "type", value: "review"),
+                                          SpanLabel(key: "extra", value: "x")],
+                             quicks: [quick]))
+        #expect(!set.matches(spanLabels: [], quicks: [quick]))
+    }
 }
