@@ -209,8 +209,7 @@ struct TagSetCard: View {
             }
         } label: {
             VStack(spacing: 8) {
-                Image(systemName: set.symbol)
-                    .font(.system(size: 28))
+                TagSetIcon(set: set, size: 28)
                 Text(set.name.isEmpty ? "Untitled" : set.name)
                     .font(.headline)
                     .lineLimit(1)
@@ -314,8 +313,7 @@ struct LauncherTileIcon: View {
 
     var body: some View {
         let tint = model.cardTint(for: set)
-        Image(systemName: set.symbol)
-            .font(.system(size: size * 0.5, weight: .medium))
+        TagSetIcon(set: set, size: size * 0.5, weight: .medium)
             .foregroundStyle(model.gradientLauncherCards
                              ? Brand.tileGlyph(for: tint)
                              : tint.contrastingTextColor)

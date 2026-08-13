@@ -20,6 +20,8 @@
 #   ARCHS        slices to build, space-separated (default: arm64 x86_64).
 #                Set ARCHS=arm64 for a faster native-only dev bundle.
 #   VARIANT      "direct" (default) or "mas".
+#   BRAND_FONTS_DIR  licensed brand fonts to inject (default:
+#                ~/.sfi/brand-assets/fonts; skipped when absent).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -104,6 +106,18 @@ cp "$ROOT/scripts/container-migration.plist" \
 # Contents/Resources, only the .app root and the builder's absolute .build path.
 ditto "$REL/MomentTally_MomentTally.bundle" \
       "$APP/Contents/Resources/MomentTally_MomentTally.bundle"
+# Licensed brand fonts (PR #202): live in the private sfi/brand-assets repo —
+# never in this one, which mirrors to public GitHub — and inject at bundle
+# time when the build machine has a checkout. Brand.registerFonts() scans
+# Contents/Resources/Fonts at launch and falls back to system faces when the
+# directory is absent, so a mirror build still assembles a working app.
+FONTS_DIR="${BRAND_FONTS_DIR:-$HOME/.sfi/brand-assets/fonts}"
+if [[ -d "$FONTS_DIR" ]]; then
+    mkdir -p "$APP/Contents/Resources/Fonts"
+    find "$FONTS_DIR" -maxdepth 1 \( -name '*.otf' -o -name '*.ttf' \) \
+        -exec cp {} "$APP/Contents/Resources/Fonts/" \;
+    echo "Injected brand fonts from $FONTS_DIR"
+fi
 sed -e "s/@VERSION@/$VERSION/" -e "s/@BUILD@/$BUILD/" \
     "$ROOT/scripts/Info.plist.in" > "$APP/Contents/Info.plist"
 if [[ "$VARIANT" == mas ]]; then

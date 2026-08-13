@@ -109,28 +109,10 @@ private struct WelcomeStep: View {
                         .foregroundStyle(.secondary)
                         .padding(.top, 14)
 
-                    // The welcome line, demoted under the masthead. The
-                    // wordmark rides inline; its render's bottom edge is the
-                    // y-descender tip, ~17% of its height below the baseline,
-                    // so the alignment guide hoists it back onto the text's.
-                    HStack(alignment: .firstTextBaseline, spacing: 9) {
+                    // The welcome line
                         Text("Welcome to Moment Tally")
-                            .font(.system(size: 28))
+                            .font(.system(size: 18))
                             .foregroundStyle(.secondary)
-                        // if let wordmark = Brand.wordmarkLockup(for: colorScheme) {
-                        //     Image(nsImage: wordmark)
-                        //         .resizable()
-                        //         .interpolation(.high)
-                        //         .scaledToFit()
-                        //         .frame(height: 36)
-                        //         .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 7 }
-                        //         .accessibilityLabel("Moment Tally")
-                        //         .padding(.leading, -4)
-                        //
-                        // } else {
-                        //     Brand.wordmark(size: 28)
-                        // }
-                    }
                     .padding(.top, 56)
 
                     // The cards stay visible in demo mode, just disabled — the

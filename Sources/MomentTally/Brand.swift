@@ -9,15 +9,18 @@ import MomentTallyCore
 /// the momenttally.com values, kept verbatim so the app and the website
 /// masthead read as one thing.
 ///
-/// Typography is system-only for now: the real brand faces (Morganite Pro,
-/// Palm Springs) are licensed for web/print but not yet for app embedding —
-/// and their files must never be committed here (the repo mirrors to public
-/// GitHub, which would be redistribution). Until an app license lands,
-/// `display` approximates Morganite with SF compressed-black oblique and
-/// `promo` approximates Palm Springs with the system serif. Display-size
-/// spots use the real faces anyway, as rasterised art: `wordmarkLockup` /
-/// `taglineLockup` load PNG exports of the website lockups, cleared for
-/// interim use while the app license is negotiated.
+/// Typography: Palm Springs (the website's headline script) is licensed for
+/// app embedding (written permission from Tom at Tropical Type, 2026-08) —
+/// but its files still must never be committed here (the repo mirrors to
+/// public GitHub, which would be redistribution). bundle-app.sh injects them
+/// into Contents/Resources/Fonts from a private sfi/brand-assets checkout;
+/// `registerFonts()` registers whatever landed there and `script` serves the
+/// live face, returning nil in builds without it (the public mirror, bare
+/// `swift run`) so call sites keep their system styles. Morganite Pro stays
+/// image-only — its permission covers the rasterised lockup art, not the
+/// font — so `display` approximates it with SF compressed-black oblique and
+/// display-size spots use the PNG renders via `wordmarkLockup` /
+/// `taglineLockup`.
 enum Brand {
 
     /// The SwiftPM resource bundle. `swift build`'s generated `Bundle.module`
@@ -36,17 +39,43 @@ enum Brand {
 
     /// The display face: SF compressed black oblique — the closest system
     /// stand-in for Morganite Pro's ultra-condensed heavy oblique (the
-    /// website lockup's face) until the app font license is sorted.
+    /// website lockup's face, licensed here as rasterised art only).
     static func display(_ size: CGFloat) -> Font {
         .system(size: size, weight: .black).width(.compressed).italic()
     }
 
-    /// The promo face for taglines: system serif italic, standing in for
-    /// Palm Springs (the website's headline script) on the same interim
-    /// terms as `display`.
+    /// The promo face for taglines: system serif italic, the emergency
+    /// stand-in for the one spot that shows Palm Springs as rasterised art
+    /// (the welcome masthead) if its lockup PNG ever fails to load.
     static func promo(_ size: CGFloat) -> Font {
         .system(size: size, weight: .semibold, design: .serif).italic()
     }
+
+    /// Register the licensed brand fonts bundle-app.sh injected into
+    /// Contents/Resources/Fonts, if any — process scope, nothing lands
+    /// system-wide. Called once at app init, before any view resolves
+    /// `script`; a build with no Fonts/ directory registers nothing.
+    static func registerFonts() {
+        guard let dir = Bundle.main.resourceURL?.appendingPathComponent("Fonts"),
+              let files = try? FileManager.default.contentsOfDirectory(
+                  at: dir, includingPropertiesForKeys: nil) else { return }
+        for url in files where ["otf", "ttf"].contains(url.pathExtension.lowercased()) {
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
+    }
+
+    /// Palm Springs live at `size`, or nil when this build carries no
+    /// injected fonts. Call sites fall back to the sans style they'd wear
+    /// anyway — deliberately not `promo`'s serif, which only ever subs for
+    /// rasterised art. The script's x-height runs small, so pass a size a
+    /// few points above the sans it replaces.
+    static func script(_ size: CGFloat) -> Font? {
+        scriptAvailable ? .custom(palmSprings, size: size) : nil
+    }
+
+    private static let palmSprings = "PalmSpringsGRAPHIC"
+    /// Resolved on first use, safely after `registerFonts()` ran at init.
+    private static let scriptAvailable = NSFont(name: palmSprings, size: 12) != nil
 
     /// "Moment Tally" as the site renders it: "Moment" in ink (whatever the
     /// context's foreground is), brand-gradient "Tally", tight tracking.
@@ -174,23 +203,47 @@ enum Brand {
         lockup("Tagline", scheme)
     }
 
+    /// The bare gradient tally motif (no icon tile) at display size, for the
+    /// About masthead. Unlike the text lockups both variants are exported
+    /// masters — fully gradient ink, nothing to recolour — downscaled by the
+    /// same make-lockups.swift run.
+    static func motif(for scheme: ColorScheme) -> NSImage? {
+        lockup("Motif", scheme)
+    }
+
     private static func lockup(_ name: String, _ scheme: ColorScheme) -> NSImage? {
         resources.url(forResource: "\(name)-\(scheme == .dark ? "dark" : "light")",
                       withExtension: "png")
             .flatMap { NSImage(contentsOf: $0) }
     }
 
-    /// The tally mark as a menu-bar template image: the favicon's four bars
-    /// and strike, monochrome — drawn in code (the favicon geometry, y
-    /// flipped for AppKit) rather than shipped as an asset, so there is
-    /// nothing to rasterize per scale factor. Template rendering lets the
-    /// system tint it for menu-bar state (dark menu bar, highlight, reduced
-    /// transparency).
-    static let menuBarIcon: NSImage = {
-        let image = NSImage(size: NSSize(width: 18, height: 18),
-                            flipped: false) { _ in
+    /// The tally mark as a template image: the favicon's four bars and
+    /// strike, monochrome — drawn in code (the favicon geometry, y flipped
+    /// for AppKit) rather than shipped as an asset, so there is nothing to
+    /// rasterize per scale factor. Template rendering lets the system tint it
+    /// for the state it lands in (dark menu bar, highlight, reduced
+    /// transparency; selected toolbar item; an accent-filled menu row).
+    ///
+    /// Scale comes from the rect the handler is handed, not the nominal size,
+    /// so the mark fills whatever it's asked to draw into rather than
+    /// stranding 64pt geometry in a corner.
+    ///
+    /// Which means `size` is only a request: a handler-drawn image is
+    /// size-independent, and a host that scales it to its own box (an
+    /// `NSToolbarItem` does) gets a mark that redraws to fill that box at any
+    /// nominal size. `inset` is the knob that survives being rescaled — the
+    /// fraction of the box left empty on each edge, standing in for the
+    /// optical padding SF Symbols carry inside their bounds and the mark,
+    /// bleeding to its edges, does not. It reads oversized beside them at 0.
+    static func tallyMark(size: CGFloat, inset: CGFloat = 0) -> NSImage {
+        let image = NSImage(size: NSSize(width: size, height: size),
+                            flipped: false) { rect in
+            let box = rect.insetBy(dx: rect.width * inset, dy: rect.height * inset)
+            let place = NSAffineTransform()
+            place.translateX(by: box.minX, yBy: box.minY)
+            place.concat()
             let scale = NSAffineTransform()
-            scale.scale(by: 18.0 / 64.0)
+            scale.scale(by: box.width / 64.0)
             scale.concat()
             let mark = NSBezierPath()
             for x: CGFloat in [11.25, 23.25, 35.25, 47.25] {
@@ -214,7 +267,15 @@ enum Brand {
         }
         image.isTemplate = true
         return image
-    }()
+    }
+
+    /// The mark at menu-bar size, the one spot that draws it from launch.
+    static let menuBarIcon: NSImage = tallyMark(size: 18)
+
+    /// The inset that makes the mark read at the same size as an SF Symbol
+    /// sitting beside it, tuned against the settings toolbar. One dial, so
+    /// every spot that mixes the mark in with symbols stays consistent.
+    static let symbolInset: CGFloat = 0.15
 
     /// A colour that follows the appearance the view actually renders in.
     private static func dynamic(light: String, dark: String) -> Color {
@@ -222,5 +283,43 @@ enum Brand {
             let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             return NSColor(Color(hex: isDark ? dark : light) ?? .gray)
         })
+    }
+}
+
+/// The tally mark standing in for an SF Symbol in SwiftUI, where the symbols
+/// it sits beside get two things for free that a fixed `NSImage` does not:
+/// they tint with `foregroundStyle` (menu rows fill accent and flip their
+/// content white on hover — see `MenuRowButtonStyle`), and they scale with the
+/// surrounding type. `.renderingMode(.template)` buys the first even though
+/// the image already carries `isTemplate`; `@ScaledMetric` buys the second.
+struct TallyMarkIcon: View {
+    /// Point size at the default type size, scaled from there.
+    var size: CGFloat = 14
+    var inset: CGFloat = 0
+    @ScaledMetric private var scale: CGFloat = 1
+
+    var body: some View {
+        Image(nsImage: Brand.tallyMark(size: size * scale, inset: inset))
+            .renderingMode(.template)
+    }
+}
+
+/// A set's launcher icon: its SF Symbol, or the brand mark when it carries
+/// the reserved name. Sized in points rather than by `.font`, which reaches a
+/// symbol but not an image — so both branches take the same number and land
+/// at the same size, with `Brand.symbolInset` covering the optical padding
+/// the mark lacks.
+struct TagSetIcon: View {
+    let set: TagSet
+    var size: CGFloat
+    var weight: Font.Weight = .regular
+
+    var body: some View {
+        if set.symbol == TagSet.markSymbol {
+            TallyMarkIcon(size: size, inset: Brand.symbolInset)
+        } else {
+            Image(systemName: set.symbol)
+                .font(.system(size: size, weight: weight))
+        }
     }
 }

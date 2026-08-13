@@ -672,6 +672,7 @@ private struct SymbolPicker: View {
     @Binding var selection: String?
 
     private static let choices = [
+        TagSet.markSymbol,
         "tag", "laptopcomputer", "terminal", "hammer", "wrench.and.screwdriver",
         "doc.text", "book", "graduationcap", "brain", "lightbulb",
         "person.2", "phone", "envelope", "bubble.left.and.bubble.right", "calendar",
@@ -685,11 +686,17 @@ private struct SymbolPicker: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 32), spacing: 4)],
                       spacing: 4) {
                 ForEach(Self.choices, id: \.self) { symbol in
-                    let selected = symbol == (selection ?? "tag")
+                    let selected = symbol == (selection ?? TagSet.markSymbol)
                     Button {
                         selection = symbol
                     } label: {
-                        Image(systemName: symbol)
+                        Group {
+                            if symbol == TagSet.markSymbol {
+                                TallyMarkIcon(size: 15, inset: Brand.symbolInset)
+                            } else {
+                                Image(systemName: symbol)
+                            }
+                        }
                             .frame(width: 28, height: 28)
                             .background(
                                 RoundedRectangle(cornerRadius: 6)
@@ -703,7 +710,7 @@ private struct SymbolPicker: View {
                 }
             }
             HStack(spacing: 4) {
-                TextField("Symbol name", text: typedName, prompt: Text("tag"))
+                TextField("Symbol name", text: typedName, prompt: Text("SF Symbol name"))
                     .textFieldStyle(.roundedBorder)
                     .autocorrectionDisabled()
                 if !selectionResolves {
@@ -736,9 +743,11 @@ private struct SymbolPicker: View {
 
     /// SF Symbols names are easy to mistype, so resolve the current one and
     /// flag it inline when it isn't real (also covers bad names that synced
-    /// in from elsewhere). `nil` falls back to "tag", which always resolves.
+    /// in from elsewhere). `nil` falls back to the brand mark. So does the
+    /// reserved mark name, which is deliberately not a real symbol and would
+    /// otherwise be flagged as the very typo this is looking for.
     private var selectionResolves: Bool {
-        guard let name = selection else { return true }
+        guard let name = selection, name != TagSet.markSymbol else { return true }
         return NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil
     }
 }

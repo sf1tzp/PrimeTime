@@ -77,3 +77,18 @@ for job in jobs {
     write(dark, to: "\(out)-dark.png")
     write(recolored(dark), to: "\(out)-light.png")
 }
+
+/// The tally-motif exports are already a light/dark pair (fully gradient
+/// ink, so no recolouring applies) — just the same downscale to ~3× the
+/// About masthead's point size.
+let paired: [(source: String, name: String, height: Int)] = [
+    ("Resources/tally_motif_dark.png", "Motif-dark", 384),
+    ("Resources/tally_motif_light.png", "Motif-light", 384),
+]
+for job in paired {
+    guard let image = NSImage(contentsOfFile: job.source) else {
+        fatalError("missing master: \(job.source) — run from the repo root")
+    }
+    write(downscale(image, toHeight: job.height),
+          to: "Sources/MomentTally/Resources/\(job.name).png")
+}

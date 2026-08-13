@@ -110,7 +110,10 @@ private struct WalkthroughPage<Content: View>: View {
                     .font(.title3.monospacedDigit().weight(.semibold))
                     .foregroundStyle(.tint)
                 Text(title)
-                    .font(.title2.weight(.semibold))
+                    // The brand script where the build bundles it; the sans
+                    // it always wore otherwise. Sized up because the script's
+                    // x-height runs well under title2's.
+                    .font(Brand.script(24) ?? .title2.weight(.semibold))
             }
             Text(subtitle)
                 .font(.callout)

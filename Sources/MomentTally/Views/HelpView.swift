@@ -15,11 +15,7 @@ struct HelpView: View {
                 ForEach(HelpSection.all) { section in
                     HelpSectionCard(section: section, isExpanded: binding(for: section.id))
                 }
-                AcknowledgementsCard(isExpanded: binding(for: AcknowledgementsCard.id))
-                Text("Moment Tally \(Self.versionString)")
-                    .font(.footnote)
-                    .foregroundStyle(.tertiary)
-                    .padding(.top, 6)
+                AboutCard(isExpanded: binding(for: AboutCard.id))
             }
             .frame(maxWidth: 620, alignment: .leading)
             .frame(maxWidth: .infinity)
@@ -36,8 +32,9 @@ struct HelpView: View {
     }
 
     /// "1.2.0 (347)" from the bundle's Info.plist; a bare SwiftPM binary
-    /// (`just run-dev`) has no bundle metadata and reads "dev".
-    private static var versionString: String {
+    /// (`just run-dev`) has no bundle metadata and reads "dev". Fileprivate:
+    /// the About card shows the same string.
+    fileprivate static var versionString: String {
         guard let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
         else { return "dev" }
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
@@ -62,7 +59,9 @@ private struct HelpSectionCard: View {
                         .frame(width: 20)
                         .foregroundStyle(.tint)
                     Text(section.title)
-                        .font(.headline)
+                        // Brand script when bundled (sized up for its small
+                        // x-height), the sans headline otherwise.
+                        .font(Brand.script(16) ?? .headline)
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
@@ -378,7 +377,7 @@ private struct HelpSection: Identifiable {
     ]
 }
 
-// MARK: Acknowledgements (#115)
+// MARK: About Moment Tally (#115, PR #202)
 
 /// The open-source components in this build, one entry per license text in
 /// the resource bundle. The MAS variant's list omits Sparkle and
@@ -427,12 +426,17 @@ struct Acknowledgement: Identifiable {
     }()
 }
 
-/// Open-source acknowledgements as one more Help card: a line per component
-/// with its license text expandable underneath, so the notices those
-/// licenses ask for ship inside the app rather than in a file nobody finds.
-struct AcknowledgementsCard: View {
-    static let id = "acknowledgements"
+/// The About card: an About This Mac-style masthead — the gradient tally
+/// motif and Morganite Pro wordmark at display size, centered with air
+/// around them — over the maker/copyright lines, then the left-aligned
+/// licensed-typeface attributions and open-source acknowledgements (a line
+/// per component with its license text expandable underneath, so the
+/// notices those licenses ask for ship inside the app rather than in a
+/// file nobody finds).
+struct AboutCard: View {
+    static let id = "about"
     @Binding var isExpanded: Bool
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -440,11 +444,11 @@ struct AcknowledgementsCard: View {
                 withAnimation(.easeOut(duration: 0.15)) { isExpanded.toggle() }
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "shippingbox")
+                    Image(systemName: "info.circle")
                         .frame(width: 20)
                         .foregroundStyle(.tint)
-                    Text("Acknowledgements")
-                        .font(.headline)
+                    Text("About Moment Tally")
+                        .font(Brand.script(16) ?? .headline)
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
@@ -456,18 +460,83 @@ struct AcknowledgementsCard: View {
             .buttonStyle(.plain)
 
             if isExpanded {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Moment Tally builds on these open-source components.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                    ForEach(Acknowledgement.all) { AcknowledgementRow(item: $0) }
+                VStack(alignment: .leading, spacing: 14) {
+                    masthead
+                    VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            attribution("""
+                            **Morganite Pro™** — used with permission from \
+                            [Rajesh Kumar](https://www.behance.net/rajputrajesh).
+                            """)
+                            attribution("""
+                            **Palm Springs** — used with permission from \
+                            [Tom at Tropical Type](https://tropicaltype.com/).
+                            """)
+                        }
+                        Text("Moment Tally builds on these open-source components.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                        ForEach(Acknowledgement.all) { AcknowledgementRow(item: $0) }
+                    }
+                    .padding(.leading, 28)  // align with the other cards' bodies
                 }
                 .padding(.top, 10)
-                .padding(.leading, 28)  // align body under the title, past the icon
             }
         }
         .padding(12)
         .background(.quinary, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    /// The mock's centered stack: motif, wordmark, version, then the by-line
+    /// block. Point sizes leave the 384px motif and 256px wordmark renders
+    /// ~3× headroom on Retina.
+    private var masthead: some View {
+        VStack(spacing: 0) {
+            if let motif = Brand.motif(for: colorScheme) {
+                Image(nsImage: motif)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(height: 120)
+                    .accessibilityHidden(true)  // decorative; the wordmark speaks
+            }
+            if let wordmark = Brand.wordmarkLockup(for: colorScheme) {
+                Image(nsImage: wordmark)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(height: 64)
+                    .accessibilityLabel("Moment Tally")
+                    .padding(.top, 18)
+            } else {
+                Brand.wordmark(size: 34)
+                    .padding(.top, 18)
+            }
+            Text("v\(HelpView.versionString)")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .padding(.top, -1)
+            VStack(spacing: 3) {
+                Text("Moment Tally by Streetfortress Industries, LLC")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Text("Copyright © 2026 Steven Fitzpatrick. All rights reserved.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                Text(.init("[www.streetfortress.com](https://www.streetfortress.com)"))
+                    .font(.caption)
+            }
+            .padding(.top, 24)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+    }
+
+    /// `.init` so the string is parsed as markdown (bold + links).
+    private func attribution(_ markdown: String) -> some View {
+        Text(.init(markdown))
+            .font(.caption)
+            .foregroundStyle(.secondary)
     }
 }
 

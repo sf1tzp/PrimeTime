@@ -23,8 +23,9 @@ package struct TagSet: Identifiable, Codable, Hashable {
     package var id = UUID()
     package var name: String = ""
     package var tags: [TagRow] = []
-    /// SF Symbol shown on the set's launcher card. Optional so sets saved
-    /// before icons existed keep decoding; `symbol` supplies the default.
+    /// Icon shown on the set's launcher card: an SF Symbol name, or
+    /// `markSymbol` for the brand mark. Optional so sets saved before icons
+    /// existed keep decoding; `symbol` supplies the default.
     package var symbolName: String?
     /// "#rrggbb" fallback colour for the set's launcher card, used only when
     /// the set has no labels to borrow a colour from (a quick-labels-only
@@ -41,8 +42,17 @@ package struct TagSet: Identifiable, Codable, Hashable {
         self.colorHex = colorHex
     }
 
-    /// The symbol to render for this set.
-    package var symbol: String { symbolName ?? "tag" }
+    /// Reserved `symbolName` standing for the Moment Tally mark rather than
+    /// an SF Symbol. It has to be a string, not the absence of one: sync
+    /// declares `symbolName: String!` and flattens nil on both legs, so a set
+    /// that simply had no icon would come back from the server as a literal
+    /// "tag" and lose the mark on the next round trip. Dashes keep it clear
+    /// of Apple's dot-separated namespace, so no future SF Symbol can claim
+    /// it out from under us.
+    package static let markSymbol = "moment-tally.mark"
+
+    /// The symbol to render for this set. Unset means the brand mark.
+    package var symbol: String { symbolName ?? Self.markSymbol }
 
     /// The domain form for starting a timespan. Traggo lower-cases tag keys
     /// and forbids spaces, so we normalise here to match how definitions are

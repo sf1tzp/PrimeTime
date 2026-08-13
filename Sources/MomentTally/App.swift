@@ -11,6 +11,13 @@ struct MomentTallyApp: App {
     // object; SwiftUI keeps it alive for the app's lifetime.
     @State private var model = AppModel()
 
+    init() {
+        // Licensed brand fonts ride in Contents/Resources/Fonts when the
+        // build machine had the private checkout (see bundle-app.sh);
+        // register them before any view resolves Brand.script.
+        Brand.registerFonts()
+    }
+
     var body: some Scene {
         MenuBarExtra {
             MenuContentView()

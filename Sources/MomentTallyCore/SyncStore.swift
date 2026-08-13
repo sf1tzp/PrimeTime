@@ -554,7 +554,7 @@ package extension LocalBackend {
                     if row.dirty, (row.modifiedAt ?? .distantPast) > remoteSet.updatedAt {
                         pushes.append(LabelSetPush(
                             localId: row.id, serverId: remoteSet.id,
-                            name: row.name, symbolName: row.symbol ?? "tag",
+                            name: row.name, symbolName: row.symbol ?? TagSet.markSymbol,
                             labels: try Self.members(of: row.id, db),
                             quickLabels: try Self.quickMembers(of: row.id, db),
                             position: row.position, modifiedAt: row.modifiedAt))
@@ -564,7 +564,7 @@ package extension LocalBackend {
                     let localQuick = try Self.quickMembers(of: row.id, db)
                     changed = changed
                         || row.name != remoteSet.name
-                        || (row.symbol ?? "tag") != remoteSet.symbolName
+                        || (row.symbol ?? TagSet.markSymbol) != remoteSet.symbolName
                         || row.position != position
                         || localMembers != remoteSet.labels
                         || localQuick != remoteSet.quickLabels
@@ -598,7 +598,7 @@ package extension LocalBackend {
                         // Edited here since: the edit wins, re-create it.
                         pushes.append(LabelSetPush(
                             localId: row.id, serverId: nil,
-                            name: row.name, symbolName: row.symbol ?? "tag",
+                            name: row.name, symbolName: row.symbol ?? TagSet.markSymbol,
                             labels: try Self.members(of: row.id, db),
                             quickLabels: try Self.quickMembers(of: row.id, db),
                             position: row.position, modifiedAt: row.modifiedAt))
@@ -610,7 +610,7 @@ package extension LocalBackend {
                     // Never synced: create it on the server.
                     pushes.append(LabelSetPush(
                         localId: row.id, serverId: nil,
-                        name: row.name, symbolName: row.symbol ?? "tag",
+                        name: row.name, symbolName: row.symbol ?? TagSet.markSymbol,
                         labels: try Self.members(of: row.id, db),
                         quickLabels: try Self.quickMembers(of: row.id, db),
                         position: row.position, modifiedAt: row.modifiedAt))

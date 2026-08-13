@@ -75,6 +75,8 @@ let package = Package(
                 .copy("Resources/Wordmark-light.png"),
                 .copy("Resources/Tagline-dark.png"),
                 .copy("Resources/Tagline-light.png"),
+                .copy("Resources/Motif-dark.png"),
+                .copy("Resources/Motif-light.png"),
                 // License texts surfaced in Help → Acknowledgements (#115).
                 // All ride in both variants (inert text either way); what
                 // varies is the entry list in HelpView, where MAS_BUILD drops

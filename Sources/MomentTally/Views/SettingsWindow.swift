@@ -40,7 +40,11 @@ final class SettingsWindowManager: NSObject, NSWindowDelegate {
 
         tabController.addTabViewItem(item("Launcher", symbol: "square.grid.2x2",
                                           content: LauncherView(), model: model, size: size))
-        tabController.addTabViewItem(item("Tallies", symbol: "tag",
+        // The brand mark rather than an SF Symbol. The toolbar rescales it to
+        // its own icon box whatever `size` says, so `inset` is what tunes how
+        // big it reads against the symbols either side — this is the dial to
+        // turn, not the size.
+        tabController.addTabViewItem(item("Tallies", image: Brand.tallyMark(size: 18, inset: Brand.symbolInset),
                                           content: TagSetsSettingsView(), model: model, size: size))
         tabController.addTabViewItem(item("Log", symbol: "list.bullet.rectangle",
                                           content: LogView(), model: model, size: size))
@@ -48,7 +52,7 @@ final class SettingsWindowManager: NSObject, NSWindowDelegate {
                                           content: CalendarView(), model: model, size: size))
         tabController.addTabViewItem(item("History", symbol: "chart.pie",
                                           content: HistoryChartsView(), model: model, size: size))
-        tabController.addTabViewItem(item("Mark Review", symbol: "stethoscope",
+        tabController.addTabViewItem(item("Marks", symbol: "pencil.line",
                                           content: TagReviewView(), model: model, size: size))
         tabController.addTabViewItem(item("Help", symbol: "questionmark.circle",
                                           content: HelpView(), model: model, size: size))
@@ -79,6 +83,12 @@ final class SettingsWindowManager: NSObject, NSWindowDelegate {
 
     private func item(_ label: String, symbol: String,
                       content: some View, model: AppModel, size: NSSize) -> NSTabViewItem {
+        item(label, image: NSImage(systemSymbolName: symbol, accessibilityDescription: label),
+             content: content, model: model, size: size)
+    }
+
+    private func item(_ label: String, image: NSImage?,
+                      content: some View, model: AppModel, size: NSSize) -> NSTabViewItem {
         // Fixed frame per section so the window sizes itself to the selection
         // rather than to whatever SwiftUI proposes.
         let host = NSHostingController(rootView:
@@ -90,7 +100,8 @@ final class SettingsWindowManager: NSObject, NSWindowDelegate {
         host.title = "Moment Tally"
         let item = NSTabViewItem(viewController: host)
         item.label = label
-        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
+        image?.accessibilityDescription = label
+        item.image = image
         return item
     }
 }

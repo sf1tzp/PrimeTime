@@ -115,7 +115,7 @@ package enum DemoSeed {
                       TagRow(key: "client", value: "sfi"),
                       TagRow(key: "issue", value: "")],
                symbolName: "laptopcomputer"),
-        TagSet(name: "Project Meridian",
+        TagSet(name: "Meridian Website",
                tags: [TagRow(key: "project", value: "meridian"),
                       TagRow(key: "client", value: "acme-inc"),
                       ],
@@ -134,8 +134,8 @@ package enum DemoSeed {
         //        symbolName: "briefcase"),
         // Quick-labels-only sets: no presets, so the card colour comes from
         // `colorHex` (matched to the key's definition colour below).
-        TagSet(name: "Gaming", symbolName: "gamecontroller", colorHex: "#d84315"),
-        TagSet(name: "Workout", symbolName: "figure.run", colorHex: "#34c759"),
+        TagSet(name: "Gaming", symbolName: "gamecontroller", colorHex: "#752fe6ff"),
+        TagSet(name: "Workout", symbolName: "figure.run", colorHex: "#7ce751ff"),
         TagSet(name: "Reading", symbolName: "book", colorHex: "#26a69a"),
     ]
 
@@ -154,7 +154,7 @@ package enum DemoSeed {
         switch name {
         case "Moment Tally App", "Backend Work":
             return type
-        case "Project Meridian", "Lighthouse":
+        case "Meridian Website", "Lighthouse":
             return type + [TagRow(key: "meeting", value: "retrospective"),
                            TagRow(key: "meeting", value: "standup"),
                            TagRow(key: "meeting", value: "handoff")]
@@ -202,8 +202,8 @@ package enum DemoSeed {
         LabelDefinition(key: "issue", color: "#66bb6a"),    // Gardening
         LabelDefinition(key: "type", color: "#30b0c7"),     // Language
         LabelDefinition(key: "meeting", color: "#af52de"),  // Music Practice
-        LabelDefinition(key: "game", color: "#d84315"),     // Streaming
-        LabelDefinition(key: "activity", color: "#34c759"), // Fitness
+        LabelDefinition(key: "game", color: "#6015d8ff"),     // Streaming
+        LabelDefinition(key: "activity", color: "#7fd84bff"), // Fitness
         LabelDefinition(key: "book", color: "#26a69a"),     // Leisure
     ]
 
@@ -212,12 +212,12 @@ package enum DemoSeed {
     /// the History donuts, and the combined view's type × client and
     /// meeting × client pairings stay tellable-apart.
     static let valueColors: [String: String] = [
-        ValueColorKey.join("project", "moment-tally"): "#f7b060",   // Programming
-        ValueColorKey.join("project", "meridian"): "#30b0c7",       // Language
-        ValueColorKey.join("project", "lighthouse"): "#ff9500",     // Cooking
+        ValueColorKey.join("project", "moment-tally"): "#58d8adff",   // Programming
+        ValueColorKey.join("project", "meridian"): "#f09e52ff",       // Language
+        ValueColorKey.join("project", "lighthouse"): "#ffe600ff",     // Cooking
         ValueColorKey.join("project", "velocity-consulting"): "#66bb6a",
         ValueColorKey.join("client", "sfi"): "#d44141",             // streetfortress red
-        ValueColorKey.join("client", "acme-inc"): "#ec407a",        // Volunteering
+        ValueColorKey.join("client", "acme-inc"): "#dac96eff",        // Volunteering
         ValueColorKey.join("client", "code-corps"): "#26a69a",      // Leisure
         ValueColorKey.join("repo", "company-website"): "#42a5f5",   // Studying
         ValueColorKey.join("repo", "infrastructure"): "#af52de",    // Music Practice
@@ -236,8 +236,8 @@ package enum DemoSeed {
         ValueColorKey.join("meeting", "retrospective"): "#af52de",
         ValueColorKey.join("meeting", "handoff"): "#30b0c7",
         ValueColorKey.join("meeting", "release-planning"): "#66bb6a",
-        ValueColorKey.join("game", "baldurs-gate"): "#d84315",      // Streaming
-        ValueColorKey.join("game", "no-mans-sky"): "#26a69a",
+        ValueColorKey.join("game", "baldurs-gate"): "#d14931ff",      // Streaming
+        ValueColorKey.join("game", "no-mans-sky"): "#4cadeeff",
         ValueColorKey.join("game", "cyberpunk"): "#f7b060",
         ValueColorKey.join("activity", "bike"): "#66bb6a",          // Gardening
         ValueColorKey.join("activity", "run"): "#ff9500",

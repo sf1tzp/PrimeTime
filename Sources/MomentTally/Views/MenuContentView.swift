@@ -156,7 +156,7 @@ struct MenuContentView: View {
             Button {
                 openSettings(tab: .tagSets)
             } label: {
-                Label("Tallies", systemImage: "tag")
+                Label { Text("Tallies")} icon: { TallyMarkIcon().padding(.leading, 0.9) }
             }
             .buttonStyle(MenuRowButtonStyle())
 
