@@ -1,5 +1,5 @@
-PrimeTime server — licensing structure
-======================================
+Moment Tally server — licensing structure
+=========================================
 
 This directory tree combines code under two licenses:
 
@@ -11,15 +11,15 @@ This directory tree combines code under two licenses:
    the GNU General Public License v3.0. Modifications are recorded in
    this repository's history.
 
-2. PrimeTime additions — AGPL-3.0-or-later (see LICENSE.AGPL-3.0).
-   Files newly authored for PrimeTime carry an SPDX header:
+2. Moment Tally additions — AGPL-3.0-or-later (see LICENSE.AGPL-3.0).
+   Files newly authored for Moment Tally carry an SPDX header:
 
        // SPDX-License-Identifier: AGPL-3.0-or-later
        // Copyright (C) 2026 Steven Fitzpatrick
 
    and are licensed under the GNU Affero General Public License v3.0
    or (at your option) any later version. This also covers the
-   PrimeTime-authored deployment configuration under ../infra/, which
+   Moment Tally-authored deployment configuration under ../infra/, which
    carries no per-file headers.
 
 Section 13 of the GPL-3.0 explicitly permits combining a GPLv3-covered

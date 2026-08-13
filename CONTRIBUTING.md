@@ -1,20 +1,20 @@
-# Contributing to PrimeTime
+# Contributing to Moment Tally
 
-Thanks for your interest in PrimeTime. Bug reports, feature discussion, and
+Thanks for your interest in Moment Tally. Bug reports, feature discussion, and
 patches are all welcome — with one piece of paperwork explained below that
 keeps the project's licensing structure intact.
 
-PrimeTime is developed on an internal forge and push-mirrored to GitHub. The
+Moment Tally is developed on an internal forge and push-mirrored to GitHub. The
 GitHub repository is where we triage public issues and review pull requests,
 but changes land through the canonical repository — a maintainer will carry
 your reviewed PR across.
 
 ## Contribution terms
 
-PrimeTime's public releases are open source: AGPL-3.0-or-later, with the
+Moment Tally's public releases are open source: AGPL-3.0-or-later, with the
 `server/` tree combining GPL-3.0 (traggo-derived files) and AGPL-3.0-or-later
 additions — see [NOTICE](NOTICE) and [server/NOTICE](server/NOTICE). In
-addition, PrimeTime's copyright holder distributes (or plans to distribute)
+addition, Moment Tally's copyright holder distributes (or plans to distribute)
 app builds through channels whose terms are incompatible with copyleft, such
 as Apple's App Store. That dual-channel model only works if the copyright
 holder retains sufficient rights over everything that ships.
@@ -50,7 +50,7 @@ code, and we'll take it from there.
 `server/` is a derivative of [traggo/server](https://github.com/traggo/server)
 and follows one greppable provenance rule, stated in
 [server/NOTICE](server/NOTICE): a file with no SPDX header is traggo-derived
-and GPL-3.0; a file authored from scratch for PrimeTime carries an
+and GPL-3.0; a file authored from scratch for Moment Tally carries an
 `SPDX-License-Identifier: AGPL-3.0-or-later` header. Editing a derived file —
 even heavily — does not move it across the boundary; only new files qualify
 for the header. When in doubt, a file stays derived.

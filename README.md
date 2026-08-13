@@ -18,7 +18,7 @@ Moment Tally is a macOS menu-bar time tracker that marks and divides your time e
 brew install --cask sf1tzp/tap/moment-tally
 ```
 
-Or download the latest notarized build from [GitHub releases](https://github.com/sf1tzp/PrimeTime/releases): unzip and drag `MomentTally.app` into Applications. Either way the app keeps itself current — updates arrive in-app via Sparkle.
+Or download the latest notarized build from [GitHub releases](https://github.com/sf1tzp/moment-tally/releases): unzip and drag `MomentTally.app` into Applications. Either way the app keeps itself current — updates arrive in-app via Sparkle.
 
 Requires macOS 14 (Sonoma) or later on Apple silicon.
 
