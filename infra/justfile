@@ -1,0 +1,13 @@
+deploy HOST:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ssh {{HOST}} -C "mkdir -p ~/images"
+    ssh {{HOST}} -C "mkdir -p ~/caddyfiles"
+    ssh {{HOST}} -C "mkdir -p ~/primetime-server"
+    scp caddyfiles/{{HOST}}/Caddyfile {{HOST}}:~/caddyfiles/primetime-server.caddy
+    scp docker-compose.yaml {{HOST}}:~/primetime-server.yaml
+    scp primetime-server.tar {{HOST}}:~/images/primetime-server-latest.tar
+    sops -d secrets/{{HOST}}.env | ssh {{HOST}} "cat > ~/primetime-server/.env"
+    ssh {{HOST}} -C "~/.local/bin/nerdctl load -i ~/images/primetime-server-latest.tar"
+    ssh {{HOST}} -C "~/.local/bin/nerdctl compose -f ~/primetime-server-compose.yaml down"
+    ssh {{HOST}} -C "~/.local/bin/nerdctl compose -f ~/primetime-server-compose.yaml up -d --env-file ~/primetime-server/.env"
